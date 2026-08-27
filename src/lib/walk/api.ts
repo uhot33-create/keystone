@@ -275,7 +275,7 @@ export const getWalkState = createServerFn({ method: "GET" })
     return {
       breeds,
       memos,
-      blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim()),
+      blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || process.env.VERCEL),
     };
   });
 
@@ -288,7 +288,7 @@ export const getWalkMemo = createServerFn({ method: "GET" })
     return {
       breeds,
       memo,
-      blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim()),
+      blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || process.env.VERCEL),
     };
   });
 
@@ -375,6 +375,41 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
     const memo = await getOwned(context.userId, data.id);
     if (!memo) throw new Error("保存できませんでした");
     return memo;
+  });
+
+const MAX_B64 = Math.ceil((2.8 * 1024 * 1024 * 4) / 3) + 64;
+
+export const uploadWalkImage = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        type: z.enum(["image/jpeg", "image/png", "image/webp"]),
+        base64: z
+          .string()
+          .min(32, "画像を読み込めませんでした")
+          .max(MAX_B64, "画像が大きすぎます"),
+      }),
+      input,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+    const buf = Buffer.from(data.base64, "base64");
+    if (!buf.length) throw new Error("画像を読み込めませんでした");
+    const ext = data.type === "image/png" ? "png" : data.type === "image/webp" ? "webp" : "jpg";
+    try {
+      const { put } = await import("@vercel/blob");
+      const blob = await put(`walk/${context.userId}/${crypto.randomUUID()}.${ext}`, buf, {
+        access: "public",
+        contentType: data.type,
+        ...(token ? { token } : {}),
+      });
+      return { url: blob.url, pathname: blob.pathname };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "";
+      throw new Error(detail ? `画像を保存できませんでした（${detail}）` : "画像を保存できませんでした");
+    }
   });
 
 export const deleteWalkMemo = createServerFn({ method: "POST" })

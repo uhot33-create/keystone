@@ -1,6 +1,6 @@
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-/** Vercel のリクエスト上限 4.5MB を避ける */
-export const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024;
+/** createServerFn の JSON が Vercel 4.5MB を超えないよう抑える */
+export const MAX_UPLOAD_BYTES = 2.8 * 1024 * 1024;
 
 const ALLOWED_EXT = /\.(jpe?g|png|webp|heic|heif)$/i;
 const ALLOWED_MIME = new Set([
@@ -93,6 +93,30 @@ export async function prepareImageFile(file: File): Promise<File> {
     throw new Error("画像を送れませんでした。別の写真を選んでください");
   }
   throw new Error("画像が大きすぎます。別の写真を選んでください");
+}
+
+export function imageContentType(file: File): "image/jpeg" | "image/png" | "image/webp" {
+  if (file.type === "image/png") return "image/png";
+  if (file.type === "image/webp") return "image/webp";
+  return "image/jpeg";
+}
+
+export function fileToBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? "");
+      const comma = text.indexOf(",");
+      const base64 = comma >= 0 ? text.slice(comma + 1) : text;
+      if (!base64) {
+        reject(new Error("画像を読み込めませんでした"));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("画像を読み込めませんでした"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export function imageFileFromClipboard(data: DataTransfer | null): File | null {

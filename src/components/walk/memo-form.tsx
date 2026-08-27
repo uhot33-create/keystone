@@ -1,8 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
-import { createWalkMemo, deleteWalkMemo, updateWalkMemo } from "@/lib/walk/api";
+import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { IMAGE_HINT, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
+import { fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
 import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
 import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -127,28 +127,12 @@ export function MemoForm({
           throw new Error("画像の保存には Vercel Blob の設定が必要です");
         }
         setPending("uploading");
-        const body = new FormData();
-        body.append("file", file, file.name);
-        const uploaded = await Promise.race([
-          fetch("/api/blob/upload", {
-            method: "POST",
-            body,
-            credentials: "same-origin",
-          }).then(async (res) => {
-            const data = (await res.json().catch(() => null)) as
-              | { url?: string; pathname?: string; error?: string }
-              | null;
-            if (!res.ok || !data?.url) {
-              throw new Error(data?.error ?? "画像を保存できませんでした");
-            }
-            return { url: data.url, pathname: data.pathname ?? null };
-          }),
-          new Promise<never>((_, reject) => {
-            window.setTimeout(() => {
-              reject(new Error("画像の送信が時間切れになりました。通信を確認してもう一度保存してください"));
-            }, 45000);
-          }),
-        ]);
+        const uploaded = await uploadWalkImage({
+          data: {
+            type: imageContentType(file),
+            base64: await fileToBase64(file),
+          },
+        });
         imageUrl = uploaded.url;
         imagePathname = uploaded.pathname;
         setPending("saving");

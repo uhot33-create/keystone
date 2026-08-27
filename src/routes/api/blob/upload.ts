@@ -3,6 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { MAX_UPLOAD_BYTES } from "@/lib/walk/image";
 
+function asUploadBlob(value: FormDataEntryValue | null): Blob | null {
+  if (!value || typeof value === "string") return null;
+  if (typeof (value as Blob).arrayBuffer !== "function") return null;
+  if (!(value as Blob).size) return null;
+  return value as Blob;
+}
+
 export const Route = createFileRoute("/api/blob/upload")({
   server: {
     handlers: {
@@ -11,33 +18,28 @@ export const Route = createFileRoute("/api/blob/upload")({
         if (!user) {
           return Response.json({ error: "ログインが必要です" }, { status: 401 });
         }
-        if (!process.env.BLOB_READ_WRITE_TOKEN?.trim()) {
-          return Response.json(
-            { error: "画像の保存には Vercel Blob の設定が必要です" },
-            { status: 501 },
-          );
-        }
+        const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
 
-        const form = await request.formData();
-        const file = form.get("file");
-        if (!(file instanceof File) || file.size === 0) {
+        const form = await request.formData().catch(() => null);
+        const file = asUploadBlob(form?.get("file") ?? null);
+        if (!file) {
           return Response.json({ error: "画像ファイルを選んでください" }, { status: 400 });
         }
         if (file.size > MAX_UPLOAD_BYTES) {
           return Response.json({ error: "画像が大きすぎます" }, { status: 400 });
         }
 
-        const type = file.type || "image/jpeg";
-        if (!["image/jpeg", "image/png", "image/webp"].includes(type)) {
-          return Response.json({ error: "jpeg / png / webp の画像にしてください" }, { status: 400 });
-        }
-
+        const type =
+          file.type === "image/png" || file.type === "image/webp" || file.type === "image/jpeg"
+            ? file.type
+            : "image/jpeg";
         const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
         try {
-          const blob = await put(`walk/${user.id}/${crypto.randomUUID()}.${ext}`, file, {
+          const buf = Buffer.from(await file.arrayBuffer());
+          const blob = await put(`walk/${user.id}/${crypto.randomUUID()}.${ext}`, buf, {
             access: "public",
-            addRandomSuffix: false,
             contentType: type,
+            ...(token ? { token } : {}),
           });
           return Response.json({ url: blob.url, pathname: blob.pathname });
         } catch (err) {
