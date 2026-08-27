@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
@@ -235,7 +236,12 @@ export function MemoForm({
   }
 
   return (
-    <form className={`flex flex-col gap-5 ${editing ? "pb-28" : ""}`} onSubmit={onSubmit} onPaste={onPasteImage}>
+    <form
+      id="walk-memo-form"
+      className={`flex flex-col gap-5 ${editing ? "pb-28" : ""}`}
+      onSubmit={onSubmit}
+      onPaste={onPasteImage}
+    >
       <div className="space-y-1.5">
         <Label htmlFor="memo-name">名前</Label>
         <Input
@@ -442,25 +448,30 @@ export function MemoForm({
         </p>
       ) : null}
 
-      {editing ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95">
-          <div className="mx-auto flex max-w-3xl gap-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <Button type="button" variant="outline" className="flex-1" asChild>
-              <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
-                一覧へ
-              </Link>
-            </Button>
-            <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
-              {pending === "uploading" ? "送信中…" : pending === "saving" ? "保存中…" : "保存"}
-            </Button>
-            <Button type="button" variant="outline" className="flex-1" asChild>
-              <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
-                キャンセル
-              </Link>
-            </Button>
-          </div>
-        </div>
-      ) : (
+      {editing && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
+              <div className="mx-auto flex max-w-3xl gap-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+                <Button type="button" variant="outline" className="flex-1" asChild>
+                  <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+                    一覧へ
+                  </Link>
+                </Button>
+                <Button type="submit" form="walk-memo-form" className="flex-1" disabled={pending !== "idle"}>
+                  {pending === "uploading" ? "送信中…" : pending === "saving" ? "保存中…" : "保存"}
+                </Button>
+                <Button type="button" variant="outline" className="flex-1" asChild>
+                  <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+                    キャンセル
+                  </Link>
+                </Button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {editing ? null : (
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
             {pending === "uploading" ? "画像を送信中…" : pending === "saving" ? "保存中…" : "保存"}
