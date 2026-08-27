@@ -54,7 +54,7 @@ function CalorieApp() {
         <p className="font-sans text-xs font-medium tracking-widest text-subtle">01</p>
         <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">わんカロリー</h1>
         <p className="mt-3 max-w-prose text-sm text-muted">
-          1日のカロリーを足して記録し、理想体重に必要な量を餌とおやつから計算します。
+          1日のカロリーを足して記録し、理想体重に必要な量をフードとおやつから計算します。
         </p>
       </div>
 

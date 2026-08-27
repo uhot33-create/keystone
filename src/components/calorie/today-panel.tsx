@@ -213,7 +213,7 @@ export function TodayPanel({
 
         {state.foods.length > 0 ? (
           <div className="mt-5">
-            <p className="text-xs font-medium tracking-widest text-subtle">登録した餌・おやつ</p>
+            <p className="text-xs font-medium tracking-widest text-subtle">登録したフード・おやつ</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {state.foods.map((food) => (
                 <button
@@ -231,7 +231,7 @@ export function TodayPanel({
           </div>
         ) : (
           <p className="mt-4 text-sm text-muted">
-            餌やおやつを登録すると、ワンタップで加算できます。
+            フードやおやつを登録すると、ワンタップで加算できます。
             <button
               type="button"
               className="ml-1 font-medium text-primary underline-offset-4 hover:underline"

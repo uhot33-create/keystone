@@ -102,7 +102,7 @@ export function PlanPanel({
     const kcal = Number(foodKcal);
     const amount = Number(foodAmount);
     if (!foodName.trim() || !(kcal > 0) || !(amount > 0)) {
-      setError("餌・おやつの名前とカロリーを入力してください");
+      setError("フード・おやつの名前とカロリーを入力してください");
       return;
     }
     setPending(true);
@@ -233,7 +233,7 @@ export function PlanPanel({
           </p>
           {target > 0 ? (
             <p className="mt-2 text-sm text-fg">
-              餌 {mealKcal} kcal ／ おやつ {treatKcal} kcal
+              フード {mealKcal} kcal ／ おやつ {treatKcal} kcal
             </p>
           ) : null}
         </div>
@@ -247,7 +247,7 @@ export function PlanPanel({
         className="rounded-xl border border-border bg-surface p-5 shadow-card"
         onSubmit={onAddFood}
       >
-        <p className="font-display text-lg font-semibold text-fg">餌・おやつを登録</p>
+        <p className="font-display text-lg font-semibold text-fg">フード・おやつを登録</p>
         <p className="mt-1 text-sm text-muted">
           表示カロリーと分量を登録すると、必要量を自動で計算します。
         </p>
@@ -274,7 +274,7 @@ export function PlanPanel({
                 setFoodUnit(next === "treat" ? "個" : "g");
               }}
             >
-              <option value="food">餌</option>
+              <option value="food">フード</option>
               <option value="treat">おやつ</option>
             </Select>
           </div>
@@ -328,13 +328,13 @@ export function PlanPanel({
         {target <= 0 ? (
           <p className="mt-3 text-sm text-muted">理想体重を保存すると、必要量が表示されます。</p>
         ) : meals.length === 0 && treats.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">餌かおやつを登録すると、何g・何個まで与えられるか計算します。</p>
+          <p className="mt-3 text-sm text-muted">フードかおやつを登録すると、何g・何個まで与えられるか計算します。</p>
         ) : (
           <div className="mt-4 space-y-5">
             {meals.length > 0 ? (
               <div>
                 <p className="text-xs font-medium tracking-widest text-subtle">
-                  餌で {mealKcal} kcal をまかなう場合
+                  フードで {mealKcal} kcal をまかなう場合
                 </p>
                 <ul className="mt-2 divide-y divide-border">
                   {meals.map((food) => {
