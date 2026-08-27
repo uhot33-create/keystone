@@ -33,35 +33,27 @@ function MenuScreen() {
   const greeting = user?.primaryEmail ?? user?.displayName ?? "ゲスト";
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-8">
+    <div className="stagger-in flex flex-1 flex-col gap-6">
       <div>
         <p className="text-sm text-muted">ようこそ、{greeting}</p>
-        <h1 className="mt-3 text-xs font-medium tracking-widest text-subtle">MENU</h1>
+        <h1 className="mt-2 text-xs font-medium tracking-widest text-subtle">MENU</h1>
       </div>
 
-      <nav aria-label="メインメニュー" className="grid gap-4">
+      <nav aria-label="メインメニュー" className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
         {MENUS.map((item) => {
           const Icon = ICONS[item.to];
           return (
             <Link
               key={item.to}
               to={item.to}
-              className="group flex min-h-24 items-center gap-4 rounded-xl border border-border bg-surface px-5 py-5 shadow-card outline-none transition-[box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.99]"
+              className="group flex min-h-14 items-center gap-3 border-b border-border px-4 outline-none last:border-b-0 transition-colors duration-150 ease-[var(--ease-out)] hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
             >
-              <span className="grid size-12 shrink-0 place-items-center rounded-md bg-surface-2 text-primary">
-                <Icon className="size-5" strokeWidth={1.75} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-sans text-xs font-medium tracking-widest text-subtle">
-                  {item.index}
-                </span>
-                <span className="mt-0.5 block font-display text-xl font-semibold text-fg">
-                  {item.title}
-                </span>
-                <span className="mt-1 block text-sm text-muted">{item.description}</span>
+              <Icon className="size-4 shrink-0 text-primary" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1 font-display text-base font-semibold text-fg">
+                {item.title}
               </span>
               <ChevronRight
-                className="size-5 shrink-0 text-subtle transition-transform duration-200 group-hover:translate-x-0.5"
+                className="size-4 shrink-0 text-subtle transition-transform duration-200 group-hover:translate-x-0.5"
                 strokeWidth={1.75}
               />
             </Link>
