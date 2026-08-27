@@ -82,9 +82,10 @@ function WalkIndex() {
       ) : null}
 
       {!memos ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
         </div>
       ) : memos.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface px-5 py-8 shadow-card">
@@ -96,7 +97,7 @@ function WalkIndex() {
       ) : shown.length === 0 ? (
         <p className="text-sm text-muted">該当するカードがありません</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="flex flex-col gap-2">
           {shown.map((memo) => (
             <MemoCard key={memo.id} memo={memo} />
           ))}

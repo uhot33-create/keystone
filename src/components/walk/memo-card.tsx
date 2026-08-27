@@ -1,51 +1,63 @@
 import { Link } from "@tanstack/react-router";
-import { PawPrint } from "lucide-react";
-import { displayAge, formatJaSlashDate } from "@/lib/walk/age";
+import { useState } from "react";
+import { displayAge } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 
 export function MemoCard({ memo }: { memo: WalkMemo }) {
   const age = displayAge(memo);
-  const lastMet = formatJaSlashDate(memo.lastMetOn);
-  const rainbowOn = formatJaSlashDate(memo.rainbowBridgeOn);
   const imageSrc = walkMemoImageSrc(memo);
-  const meta = [memo.breedName, memo.sex, memo.color].filter(Boolean).join(" · ");
+  const [open, setOpen] = useState(false);
 
   return (
-    <Link
-      to="/walk/$id/edit"
-      params={{ id: memo.id }}
-      className={[
-        "flex flex-col overflow-hidden rounded-xl border shadow-card outline-none transition-[box-shadow,transform] duration-200 ease-[var(--ease-out)] hover:shadow-card-hover focus-visible:ring-2 focus-visible:ring-ring/35 active:scale-[0.99]",
-        memo.rainbowBridge ? "border-border bg-surface-2" : "border-border bg-surface",
-      ].join(" ")}
-    >
-      <div className="relative aspect-[4/3] bg-surface-2">
+    <>
+      <article
+        className={[
+          "flex overflow-hidden rounded-xl border shadow-card",
+          memo.rainbowBridge ? "border-border bg-surface-2" : "border-border bg-surface",
+        ].join(" ")}
+      >
+        <Link
+          to="/walk/$id/edit"
+          params={{ id: memo.id }}
+          className="min-w-0 flex-1 px-4 py-3 outline-none transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2/80 focus-visible:ring-2 focus-visible:ring-ring/35"
+        >
+          <p className="font-display text-base font-semibold text-fg">{memo.name}</p>
+          <p className="mt-0.5 text-xs text-muted">
+            犬種 {memo.breedName || "—"}　年齢 {age || "—"}
+          </p>
+          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
+        </Link>
         {imageSrc ? (
-          <img src={imageSrc} alt="" className="size-full object-cover" />
+          <button
+            type="button"
+            className="w-20 shrink-0 border-l border-border bg-surface-2 px-2 text-center text-xs font-medium text-fg outline-none transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface focus-visible:ring-2 focus-visible:ring-ring/35"
+            onClick={() => setOpen(true)}
+          >
+            写真あり
+          </button>
         ) : (
-          <div className="grid size-full place-items-center text-subtle">
-            <PawPrint className="size-8" strokeWidth={1.5} />
+          <div className="grid w-20 shrink-0 place-items-center border-l border-border px-2 text-center text-xs text-subtle">
+            写真なし
           </div>
         )}
-        {memo.rainbowBridge ? (
-          <span className="absolute left-2 top-2 rounded-sm bg-surface/90 px-2 py-1 text-[11px] font-medium tracking-wide text-muted">
-            虹の橋
-          </span>
-        ) : null}
-      </div>
-      <div className="flex flex-1 flex-col gap-1.5 px-4 py-3">
-        <p className="font-display text-lg font-semibold text-fg">{memo.name}</p>
-        {meta ? <p className="text-xs text-muted">{meta}</p> : null}
-        {age ? <p className="text-sm text-fg">{age}</p> : null}
-        {lastMet ? <p className="text-xs text-muted">最後に会った日: {lastMet}</p> : null}
-        {memo.rainbowBridge && rainbowOn ? (
-          <p className="text-xs text-muted">{rainbowOn}</p>
-        ) : null}
-        {memo.note ? (
-          <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-muted">{memo.note}</p>
-        ) : null}
-      </div>
-    </Link>
+      </article>
+      {open && imageSrc ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-fg/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${memo.name}の写真`}
+          onClick={() => setOpen(false)}
+        >
+          <img
+            src={imageSrc}
+            alt={memo.name}
+            className="max-h-[85vh] max-w-full rounded-md bg-surface shadow-card-hover"
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      ) : null}
+    </>
   );
 }
