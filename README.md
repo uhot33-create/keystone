@@ -41,7 +41,7 @@ npm run dev
 
 1. Vercel の Storage で Blob ストアを作る
 2. `BLOB_READ_WRITE_TOKEN` を Production / Preview に設定する
-3. 画像はブラウザで縮小（最大辺 800px、WebP 優先、上限 400KB）してからクライアント直アップロードします。サーバーに原寸は送りません
+3. 画像は選んだファイルをそのまま Vercel Blob へ送ります（上限 8MB）。Neon には URL のみ保存します
 
 未設定でもカードの文字情報は保存できます。画像だけ保存できません。
 
@@ -50,7 +50,7 @@ npm run dev
 ```
 src/routes/walk*.tsx          一覧・追加・編集
 src/routes/api/blob/upload.ts Blob クライアントアップロード
-src/lib/walk/                 API・年齢・画像縮小・フィルタ
+src/lib/walk/                 API・年齢・画像・フィルタ
 src/components/walk/          カード・フォーム・ツールバー
 migrations/0004_walk.sql      テーブルと犬種初期データ
 scripts/seed-breeds.sql       犬種の再投入用

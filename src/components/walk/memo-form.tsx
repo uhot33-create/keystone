@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { compressImage, IMAGE_TARGET_HINT } from "@/lib/walk/image";
+import { assertImageFile, IMAGE_HINT } from "@/lib/walk/image";
 import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
 import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,7 @@ export function MemoForm({
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(memo?.imageUrl ?? null);
   const [clearImage, setClearImage] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [pending, setPending] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
   const today = todayJst();
 
@@ -76,12 +76,12 @@ export function MemoForm({
     if (!picked) return;
     setError(null);
     try {
-      const compressed = await compressImage(picked);
-      setFile(compressed);
+      assertImageFile(picked);
+      setFile(picked);
       setClearImage(false);
-      setPreview(URL.createObjectURL(compressed));
+      setPreview(URL.createObjectURL(picked));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "画像を処理できませんでした");
+      setError(err instanceof Error ? err.message : "画像を選べませんでした");
     }
   }
 
@@ -93,7 +93,7 @@ export function MemoForm({
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setPending(true);
+    setPending("saving");
     setError(null);
     try {
       let imageUrl = memo?.imageUrl ?? null;
@@ -102,12 +102,21 @@ export function MemoForm({
         if (!blobConfigured) {
           throw new Error("画像の保存には Vercel Blob の設定が必要です");
         }
-        const uploaded = await upload(file.name, file, {
-          access: "public",
-          handleUploadUrl: "/api/blob/upload",
-        });
+        setPending("uploading");
+        const uploaded = await Promise.race([
+          upload(file.name, file, {
+            access: "public",
+            handleUploadUrl: "/api/blob/upload",
+          }),
+          new Promise<never>((_, reject) => {
+            window.setTimeout(() => {
+              reject(new Error("画像の送信が時間切れになりました。通信を確認してもう一度保存してください"));
+            }, 45000);
+          }),
+        ]);
         imageUrl = uploaded.url;
         imagePathname = uploaded.pathname;
+        setPending("saving");
       } else if (clearImage) {
         imageUrl = null;
         imagePathname = null;
@@ -138,21 +147,21 @@ export function MemoForm({
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
     } finally {
-      setPending(false);
+      setPending("idle");
     }
   }
 
   async function onDelete() {
     if (!memo) return;
     if (!window.confirm(`${memo.name} のカードを削除しますか？`)) return;
-    setPending(true);
+    setPending("saving");
     setError(null);
     try {
       await deleteWalkMemo({ data: { id: memo.id } });
       await navigate({ to: "/walk", search: DEFAULT_WALK_SEARCH });
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除できませんでした");
-      setPending(false);
+      setPending("idle");
     }
   }
 
@@ -272,9 +281,7 @@ export function MemoForm({
             画像なし
           </div>
         )}
-        <p className="text-xs text-muted">
-          jpeg / png / webp / heic。端末で縮小してから送ります（{IMAGE_TARGET_HINT}）。
-        </p>
+        <p className="text-xs text-muted">{IMAGE_HINT}</p>
         {!blobConfigured ? (
           <p className="text-xs text-muted">
             本番では Vercel Blob（BLOB_READ_WRITE_TOKEN）を設定すると画像を保存できます。
@@ -294,7 +301,7 @@ export function MemoForm({
             />
           </Label>
           {preview ? (
-            <Button type="button" variant="outline" onClick={onClearImage} disabled={pending}>
+            <Button type="button" variant="outline" onClick={onClearImage} disabled={pending !== "idle"}>
               クリア
             </Button>
           ) : null}
@@ -332,8 +339,8 @@ export function MemoForm({
       ) : null}
 
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="submit" className="flex-1" disabled={pending}>
-          {pending ? "保存中…" : "保存"}
+        <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
+          {pending === "uploading" ? "画像を送信中…" : pending === "saving" ? "保存中…" : "保存"}
         </Button>
         <Button type="button" variant="outline" className="flex-1" asChild>
           <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
@@ -343,7 +350,7 @@ export function MemoForm({
       </div>
 
       {editing ? (
-        <Button type="button" variant="outline" disabled={pending} onClick={() => void onDelete()}>
+        <Button type="button" variant="outline" disabled={pending !== "idle"} onClick={() => void onDelete()}>
           削除
         </Button>
       ) : null}

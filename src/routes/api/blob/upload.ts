@@ -1,6 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
+import { MAX_IMAGE_BYTES } from "@/lib/walk/image";
 
 export const Route = createFileRoute("/api/blob/upload")({
   server: {
@@ -23,14 +24,17 @@ export const Route = createFileRoute("/api/blob/upload")({
             body,
             request,
             onBeforeGenerateToken: async () => ({
-              allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
-              maximumSizeInBytes: 400 * 1024,
+              allowedContentTypes: [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/heic",
+                "image/heif",
+              ],
+              maximumSizeInBytes: MAX_IMAGE_BYTES,
               addRandomSuffix: true,
               tokenPayload: JSON.stringify({ userId: user.id }),
             }),
-            onUploadCompleted: async () => {
-              // レコードへの URL 保存はクライアント保存処理で行う
-            },
           });
           return Response.json(json);
         } catch (err) {
