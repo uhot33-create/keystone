@@ -93,6 +93,23 @@ export function formatJaDate(iso: string): string {
   return `${year}年${month}月${day}日`;
 }
 
+export function formatJaDayWeek(iso: string): string {
+  const parts = iso.split("-").map(Number);
+  const month = parts[1];
+  const day = parts[2];
+  return `${month}月${day}日（${weekdayJa(iso)}）`;
+}
+
+export function dayNum(iso: string): string {
+  return String(Number(iso.slice(8, 10)));
+}
+
+export function trimNum(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 export function weekdayJa(iso: string): string {

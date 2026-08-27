@@ -26,6 +26,8 @@ export type CalorieLog = {
   kcal: number;
   kind: LogKind;
   foodId: number | null;
+  amount: number | null;
+  unit: string | null;
 };
 
 export type DayTotal = {

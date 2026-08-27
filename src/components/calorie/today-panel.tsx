@@ -1,56 +1,106 @@
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, getCalorieState } from "@/lib/calorie/api";
 import {
-  FOOD_UNITS,
-  dailyEnergy,
-  formatJaDate,
+  dayNum,
+  formatJaDayWeek,
   formatQuantity,
   kcalForQuantity,
   shiftIsoDate,
-  weekdayJa,
+  splitMealsAndTreats,
+  dailyEnergy,
+  trimNum,
 } from "@/lib/calorie/formula";
-import type { CalorieState } from "@/lib/calorie/types";
+import type { CalorieState, DogFood, FoodKind } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+
+const QTY_STEPS = [10, 25, 50, 100] as const;
+
+function chipText(food: DogFood): string {
+  if (food.unit === "g") return `${food.name} ${trimNum(food.kcal)}/${trimNum(food.amount)}g`;
+  return `${food.name} ${trimNum(food.kcal)}`;
+}
+
+function kindLabel(kind: string): string {
+  return kind === "treat" ? "おやつ" : "ごはん";
+}
 
 export function TodayPanel({
   state,
   onChange,
   onOpenPlan,
+  onOpenFoods,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
   onOpenPlan: () => void;
+  onOpenFoods: () => void;
 }) {
-  const [foodId, setFoodId] = useState("");
-  const [foodQty, setFoodQty] = useState("");
-  const [foodUnit, setFoodUnit] = useState("");
-  const [customName, setCustomName] = useState("");
-  const [customKcal, setCustomKcal] = useState("");
-  const [customQty, setCustomQty] = useState("1");
+  const [kind, setKind] = useState<FoodKind>("food");
+  const [foodId, setFoodId] = useState<number | null>(null);
+  const [name, setName] = useState("");
+  const [qty, setQty] = useState("");
+  const [kcalText, setKcalText] = useState("");
+  const [kcalTouched, setKcalTouched] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
-  const total = Math.round(state.logs.reduce((sum, log) => sum + log.kcal, 0));
-  const remaining = target > 0 ? target - total : null;
-  const ratio = target > 0 ? total / target : 0;
-  const over = target > 0 && total > target;
-  const ringPct = Math.min(100, Math.max(0, ratio * 100));
-  const ringColor = over ? "var(--color-danger)" : "var(--color-primary)";
-
-  const selected = useMemo(
-    () => state.foods.find((item) => String(item.id) === foodId) ?? null,
-    [state.foods, foodId],
+  const { mealKcal, treatKcal } = splitMealsAndTreats(target, state.dog.treatRatio);
+  const mealEaten = Math.round(
+    state.logs.filter((log) => log.kind !== "treat").reduce((sum, log) => sum + log.kcal, 0),
   );
-  const unitOk = Boolean(selected && foodUnit && foodUnit === selected.unit);
-  const registeredKcal = selected && unitOk
-    ? kcalForQuantity(selected.kcal, selected.amount, Number(foodQty))
-    : 0;
-  const customTotal = kcalForQuantity(Number(customKcal), 1, Number(customQty));
+  const treatEaten = Math.round(
+    state.logs.filter((log) => log.kind === "treat").reduce((sum, log) => sum + log.kcal, 0),
+  );
+  const total = mealEaten + treatEaten;
+  const remaining = target > 0 ? target - total : null;
+  const over = target > 0 && total > target;
+  const ringPct = target > 0 ? Math.min(100, Math.max(0, (total / target) * 100)) : 0;
+  const ringColor = over ? "var(--color-danger)" : "var(--color-primary)";
+  const treatPct = Math.round(state.dog.treatRatio * 100);
+
+  const foods = useMemo(
+    () => state.foods.filter((item) => item.kind === kind),
+    [state.foods, kind],
+  );
+  const selected = foods.find((item) => item.id === foodId) ?? null;
+  const unit = selected?.unit ?? (kind === "treat" ? "個" : "g");
+  const qtyNum = Number(qty);
+
+  const computed = selected && qtyNum > 0 ? kcalForQuantity(selected.kcal, selected.amount, qtyNum) : 0;
+  const shownKcal = kcalTouched ? Number(kcalText) : computed;
+  const addKcal = Math.round((shownKcal > 0 ? shownKcal : 0) * 10) / 10;
+
+  function pickFood(food: DogFood) {
+    setFoodId(food.id);
+    setName(food.name);
+    setKcalTouched(false);
+    setKcalText(qtyNum > 0 ? String(kcalForQuantity(food.kcal, food.amount, qtyNum)) : "");
+  }
+
+  function onQty(next: string) {
+    setQty(next);
+    const n = Number(next);
+    if (selected && n > 0 && !kcalTouched) {
+      setKcalText(String(kcalForQuantity(selected.kcal, selected.amount, n)));
+    }
+  }
+
+  function bumpQty(step: number) {
+    const next = Math.max(0, (Number(qty) || 0) + step);
+    onQty(String(next));
+  }
+
+  function switchKind(next: FoodKind) {
+    setKind(next);
+    setFoodId(null);
+    setName("");
+    setQty("");
+    setKcalText("");
+    setKcalTouched(false);
+  }
 
   async function run(action: () => Promise<CalorieState>) {
     setPending(true);
@@ -64,302 +114,221 @@ export function TodayPanel({
     }
   }
 
-  function addLog(label: string, kcal: number, kind: "other" | "food" | "treat", foodId: number | null) {
+  function onAdd(event: FormEvent) {
+    event.preventDefault();
+    const kcal = addKcal > 0 ? addKcal : kcalTouched ? Number(kcalText) : selected && qtyNum > 0
+      ? kcalForQuantity(selected.kcal, selected.amount, qtyNum)
+      : Number(kcalText);
+    if (!(kcal > 0)) {
+      setError("カロリーか数量を入力してください");
+      return;
+    }
+    const label = name.trim() || kindLabel(kind);
+    const amount = qtyNum > 0 ? qtyNum : null;
     void run(() =>
       addCalorieLog({
         data: {
           date: state.date,
           label,
-          kcal,
+          kcal: Math.round(kcal),
           kind,
-          foodId,
+          foodId: selected?.id ?? null,
+          amount,
+          unit: amount ? unit : null,
         },
       }),
-    );
-  }
-
-  function onRegistered(event: FormEvent) {
-    event.preventDefault();
-    if (!selected) {
-      setError("フードを選んでください");
-      return;
-    }
-    if (!foodUnit) {
-      setError("単位を選んでください");
-      return;
-    }
-    if (foodUnit !== selected.unit) {
-      setError(`このフードは ${selected.unit} で登録されています`);
-      return;
-    }
-    if (!(registeredKcal > 0)) {
-      setError("数量を入力してください");
-      return;
-    }
-    const qty = Number(foodQty);
-    setFoodQty("");
-    addLog(`${selected.name} ${formatQuantity(qty, foodUnit)}`, registeredKcal, selected.kind, selected.id);
-  }
-
-  function onCustom(event: FormEvent) {
-    event.preventDefault();
-    const name = customName.trim();
-    if (!name) {
-      setError("名称を入力してください");
-      return;
-    }
-    if (!(customTotal > 0)) {
-      setError("カロリーと数量を入力してください");
-      return;
-    }
-    const qty = Number(customQty);
-    setCustomName("");
-    setCustomKcal("");
-    setCustomQty("1");
-    addLog(`${name} ×${Number.isInteger(qty) ? qty : qty.toFixed(1)}`, customTotal, "other", null);
+    ).then(() => {
+      setQty("");
+      setKcalText("");
+      setKcalTouched(false);
+    });
   }
 
   const maxWeek = Math.max(target, ...state.week.map((day) => day.total), 1);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between gap-2">
         <Button
           type="button"
           variant="ghost"
           size="icon"
           aria-label="前日"
-          onClick={() =>
-            void run(() => getCalorieState({ data: { date: shiftIsoDate(state.date, -1) } }))
-          }
+          onClick={() => void run(() => getCalorieState({ data: { date: shiftIsoDate(state.date, -1) } }))}
         >
           <ChevronLeft />
         </Button>
-        <div className="text-center">
-          <p className="font-display text-lg font-semibold text-fg">{formatJaDate(state.date)}</p>
-          <p className="text-xs text-subtle">{weekdayJa(state.date)}曜日</p>
-        </div>
+        <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
         <Button
           type="button"
           variant="ghost"
           size="icon"
           aria-label="翌日"
-          onClick={() =>
-            void run(() => getCalorieState({ data: { date: shiftIsoDate(state.date, 1) } }))
-          }
+          onClick={() => void run(() => getCalorieState({ data: { date: shiftIsoDate(state.date, 1) } }))}
         >
           <ChevronRight />
         </Button>
       </div>
 
-      <div className="rounded-xl border border-border bg-surface px-5 py-6 shadow-card">
-        <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div
-            className="grid size-36 place-items-center rounded-full"
-            style={{
-              background: `conic-gradient(${ringColor} ${ringPct}%, var(--color-surface-2) 0)`,
-            }}
-            aria-hidden="true"
+      <div className="flex flex-col items-center">
+        <div
+          className="grid size-52 place-items-center rounded-full"
+          style={{
+            background: `conic-gradient(${ringColor} ${ringPct}%, var(--color-border) 0)`,
+          }}
+          aria-hidden="true"
+        >
+          <div className="grid size-[9.5rem] place-items-center rounded-full bg-bg text-center">
+            <p className="font-display text-5xl font-semibold tabular-nums leading-none text-fg">{total}</p>
+            <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
+            <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
+              {target > 0 ? (over ? `${total - target} kcal オーバー` : `あと ${remaining} kcal`) : "目標未設定"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
+          <p className="text-xs text-muted">ごはん</p>
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{mealEaten} kcal</p>
+          <p className="mt-1 text-xs text-subtle">目標 {mealKcal || "—"}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
+          <p className="text-xs text-muted">おやつ</p>
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{treatEaten} kcal</p>
+          <p className="mt-1 text-xs text-subtle">上限 {treatPct}%</p>
+        </div>
+      </div>
+
+      <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-display text-lg font-semibold text-fg">カロリーを足す</p>
+          <p className="text-xs text-muted">名前は省略できます</p>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 rounded-md bg-surface-2 p-1">
+          <button
+            type="button"
+            className={`h-11 rounded-sm text-sm font-medium ${kind === "food" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+            onClick={() => switchKind("food")}
           >
-            <div className="grid size-28 place-items-center rounded-full bg-surface text-center">
-              <p className="font-display text-3xl font-semibold tabular-nums leading-none text-fg">{total}</p>
-              <p className="mt-1 text-xs tracking-widest text-subtle">kcal</p>
-            </div>
-          </div>
-          <div className="w-full flex-1 text-center sm:text-left">
-            {target > 0 ? (
-              <>
-                <p className="text-sm text-muted">
-                  目標 {target} kcal（{state.dog.name}）
-                </p>
-                <p className={`mt-1 font-display text-xl font-semibold ${over ? "text-danger" : "text-fg"}`}>
-                  {over ? `${total - target} kcal オーバー` : `あと ${remaining} kcal`}
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-muted">目標カロリーは未設定です</p>
+            ごはん
+          </button>
+          <button
+            type="button"
+            className={`h-11 rounded-sm text-sm font-medium ${kind === "treat" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+            onClick={() => switchKind("treat")}
+          >
+            おやつ
+          </button>
+        </div>
+
+        {foods.length > 0 ? (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {foods.map((food) => {
+              const active = food.id === foodId;
+              return (
                 <button
+                  key={food.id}
                   type="button"
-                  className="mt-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
-                  onClick={onOpenPlan}
+                  onClick={() => pickFood(food)}
+                  className={[
+                    "shrink-0 rounded-full border px-3 py-2 text-xs font-medium",
+                    active ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface text-fg",
+                  ].join(" ")}
                 >
-                  理想体重から計算する
+                  {chipText(food)}
                 </button>
-              </>
-            )}
+              );
+            })}
           </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted">
+            登録した{kindLabel(kind)}がありません。
+            <button type="button" className="ml-1 font-medium text-primary underline-offset-4 hover:underline" onClick={onOpenFoods}>
+              フードへ
+            </button>
+          </p>
+        )}
+
+        <div className="mt-3 grid grid-cols-[1fr_7rem] gap-2">
+          <Input
+            value={name}
+            maxLength={40}
+            placeholder={kindLabel(kind)}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            placeholder="kcal"
+            value={kcalTouched ? kcalText : computed > 0 ? String(computed) : kcalText}
+            onChange={(event) => {
+              setKcalTouched(true);
+              setKcalText(event.target.value);
+            }}
+          />
         </div>
 
-        <div className="mt-6 grid grid-cols-7 gap-1.5">
-          {state.week.map((day) => {
-            const height = Math.max(8, Math.round((day.total / maxWeek) * 40));
-            const active = day.date === state.date;
-            return (
-              <button
-                key={day.date}
-                type="button"
-                className="flex min-h-11 flex-col items-center gap-1 rounded-sm py-1 text-subtle hover:text-fg"
-                onClick={() => void run(() => getCalorieState({ data: { date: day.date } }))}
-              >
-                <span className="text-xs">{weekdayJa(day.date)}</span>
-                <span
-                  className={`w-3 rounded-full ${active ? "bg-primary" : "bg-surface-2"}`}
-                  style={{ height }}
-                />
-              </button>
-            );
-          })}
+        <div className="mt-2 flex items-center gap-2">
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0}
+            step="any"
+            placeholder="数量"
+            value={qty}
+            onChange={(event) => onQty(event.target.value)}
+          />
+          <span className="w-8 shrink-0 text-sm text-muted">{unit}</span>
         </div>
-      </div>
 
-      <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
-        <p className="font-display text-lg font-semibold text-fg">今日に足す</p>
-        <p className="mt-1 text-sm text-muted">登録したフードを選ぶか、未登録のものを入力します。</p>
-
-        <form className="mt-5 space-y-3" onSubmit={onRegistered}>
-          <p className="text-xs font-medium tracking-widest text-subtle">登録したフード</p>
-          <div className="space-y-1.5">
-            <Label htmlFor="log-food">フード</Label>
-            <Select
-              id="log-food"
-              value={foodId}
-              onChange={(event) => {
-                const next = event.target.value;
-                setFoodId(next);
-                const food = state.foods.find((item) => String(item.id) === next);
-                setFoodQty("");
-                setFoodUnit(food?.unit ?? "");
-              }}
+        <div className="mt-2 grid grid-cols-4 gap-2">
+          {QTY_STEPS.map((step) => (
+            <button
+              key={step}
+              type="button"
+              className="h-11 rounded-md bg-surface-2 text-sm font-medium text-fg"
+              onClick={() => bumpQty(step)}
             >
-              <option value="">未選択</option>
-              {state.foods.map((food) => (
-                <option key={food.id} value={String(food.id)}>
-                  {food.name}（{food.kcal}kcal / {formatQuantity(food.amount, food.unit)}）
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="log-food-qty">数量</Label>
-              <Input
-                id="log-food-qty"
-                type="number"
-                inputMode="decimal"
-                min={0.1}
-                step="any"
-                placeholder="数量"
-                value={foodQty}
-                onChange={(event) => setFoodQty(event.target.value)}
-                disabled={!selected}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="log-food-unit">単位</Label>
-              <Select
-                id="log-food-unit"
-                value={foodUnit}
-                onChange={(event) => setFoodUnit(event.target.value)}
-                disabled={!selected}
-              >
-                <option value="">未選択</option>
-                {FOOD_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 text-sm text-muted">
-              {selected && unitOk && registeredKcal > 0
-                ? `${selected.kcal}kcal / ${formatQuantity(selected.amount, selected.unit)} × ${formatQuantity(Number(foodQty), foodUnit)} ＝ ${registeredKcal} kcal`
-                : selected && foodUnit && foodUnit !== selected.unit
-                  ? `単位は登録の ${selected.unit} で入力してください`
-                  : selected
-                    ? `${selected.kcal}kcal / ${formatQuantity(selected.amount, selected.unit)} で計算します`
-                    : state.foods.length === 0
-                      ? (
-                        <>
-                          フードが未登録です。
-                          <button
-                            type="button"
-                            className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
-                            onClick={onOpenPlan}
-                          >
-                            登録する
-                          </button>
-                        </>
-                      )
-                      : "フードを選んで数量と単位を入力"}
-            </div>
-            <Button type="submit" disabled={pending || !selected} className="shrink-0">
-              足す
-            </Button>
-          </div>
-        </form>
+              +{step}
+            </button>
+          ))}
+        </div>
 
-        <form className="mt-6 space-y-3 border-t border-border pt-5" onSubmit={onCustom}>
-          <p className="text-xs font-medium tracking-widest text-subtle">未登録のフード</p>
-          <div className="space-y-1.5">
-            <Label htmlFor="log-custom-name">名称</Label>
-            <Input
-              id="log-custom-name"
-              value={customName}
-              maxLength={40}
-              placeholder="例 チーズ"
-              onChange={(event) => setCustomName(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="log-custom-kcal">カロリー（1あたり）</Label>
-              <Input
-                id="log-custom-kcal"
-                type="number"
-                inputMode="decimal"
-                min={0.1}
-                step="any"
-                placeholder="kcal"
-                value={customKcal}
-                onChange={(event) => setCustomKcal(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="log-custom-qty">数量</Label>
-              <Input
-                id="log-custom-qty"
-                type="number"
-                inputMode="decimal"
-                min={0.1}
-                step="any"
-                placeholder="数量"
-                value={customQty}
-                onChange={(event) => setCustomQty(event.target.value)}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-muted">{customTotal > 0 ? `加算 ${customTotal} kcal` : "1あたり × 数量"}</p>
-            <Button type="submit" disabled={pending}>
-              足す
-            </Button>
-          </div>
-        </form>
-      </div>
+        <Button type="submit" className="mt-3 w-full" disabled={pending}>
+          <Plus />
+          足す
+        </Button>
+      </form>
 
-      <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
-        <p className="font-display text-lg font-semibold text-fg">今日の足し算</p>
+      <div>
+        <div className="flex items-end justify-between">
+          <p className="font-display text-lg font-semibold text-fg">今日の記録</p>
+          <p className="text-xs text-muted">{state.logs.length}件</p>
+        </div>
         {state.logs.length === 0 ? (
           <p className="mt-3 text-sm text-muted">まだ記録がありません。</p>
         ) : (
-          <ul className="mt-3 divide-y divide-border">
+          <ul className="mt-3 space-y-2">
             {state.logs.map((log) => (
-              <li key={log.id} className="flex items-center gap-3 py-2.5">
-                <span className="min-w-0 flex-1 truncate text-sm text-fg">{log.label}</span>
-                <span className="tabular-nums text-sm text-fg">+{log.kcal}</span>
+              <li
+                key={log.id}
+                className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-3 shadow-card"
+              >
+                <span className="rounded-full bg-surface-2 px-2 py-1 text-[11px] font-medium text-muted">
+                  {kindLabel(log.kind)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-fg">{log.label}</p>
+                  {log.amount && log.unit ? (
+                    <p className="text-xs text-subtle">{formatQuantity(log.amount, log.unit)}</p>
+                  ) : null}
+                </div>
+                <span className="tabular-nums text-sm text-fg">{Math.round(log.kcal)} kcal</span>
                 <Button
                   type="button"
                   variant="ghost"
@@ -367,21 +336,53 @@ export function TodayPanel({
                   className="size-10 min-h-10 text-muted"
                   aria-label={`${log.label}を削除`}
                   disabled={pending}
-                  onClick={() =>
-                    void run(() => deleteCalorieLog({ data: { date: state.date, id: log.id } }))
-                  }
+                  onClick={() => void run(() => deleteCalorieLog({ data: { date: state.date, id: log.id } }))}
                 >
                   <Trash2 />
                 </Button>
               </li>
             ))}
-            <li className="flex items-center justify-between pt-3">
-              <span className="text-sm font-medium text-muted">合計</span>
-              <span className="font-display text-lg font-semibold tabular-nums text-fg">{total} kcal</span>
-            </li>
           </ul>
         )}
       </div>
+
+      <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
+        <p className="font-display text-lg font-semibold text-fg">直近7日</p>
+        <div className="mt-4 flex h-36 items-end justify-between gap-1.5">
+          {state.week.map((day) => {
+            const height = Math.max(6, Math.round((day.total / maxWeek) * 112));
+            const active = day.date === state.date;
+            const dayOver = target > 0 && day.total > target;
+            return (
+              <button
+                key={day.date}
+                type="button"
+                className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2"
+                onClick={() => void run(() => getCalorieState({ data: { date: day.date } }))}
+              >
+                <span
+                  className={[
+                    "w-full max-w-8 rounded-md",
+                    dayOver ? "bg-danger/80" : "bg-primary",
+                    active ? "outline outline-2 outline-offset-2 outline-primary" : "",
+                  ].join(" ")}
+                  style={{ height }}
+                />
+                <span className={`text-xs ${active ? "font-medium text-fg" : "text-subtle"}`}>{dayNum(day.date)}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-center text-xs text-subtle">棒をタップするとその日の記録を開けます</p>
+      </div>
+
+      <p className="text-center text-xs text-subtle">
+        目標カロリーは
+        <button type="button" className="mx-1 font-medium text-primary underline-offset-4 hover:underline" onClick={onOpenPlan}>
+          プラン
+        </button>
+        で計算しています
+      </p>
 
       {error ? (
         <p className="text-sm text-danger" role="alert">

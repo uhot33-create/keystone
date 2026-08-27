@@ -54,6 +54,8 @@ type LogRow = {
   kcal: unknown;
   kind: string;
   food_id: number | null;
+  amount: unknown;
+  unit: string | null;
 };
 
 type SumRow = {
@@ -110,7 +112,7 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       order by kind asc, id asc
     `,
     sql<LogRow>`
-      select id, log_date, label, kcal, kind, food_id
+      select id, log_date, label, kcal, kind, food_id, amount, unit
       from calorie_logs
       where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${date}
       order by id asc
@@ -149,6 +151,8 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       kcal: num(row.kcal),
       kind: asLogKind(row.kind),
       foodId: row.food_id,
+      amount: row.amount == null ? null : num(row.amount),
+      unit: row.unit,
     })),
     week,
   };
@@ -182,6 +186,8 @@ const addLogInput = z.object({
   kcal: z.number().positive("カロリーを入力してください").max(20000),
   kind: z.enum(["food", "treat", "other"]),
   foodId: z.number().int().positive().nullable(),
+  amount: z.number().positive().max(10000).nullable(),
+  unit: z.string().max(8).nullable(),
 });
 
 const idDateInput = z.object({
@@ -254,7 +260,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
     const sql = await getSql();
     const dog = await ensureDog(context.userId);
     await sql`
-      insert into calorie_logs (user_id, dog_id, log_date, label, kcal, kind, food_id)
+      insert into calorie_logs (user_id, dog_id, log_date, label, kcal, kind, food_id, amount, unit)
       values (
         ${context.userId},
         ${dog.id},
@@ -262,7 +268,9 @@ export const addCalorieLog = createServerFn({ method: "POST" })
         ${data.label},
         ${data.kcal},
         ${data.kind},
-        ${data.foodId}
+        ${data.foodId},
+        ${data.amount},
+        ${data.unit}
       )
     `;
     return loadState(context.userId, data.date);

@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { FoodsPanel } from "@/components/calorie/foods-panel";
 import { PlanPanel } from "@/components/calorie/plan-panel";
+import { ProfilePanel } from "@/components/calorie/profile-panel";
 import { TodayPanel } from "@/components/calorie/today-panel";
 import { Protected } from "@/components/protected";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +12,8 @@ import { todayJst } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 
 export const Route = createFileRoute("/calorie")({ component: CaloriePage });
+
+type Tab = "today" | "plan" | "foods" | "profile";
 
 function CaloriePage() {
   return (
@@ -19,7 +24,7 @@ function CaloriePage() {
 }
 
 function CalorieApp() {
-  const [tab, setTab] = useState<"today" | "plan">("today");
+  const [tab, setTab] = useState<Tab>("today");
   const [state, setState] = useState<CalorieState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,9 +35,7 @@ function CalorieApp() {
         if (!cancelled) setState(next);
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "読み込みに失敗しました");
-        }
+        if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
       });
     return () => {
       cancelled = true;
@@ -40,47 +43,79 @@ function CalorieApp() {
   }, []);
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
-      <div>
-        <p className="font-sans text-xs font-medium tracking-widest text-subtle">01</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">わんカロリー</h1>
-        <p className="mt-3 max-w-prose text-sm text-muted">
-          1日のカロリーを足して記録し、理想体重に必要な量をフードとおやつから計算します。
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 rounded-md bg-surface-2 p-1">
-        <button type="button" className={tabClass(tab === "today")} onClick={() => setTab("today")}>
-          今日の記録
-        </button>
-        <button type="button" className={tabClass(tab === "plan")} onClick={() => setTab("plan")}>
-          必要カロリー
-        </button>
-      </div>
-
-      {error ? (
-        <p className="text-sm text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      {!state ? (
-        <div className="space-y-3">
-          <Skeleton className="h-40 w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="stagger-in flex flex-1 flex-col gap-6 pb-24">
+        <div>
+          <h1 className="font-display text-3xl font-semibold text-fg">わんカロリー</h1>
+          <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
         </div>
-      ) : tab === "today" ? (
-        <TodayPanel state={state} onChange={setState} onOpenPlan={() => setTab("plan")} />
-      ) : (
-        <PlanPanel state={state} onChange={setState} />
-      )}
+
+        {error ? (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        {!state ? (
+          <div className="space-y-3">
+            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-48 w-full rounded-xl" />
+          </div>
+        ) : tab === "today" ? (
+          <TodayPanel
+            state={state}
+            onChange={setState}
+            onOpenPlan={() => setTab("plan")}
+            onOpenFoods={() => setTab("foods")}
+          />
+        ) : tab === "plan" ? (
+          <PlanPanel state={state} onChange={setState} />
+        ) : tab === "foods" ? (
+          <FoodsPanel state={state} onChange={setState} />
+        ) : (
+          <ProfilePanel state={state} onChange={setState} />
+        )}
+      </div>
+
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface">
+        <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
+          <NavBtn active={tab === "today"} label="今日" onClick={() => setTab("today")}>
+            <Utensils className="size-5" strokeWidth={1.75} />
+          </NavBtn>
+          <NavBtn active={tab === "plan"} label="プラン" onClick={() => setTab("plan")}>
+            <CalendarDays className="size-5" strokeWidth={1.75} />
+          </NavBtn>
+          <NavBtn active={tab === "foods"} label="フード" onClick={() => setTab("foods")}>
+            <Bone className="size-5" strokeWidth={1.75} />
+          </NavBtn>
+          <NavBtn active={tab === "profile"} label="プロフィール" onClick={() => setTab("profile")}>
+            <PawPrint className="size-5" strokeWidth={1.75} />
+          </NavBtn>
+        </div>
+      </nav>
     </div>
   );
 }
 
-function tabClass(active: boolean) {
-  return [
-    "h-11 rounded-sm text-sm font-medium transition-colors duration-150",
-    active ? "bg-surface text-fg shadow-card" : "text-muted hover:text-fg",
-  ].join(" ");
+function NavBtn({
+  active,
+  label,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-12 flex-col items-center justify-center gap-0.5 text-[11px] ${active ? "text-primary" : "text-subtle"}`}
+    >
+      {children}
+      {label}
+    </button>
+  );
 }
