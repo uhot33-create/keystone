@@ -14,4 +14,10 @@ export const MENUS = [
     title: "喫煙管理",
     description: "喫煙の記録と習慣を見つめる",
   },
+  {
+    to: "/walk",
+    index: "03",
+    title: "お散歩メモ",
+    description: "出会った子のカードを残す",
+  },
 ] as const;

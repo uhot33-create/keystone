@@ -13,7 +13,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalorieRouteImport } from './routes/calorie'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SmokingRouteImport } from './routes/smoking'
+import { Route as WalkRouteImport } from './routes/walk'
+import { Route as WalkIndexRouteImport } from './routes/walk.index'
+import { Route as WalkNewRouteImport } from './routes/walk.new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiBlobUploadRouteImport } from './routes/api/blob/upload'
+import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -35,10 +40,35 @@ const SmokingRoute = SmokingRouteImport.update({
   path: '/smoking',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WalkRoute = WalkRouteImport.update({
+  id: '/walk',
+  path: '/walk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalkIndexRoute = WalkIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WalkRoute,
+} as any)
+const WalkNewRoute = WalkNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => WalkRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBlobUploadRoute = ApiBlobUploadRouteImport.update({
+  id: '/api/blob/upload',
+  path: '/api/blob/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WalkIdEditRoute = WalkIdEditRouteImport.update({
+  id: '/$id/edit',
+  path: '/$id/edit',
+  getParentRoute: () => WalkRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -46,14 +76,23 @@ export interface FileRoutesByFullPath {
   '/calorie': typeof CalorieRoute
   '/login': typeof LoginRoute
   '/smoking': typeof SmokingRoute
+  '/walk': typeof WalkRouteWithChildren
+  '/walk/new': typeof WalkNewRoute
+  '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/blob/upload': typeof ApiBlobUploadRoute
+  '/walk/$id/edit': typeof WalkIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
   '/login': typeof LoginRoute
   '/smoking': typeof SmokingRoute
+  '/walk/new': typeof WalkNewRoute
+  '/walk': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/blob/upload': typeof ApiBlobUploadRoute
+  '/walk/$id/edit': typeof WalkIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,14 +100,49 @@ export interface FileRoutesById {
   '/calorie': typeof CalorieRoute
   '/login': typeof LoginRoute
   '/smoking': typeof SmokingRoute
+  '/walk': typeof WalkRouteWithChildren
+  '/walk/new': typeof WalkNewRoute
+  '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/blob/upload': typeof ApiBlobUploadRoute
+  '/walk/$id/edit': typeof WalkIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calorie' | '/login' | '/smoking' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/calorie'
+    | '/login'
+    | '/smoking'
+    | '/walk'
+    | '/walk/new'
+    | '/walk/'
+    | '/api/auth/$'
+    | '/api/blob/upload'
+    | '/walk/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calorie' | '/login' | '/smoking' | '/api/auth/$'
-  id: '__root__' | '/' | '/calorie' | '/login' | '/smoking' | '/api/auth/$'
+  to:
+    | '/'
+    | '/calorie'
+    | '/login'
+    | '/smoking'
+    | '/walk/new'
+    | '/walk'
+    | '/api/auth/$'
+    | '/api/blob/upload'
+    | '/walk/$id/edit'
+  id:
+    | '__root__'
+    | '/'
+    | '/calorie'
+    | '/login'
+    | '/smoking'
+    | '/walk'
+    | '/walk/new'
+    | '/walk/'
+    | '/api/auth/$'
+    | '/api/blob/upload'
+    | '/walk/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,7 +150,9 @@ export interface RootRouteChildren {
   CalorieRoute: typeof CalorieRoute
   LoginRoute: typeof LoginRoute
   SmokingRoute: typeof SmokingRoute
+  WalkRoute: typeof WalkRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBlobUploadRoute: typeof ApiBlobUploadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +185,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SmokingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/walk': {
+      id: '/walk'
+      path: '/walk'
+      fullPath: '/walk'
+      preLoaderRoute: typeof WalkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/walk/': {
+      id: '/walk/'
+      path: '/'
+      fullPath: '/walk/'
+      preLoaderRoute: typeof WalkIndexRouteImport
+      parentRoute: typeof WalkRoute
+    }
+    '/walk/new': {
+      id: '/walk/new'
+      path: '/new'
+      fullPath: '/walk/new'
+      preLoaderRoute: typeof WalkNewRouteImport
+      parentRoute: typeof WalkRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -116,15 +213,45 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/blob/upload': {
+      id: '/api/blob/upload'
+      path: '/api/blob/upload'
+      fullPath: '/api/blob/upload'
+      preLoaderRoute: typeof ApiBlobUploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/walk/$id/edit': {
+      id: '/walk/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/walk/$id/edit'
+      preLoaderRoute: typeof WalkIdEditRouteImport
+      parentRoute: typeof WalkRoute
+    }
   }
 }
+
+interface WalkRouteChildren {
+  WalkNewRoute: typeof WalkNewRoute
+  WalkIndexRoute: typeof WalkIndexRoute
+  WalkIdEditRoute: typeof WalkIdEditRoute
+}
+
+const WalkRouteChildren: WalkRouteChildren = {
+  WalkNewRoute: WalkNewRoute,
+  WalkIndexRoute: WalkIndexRoute,
+  WalkIdEditRoute: WalkIdEditRoute,
+}
+
+const WalkRouteWithChildren = WalkRoute._addFileChildren(WalkRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalorieRoute: CalorieRoute,
   LoginRoute: LoginRoute,
   SmokingRoute: SmokingRoute,
+  WalkRoute: WalkRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBlobUploadRoute: ApiBlobUploadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

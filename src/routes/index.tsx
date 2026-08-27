@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
-import { ChevronRight, Cigarette, PawPrint } from "lucide-react";
+import { ChevronRight, Cigarette, Footprints, PawPrint } from "lucide-react";
 import { APP_TAGLINE, MENUS } from "@/lib/app-meta";
 import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { AppShell } from "@/components/app-shell";
@@ -10,6 +10,7 @@ export const Route = createFileRoute("/")({ component: Home });
 const ICONS = {
   "/calorie": PawPrint,
   "/smoking": Cigarette,
+  "/walk": Footprints,
 } as const;
 
 function Home() {

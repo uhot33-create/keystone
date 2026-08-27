@@ -4,8 +4,18 @@
 
 - **わんカロリー** — 愛犬の1日のカロリー記録と、理想体重に向けた必要カロリー
 - **喫煙管理** — 24時間の上限本数と減算、前回吸った日時
+- **お散歩メモ** — 出会った子のカード（種類・画像・虹渡り）
 
-Vercel + Neon（Postgres）で動作します。
+Vercel + Neon（Postgres）で動作します。お散歩メモの画像は Vercel Blob に保存します（Neon には URL のみ）。Hobby / Neon Free を想定しています。
+
+## 最初に実行するコマンド
+
+```bash
+npm install
+npm run dev
+```
+
+`DATABASE_URL` が無いときは埋め込みの Postgres（PGLite）を使います。再起動でデータは消えます。
 
 ## 環境変数（Vercel）
 
@@ -15,14 +25,33 @@ Vercel + Neon（Postgres）で動作します。
 | --- | --- |
 | `DATABASE_URL` | Neon の接続文字列 |
 | `BETTER_AUTH_SECRET` | セッション署名用シークレット（32文字以上） |
-| `BETTER_AUTH_URL` | 公開 URL（例: `https://keystone.vercel.app`） |
+| `BETTER_AUTH_URL` | 公開 URL（末尾スラッシュなし） |
 | `VITE_AUTH_ENABLED` | `true` |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob の読み書きトークン（お散歩メモの画像用） |
 
-## ローカル
+## Neon
 
-```bash
-npm install
-npm run dev
+1. Neon でプロジェクトを作り、接続文字列を `DATABASE_URL` にする
+2. デプロイ時の `npm run build` が `migrations/*.sql` を適用する
+3. 犬種マスタは `migrations/0004_walk.sql` で投入される。追加する場合は `scripts/seed-breeds.sql` を Neon SQL Editor で実行する
+
+テーブルは `dog_breeds`（犬種マスタ）と `memos`（カード）。カードはログインユーザーごとに分かれます。
+
+## Vercel Blob
+
+1. Vercel の Storage で Blob ストアを作る
+2. `BLOB_READ_WRITE_TOKEN` を Production / Preview に設定する
+3. 画像はブラウザで縮小（最大辺 800px、WebP 優先、上限 400KB）してからクライアント直アップロードします。サーバーに原寸は送りません
+
+未設定でもカードの文字情報は保存できます。画像だけ保存できません。
+
+## ディレクトリ（お散歩メモ）
+
 ```
-
-`DATABASE_URL` が無いときは埋め込みの Postgres（PGLite）を使います。再起動でデータは消えます。
+src/routes/walk*.tsx          一覧・追加・編集
+src/routes/api/blob/upload.ts Blob クライアントアップロード
+src/lib/walk/                 API・年齢・画像縮小・フィルタ
+src/components/walk/          カード・フォーム・ツールバー
+migrations/0004_walk.sql      テーブルと犬種初期データ
+scripts/seed-breeds.sql       犬種の再投入用
+```
