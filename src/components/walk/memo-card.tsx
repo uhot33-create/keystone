@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { Rainbow } from "lucide-react";
 import { useState } from "react";
 import { displayAge } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
@@ -13,7 +14,7 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
     <>
       <article
         className={[
-          "flex overflow-hidden rounded-xl border shadow-card",
+          "flex items-stretch overflow-hidden rounded-xl border shadow-card",
           memo.rainbowBridge ? "border-border bg-surface-2" : "border-border bg-surface",
         ].join(" ")}
       >
@@ -22,7 +23,12 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
           params={{ id: memo.id }}
           className="min-w-0 flex-1 px-4 py-3 outline-none transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2/80 focus-visible:ring-2 focus-visible:ring-ring/35"
         >
-          <p className="font-display text-base font-semibold text-fg">{memo.name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="min-w-0 truncate font-display text-base font-semibold text-fg">{memo.name}</p>
+            {memo.rainbowBridge ? (
+              <Rainbow className="size-4 shrink-0 text-primary" strokeWidth={1.75} aria-label="虹渡り" />
+            ) : null}
+          </div>
           {memo.ownerName ? (
             <p className="mt-0.5 text-xs text-muted">
               飼い主 {memo.ownerName}
@@ -38,16 +44,13 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
         {imageSrc ? (
           <button
             type="button"
-            className="w-20 shrink-0 border-l border-border bg-surface-2 px-2 text-center text-xs font-medium text-fg outline-none transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface focus-visible:ring-2 focus-visible:ring-ring/35"
+            className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            aria-label={`${memo.name}の写真`}
             onClick={() => setOpen(true)}
           >
-            写真あり
+            <img src={imageSrc} alt="" className="h-full w-full object-cover" />
           </button>
-        ) : (
-          <div className="grid w-20 shrink-0 place-items-center border-l border-border px-2 text-center text-xs text-subtle">
-            写真なし
-          </div>
-        )}
+        ) : null}
       </article>
       {open && imageSrc ? (
         <div

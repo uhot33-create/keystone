@@ -238,7 +238,7 @@ export function MemoForm({
   return (
     <form
       id="walk-memo-form"
-      className={`flex flex-col gap-5 ${editing ? "pb-28" : ""}`}
+      className="flex flex-col gap-5 pb-28"
       onSubmit={onSubmit}
       onPaste={onPasteImage}
     >
@@ -448,7 +448,7 @@ export function MemoForm({
         </p>
       ) : null}
 
-      {editing && typeof document !== "undefined"
+      {typeof document !== "undefined"
         ? createPortal(
             <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
               <div className="mx-auto flex max-w-3xl gap-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -470,19 +470,6 @@ export function MemoForm({
             document.body,
           )
         : null}
-
-      {editing ? null : (
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
-            {pending === "uploading" ? "画像を送信中…" : pending === "saving" ? "保存中…" : "保存"}
-          </Button>
-          <Button type="button" variant="outline" className="flex-1" asChild>
-            <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
-              キャンセル
-            </Link>
-          </Button>
-        </div>
-      )}
 
       {editing ? (
         <Button type="button" variant="outline" disabled={pending !== "idle"} onClick={() => void onDelete()}>
