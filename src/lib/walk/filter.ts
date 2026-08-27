@@ -12,17 +12,25 @@ function ageOf(memo: WalkMemo): number | null {
   return null;
 }
 
+function foldJa(value: string): string {
+  return value.replace(/[\u3041-\u3096]/g, (char) =>
+    String.fromCharCode(char.charCodeAt(0) + 0x60),
+  );
+}
+
 export function filterMemos(
   memos: WalkMemo[],
   query: { q: string; sort: SortKey; breed: string },
 ): WalkMemo[] {
-  const needle = query.q.trim().toLocaleLowerCase("ja-JP");
+  const needle = foldJa(query.q.trim().toLocaleLowerCase("ja-JP"));
   let rows = memos.filter((memo) => {
     if (needle) {
-      const hay = [memo.name, memo.ownerName, memo.note, memo.breedName, memo.colorName]
-        .filter(Boolean)
-        .join("\n")
-        .toLocaleLowerCase("ja-JP");
+      const hay = foldJa(
+        [memo.name, memo.ownerName, memo.note, memo.breedName, memo.colorName]
+          .filter(Boolean)
+          .join("\n")
+          .toLocaleLowerCase("ja-JP"),
+      );
       if (!hay.includes(needle)) return false;
     }
     if (query.breed && memo.breedId !== query.breed) return false;
