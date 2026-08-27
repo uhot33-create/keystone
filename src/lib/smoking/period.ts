@@ -1,4 +1,4 @@
-export const PERIOD_MS = 24 * 60 * 60 * 1000;
+const JST = "Asia/Tokyo";
 
 export function toIso(value: unknown): string | null {
   if (value == null || value === "") return null;
@@ -10,41 +10,49 @@ export function toIso(value: unknown): string | null {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 }
 
+export function jstDateKey(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: JST,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(ms));
+}
+
+export function startOfJstDayIso(ms: number): string {
+  const key = jstDateKey(ms);
+  return new Date(`${key}T00:00:00+09:00`).toISOString();
+}
+
+export function nextJstMidnightIso(ms: number): string {
+  const start = Date.parse(startOfJstDayIso(ms));
+  return new Date(start + 24 * 60 * 60 * 1000).toISOString();
+}
+
 export function applyReset(
   dailyLimit: number,
   remaining: number,
   periodStartedAt: string,
   now = Date.now(),
 ): { remaining: number; periodStartedAt: string; didReset: boolean } {
+  const todayStart = startOfJstDayIso(now);
   const start = Date.parse(periodStartedAt);
   if (!Number.isFinite(start)) {
-    return {
-      remaining: dailyLimit,
-      periodStartedAt: new Date(now).toISOString(),
-      didReset: true,
-    };
+    return { remaining: dailyLimit, periodStartedAt: todayStart, didReset: true };
   }
-  const elapsed = now - start;
-  if (elapsed < PERIOD_MS) {
-    return { remaining, periodStartedAt, didReset: false };
+  if (jstDateKey(start) === jstDateKey(now)) {
+    return { remaining, periodStartedAt: todayStart, didReset: false };
   }
-  const periods = Math.floor(elapsed / PERIOD_MS);
-  return {
-    remaining: dailyLimit,
-    periodStartedAt: new Date(start + periods * PERIOD_MS).toISOString(),
-    didReset: true,
-  };
+  return { remaining: dailyLimit, periodStartedAt: todayStart, didReset: true };
 }
 
-export function resetsAtIso(periodStartedAt: string): string {
-  const start = Date.parse(periodStartedAt);
-  const base = Number.isFinite(start) ? start : Date.now();
-  return new Date(base + PERIOD_MS).toISOString();
+export function resetsAtIso(_periodStartedAt: string, now = Date.now()): string {
+  return nextJstMidnightIso(now);
 }
 
 export function formatJaDateTime(iso: string): string {
   return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
+    timeZone: JST,
     year: "numeric",
     month: "long",
     day: "numeric",

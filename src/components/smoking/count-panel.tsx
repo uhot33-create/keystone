@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getSmokingState, setRemaining, smokeOne } from "@/lib/smoking/api";
-import { PERIOD_MS, formatCountdown, formatJaDateTime } from "@/lib/smoking/period";
+import { formatCountdown, formatJaDateTime } from "@/lib/smoking/period";
 import type { SmokingState } from "@/lib/smoking/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,12 +30,12 @@ export function CountPanel({
     const id = window.setInterval(() => {
       const stamp = Date.now();
       setNow(stamp);
-      if (stamp >= Date.parse(state.periodStartedAt) + PERIOD_MS) {
+      if (stamp >= Date.parse(state.resetsAt)) {
         void getSmokingState().then(onChange).catch(() => undefined);
       }
     }, 1000);
     return () => window.clearInterval(id);
-  }, [onChange, state.periodStartedAt]);
+  }, [onChange, state.resetsAt]);
 
   async function run(action: () => Promise<SmokingState>) {
     setPending(true);
@@ -83,7 +83,7 @@ export function CountPanel({
             </div>
           </div>
           <div className="w-full flex-1 text-center sm:text-left">
-            <p className="text-sm text-muted">上限 {state.dailyLimit} 本 / 24時間</p>
+            <p className="text-sm text-muted">上限 {state.dailyLimit} 本 / 1日</p>
             <p className={`mt-1 font-display text-xl font-semibold ${empty ? "text-danger" : "text-fg"}`}>
               {empty ? "残りはありません" : `あと ${state.remaining} 本`}
             </p>

@@ -46,7 +46,7 @@ export function MasterPanel({
     <form className="rounded-xl border border-border bg-surface p-5 shadow-card" onSubmit={onSave}>
       <p className="font-display text-lg font-semibold text-fg">1日の上限</p>
       <p className="mt-1 text-sm text-muted">
-        24時間ごとの上限本数です。期間が終わると、残りはここで決めた本数に戻ります。
+        1日の上限本数です。毎日0時（日本時間）に、残りはここで決めた本数に戻ります。
       </p>
 
       <div className="mt-4 space-y-1.5">

@@ -53,7 +53,7 @@ function SmokingApp() {
         <p className="font-sans text-xs font-medium tracking-widest text-subtle">02</p>
         <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">喫煙管理</h1>
         <p className="mt-3 max-w-prose text-sm text-muted">
-          1日の上限を決めて、吸った分だけ減らします。24時間ごとに上限へ戻ります。
+          1日の上限を決めて、吸った分だけ減らします。毎日0時（日本時間）に上限へ戻ります。
         </p>
       </div>
 
