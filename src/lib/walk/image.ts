@@ -139,5 +139,11 @@ function namedPaste(file: File): File {
   return new File([file], `paste.${subtype}`, { type: file.type, lastModified: Date.now() });
 }
 
+export function walkMemoImageSrc(memo: { id: string; imageUrl: string | null }): string | null {
+  if (!memo.imageUrl) return null;
+  return `/api/walk/image?id=${encodeURIComponent(memo.id)}`;
+}
+
 export const IMAGE_HINT =
   "ファイル選択、または貼り付け（Ctrl+V / ⌘V）。iPhone の HEIC は JPEG にします。8MB 以下。";
+

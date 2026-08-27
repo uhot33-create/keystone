@@ -401,7 +401,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     try {
       const { put } = await import("@vercel/blob");
       const blob = await put(`walk/${context.userId}/${crypto.randomUUID()}.${ext}`, buf, {
-        access: "public",
+        access: "private",
         contentType: data.type,
         ...(token ? { token } : {}),
       });

@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
+import { fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
 import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
 import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export function MemoForm({
   const editing = Boolean(memo);
   const [draft, setDraft] = useState<Draft>(() => fromMemo(memo));
   const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(memo?.imageUrl ?? null);
+  const [preview, setPreview] = useState<string | null>(() => (memo ? walkMemoImageSrc(memo) : null));
   const [clearImage, setClearImage] = useState(false);
   const [pending, setPending] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);

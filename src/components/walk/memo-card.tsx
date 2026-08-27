@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { PawPrint } from "lucide-react";
 import { displayAge, formatJaSlashDate } from "@/lib/walk/age";
+import { walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 
 export function MemoCard({ memo }: { memo: WalkMemo }) {
   const age = displayAge(memo);
   const lastMet = formatJaSlashDate(memo.lastMetOn);
   const rainbowOn = formatJaSlashDate(memo.rainbowBridgeOn);
+  const imageSrc = walkMemoImageSrc(memo);
   const meta = [memo.breedName, memo.sex, memo.color].filter(Boolean).join(" · ");
 
   return (
@@ -19,8 +21,8 @@ export function MemoCard({ memo }: { memo: WalkMemo }) {
       ].join(" ")}
     >
       <div className="relative aspect-[4/3] bg-surface-2">
-        {memo.imageUrl ? (
-          <img src={memo.imageUrl} alt="" className="size-full object-cover" />
+        {imageSrc ? (
+          <img src={imageSrc} alt="" className="size-full object-cover" />
         ) : (
           <div className="grid size-full place-items-center text-subtle">
             <PawPrint className="size-8" strokeWidth={1.5} />

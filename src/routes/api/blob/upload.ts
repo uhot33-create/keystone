@@ -37,7 +37,7 @@ export const Route = createFileRoute("/api/blob/upload")({
         try {
           const buf = Buffer.from(await file.arrayBuffer());
           const blob = await put(`walk/${user.id}/${crypto.randomUUID()}.${ext}`, buf, {
-            access: "public",
+            access: "private",
             contentType: type,
             ...(token ? { token } : {}),
           });
