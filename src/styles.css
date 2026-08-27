@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #f3efe8;
+  --color-surface: #fffbf6;
+  --color-surface-2: #ebe6dd;
+  --color-fg: #1f1b16;
+  --color-muted: #5c564e;
+  --color-subtle: #8a8378;
+  --color-primary: #2f3a32;
+  --color-primary-fg: #f3efe8;
+  --color-accent: #5a6b5c;
+  --color-border: #d4cec4;
+  --color-danger: #8b3a32;
+  --color-ring: #2f3a32;
+
+  --font-sans: "IBM Plex Sans JP", "Noto Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+  --font-display: "Shippori Mincho", "Noto Serif JP", "Hiragino Mincho ProN", serif;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  --shadow-card:
+    0px 0px 0px 1px rgba(31, 27, 22, 0.06),
+    0px 1px 2px -1px rgba(31, 27, 22, 0.06),
+    0px 2px 4px 0px rgba(31, 27, 22, 0.04);
+  --shadow-card-hover:
+    0px 0px 0px 1px rgba(31, 27, 22, 0.08),
+    0px 4px 12px -2px rgba(31, 27, 22, 0.08),
+    0px 8px 20px -8px rgba(31, 27, 22, 0.08);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-accent) 28%, white);
+    color: var(--color-fg);
+  }
+}
+
+.paper-wash {
+  background-color: var(--color-bg);
+  background-image:
+    radial-gradient(
+      ellipse 90% 55% at 50% -18%,
+      color-mix(in oklab, var(--color-accent) 9%, transparent),
+      transparent 70%
+    );
+}
+
+.stagger-in > * {
+  animation: fade-up 400ms var(--ease-smooth-out) both;
+}
+
+.stagger-in > *:nth-child(1) {
+  animation-delay: 40ms;
+}
+.stagger-in > *:nth-child(2) {
+  animation-delay: 80ms;
+}
+.stagger-in > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.stagger-in > *:nth-child(4) {
+  animation-delay: 160ms;
+}
+.stagger-in > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in > * {
+    animation: none;
+  }
+}
