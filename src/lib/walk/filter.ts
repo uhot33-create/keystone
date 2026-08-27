@@ -19,7 +19,7 @@ export function filterMemos(
   const needle = query.q.trim().toLocaleLowerCase("ja-JP");
   let rows = memos.filter((memo) => {
     if (needle) {
-      const hay = [memo.name, memo.ownerName, memo.note, memo.breedName]
+      const hay = [memo.name, memo.ownerName, memo.note, memo.breedName, memo.colorName]
         .filter(Boolean)
         .join("\n")
         .toLocaleLowerCase("ja-JP");

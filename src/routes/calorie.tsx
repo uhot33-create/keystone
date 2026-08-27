@@ -1,10 +1,8 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PlanPanel } from "@/components/calorie/plan-panel";
 import { TodayPanel } from "@/components/calorie/today-panel";
 import { Protected } from "@/components/protected";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCalorieState } from "@/lib/calorie/api";
 import { todayJst } from "@/lib/calorie/formula";
@@ -43,13 +41,6 @@ function CalorieApp() {
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
-      <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted" asChild>
-        <Link to="/">
-          <ArrowLeft />
-          メニューへ戻る
-        </Link>
-      </Button>
-
       <div>
         <p className="font-sans text-xs font-medium tracking-widest text-subtle">01</p>
         <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">わんカロリー</h1>

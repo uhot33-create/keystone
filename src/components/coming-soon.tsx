@@ -1,7 +1,3 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
 export function ComingSoon({
   index,
   title,
@@ -13,13 +9,6 @@ export function ComingSoon({
 }) {
   return (
     <div className="stagger-in flex flex-1 flex-col gap-8">
-      <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted" asChild>
-        <Link to="/">
-          <ArrowLeft />
-          メニューへ戻る
-        </Link>
-      </Button>
-
       <div className="max-w-lg">
         <p className="font-sans text-xs font-medium tracking-widest text-subtle">
           {index}

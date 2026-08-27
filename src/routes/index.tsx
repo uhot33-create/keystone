@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { ChevronRight, Cigarette, Footprints, PawPrint } from "lucide-react";
-import { APP_TAGLINE, MENUS } from "@/lib/app-meta";
+import { MENUS } from "@/lib/app-meta";
 import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
 import { AppShell } from "@/components/app-shell";
 import { AuthSplash, LoginScreen } from "@/components/login-form";
@@ -35,13 +35,8 @@ function MenuScreen() {
   return (
     <div className="stagger-in flex flex-1 flex-col gap-8">
       <div>
-        <p className="text-xs font-medium tracking-widest text-subtle">MENU</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">
-          メニュー
-        </h1>
-        <p className="mt-3 max-w-prose text-sm text-muted">
-          {APP_TAGLINE}。ようこそ、{greeting}
-        </p>
+        <p className="text-sm text-muted">ようこそ、{greeting}</p>
+        <h1 className="mt-3 text-xs font-medium tracking-widest text-subtle">MENU</h1>
       </div>
 
       <nav aria-label="メインメニュー" className="grid gap-4">

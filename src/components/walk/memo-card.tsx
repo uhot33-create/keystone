@@ -31,6 +31,7 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
           ) : null}
           <p className="mt-0.5 text-xs text-muted">
             犬種 {memo.breedName || "—"}　年齢 {age || "—"}
+            {memo.colorName ? `　色 ${memo.colorName}` : ""}
           </p>
           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
         </Link>

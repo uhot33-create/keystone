@@ -1,5 +1,4 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { MemoCard } from "@/components/walk/memo-card";
 import { MemoToolbar } from "@/components/walk/memo-toolbar";
@@ -47,13 +46,6 @@ function WalkIndex() {
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
-      <Button variant="ghost" size="sm" className="-ml-2 w-fit text-muted" asChild>
-        <Link to="/">
-          <ArrowLeft />
-          メニューへ戻る
-        </Link>
-      </Button>
-
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>

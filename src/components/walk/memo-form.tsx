@@ -3,8 +3,8 @@ import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
-import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
-import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
+import type { DogBreed, DogColor, SexValue, WalkMemo } from "@/lib/walk/types";
+import { DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ type Draft = {
   ownerName: string;
   breedId: string;
   sex: string;
-  color: string;
+  colorId: string;
   birthday: string;
   ageYears: string;
   note: string;
@@ -31,7 +31,7 @@ function fromMemo(memo?: WalkMemo | null): Draft {
     ownerName: memo?.ownerName ?? "",
     breedId: memo?.breedId ?? "",
     sex: memo?.sex ?? "",
-    color: memo?.color ?? "",
+    colorId: memo?.colorId ?? "",
     birthday: memo?.birthday ?? "",
     ageYears: memo?.ageYears != null ? String(memo.ageYears) : "",
     note: memo?.note ?? "",
@@ -44,10 +44,12 @@ function fromMemo(memo?: WalkMemo | null): Draft {
 export function MemoForm({
   memo,
   breeds,
+  colors,
   blobConfigured,
 }: {
   memo?: WalkMemo;
   breeds: DogBreed[];
+  colors: DogColor[];
   blobConfigured: boolean;
 }) {
   const navigate = useNavigate();
@@ -194,7 +196,7 @@ export function MemoForm({
         ownerName: draft.ownerName.trim() || null,
         breedId: draft.breedId || null,
         sex: (draft.sex || null) as SexValue | null,
-        color: (draft.color || null) as ColorValue | null,
+        colorId: draft.colorId || null,
         birthday: draft.birthday || null,
         ageYears: ageRaw === "" ? null : Number(ageRaw),
         note: draft.note,
@@ -233,7 +235,7 @@ export function MemoForm({
   }
 
   return (
-    <form className="flex flex-col gap-5" onSubmit={onSubmit} onPaste={onPasteImage}>
+    <form className={`flex flex-col gap-5 ${editing ? "pb-28" : ""}`} onSubmit={onSubmit} onPaste={onPasteImage}>
       <div className="space-y-1.5">
         <Label htmlFor="memo-name">名前</Label>
         <Input
@@ -291,12 +293,13 @@ export function MemoForm({
           <Label htmlFor="memo-color">色</Label>
           <Select
             id="memo-color"
-            value={draft.color}
-            onChange={(event) => patch({ color: event.target.value })}
+            value={draft.colorId}
+            onChange={(event) => patch({ colorId: event.target.value })}
           >
-            {COLOR_OPTIONS.map((item) => (
-              <option key={item.label} value={item.value}>
-                {item.label}
+            <option value="">未選択</option>
+            {colors.map((color) => (
+              <option key={color.id} value={color.id}>
+                {color.name}
               </option>
             ))}
           </Select>
@@ -439,16 +442,36 @@ export function MemoForm({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
-          {pending === "uploading" ? "画像を送信中…" : pending === "saving" ? "保存中…" : "保存"}
-        </Button>
-        <Button type="button" variant="outline" className="flex-1" asChild>
-          <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
-            キャンセル
-          </Link>
-        </Button>
-      </div>
+      {editing ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface/95">
+          <div className="mx-auto flex max-w-3xl gap-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <Button type="button" variant="outline" className="flex-1" asChild>
+              <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+                一覧へ
+              </Link>
+            </Button>
+            <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
+              {pending === "uploading" ? "送信中…" : pending === "saving" ? "保存中…" : "保存"}
+            </Button>
+            <Button type="button" variant="outline" className="flex-1" asChild>
+              <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+                キャンセル
+              </Link>
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button type="submit" className="flex-1" disabled={pending !== "idle"}>
+            {pending === "uploading" ? "画像を送信中…" : pending === "saving" ? "保存中…" : "保存"}
+          </Button>
+          <Button type="button" variant="outline" className="flex-1" asChild>
+            <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+              キャンセル
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {editing ? (
         <Button type="button" variant="outline" disabled={pending !== "idle"} onClick={() => void onDelete()}>

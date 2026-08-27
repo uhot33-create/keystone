@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { ageFromBirthday, isFutureDate, todayJst } from "./age";
-import type { ColorValue, DogBreed, MemoInput, SexValue, WalkMemo } from "./types";
+import type { DogBreed, DogColor, MemoInput, SexValue, WalkMemo } from "./types";
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -15,11 +15,6 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
 
 function asSex(value: string | null): SexValue | null {
   if (value === "オス" || value === "メス" || value === "不明") return value;
-  return null;
-}
-
-function asColor(value: string | null): ColorValue | null {
-  if (value === "白" || value === "茶" || value === "こげ茶" || value === "黒") return value;
   return null;
 }
 
@@ -54,6 +49,8 @@ type MemoRow = {
   breed_id: string | null;
   breed_name: string | null;
   sex: string | null;
+  color_id: string | null;
+  color_name: string | null;
   color: string | null;
   birthday: unknown;
   age_years: unknown;
@@ -81,7 +78,8 @@ function mapMemo(row: MemoRow): WalkMemo {
     breedId: row.breed_id,
     breedName: row.breed_name,
     sex: asSex(row.sex),
-    color: asColor(row.color),
+    colorId: row.color_id,
+    colorName: row.color_name || row.color,
     birthday: asDate(row.birthday),
     ageYears: intOrNull(row.age_years),
     note: row.note,
@@ -149,6 +147,39 @@ async function listBreeds(): Promise<DogBreed[]> {
   }));
 }
 
+const COLOR_SEED: { id: string; name: string; sort: number }[] = [
+  ["c1000000-0000-4000-8000-000000000001", "白", 10],
+  ["c1000000-0000-4000-8000-000000000002", "茶", 20],
+  ["c1000000-0000-4000-8000-000000000003", "こげ茶", 30],
+  ["c1000000-0000-4000-8000-000000000004", "黒", 40],
+  ["c1000000-0000-4000-8000-000000000005", "黒／茶", 50],
+].map(([id, name, sort]) => ({ id: String(id), name: String(name), sort: Number(sort) }));
+
+async function listColors(): Promise<DogColor[]> {
+  const sql = await getSql();
+  const count = await sql<{ n: number }>`select count(*)::int as n from dog_colors`;
+  if ((count[0]?.n ?? 0) === 0) {
+    for (const color of COLOR_SEED) {
+      await sql`
+        insert into dog_colors (id, name, sort_order)
+        values (${color.id}, ${color.name}, ${color.sort})
+        on conflict (name) do nothing
+      `;
+    }
+  }
+  const rows = await sql<BreedRow>`
+    select id, name, sort_order
+    from dog_colors
+    where is_active = true
+    order by sort_order asc, name asc
+  `;
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    sortOrder: intOrNull(row.sort_order) ?? 0,
+  }));
+}
+
 async function listMemos(userId: string): Promise<WalkMemo[]> {
   const sql = await getSql();
   const rows = await sql<MemoRow>`
@@ -159,6 +190,8 @@ async function listMemos(userId: string): Promise<WalkMemo[]> {
       m.breed_id,
       b.name as breed_name,
       m.sex,
+      m.color_id,
+      c.name as color_name,
       m.color,
       m.birthday,
       m.age_years,
@@ -172,6 +205,7 @@ async function listMemos(userId: string): Promise<WalkMemo[]> {
       m.updated_at
     from memos m
     left join dog_breeds b on b.id = m.breed_id
+    left join dog_colors c on c.id = m.color_id
     where m.user_id = ${userId}
     order by m.name asc
   `;
@@ -188,6 +222,8 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
       m.breed_id,
       b.name as breed_name,
       m.sex,
+      m.color_id,
+      c.name as color_name,
       m.color,
       m.birthday,
       m.age_years,
@@ -201,6 +237,7 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
       m.updated_at
     from memos m
     left join dog_breeds b on b.id = m.breed_id
+    left join dog_colors c on c.id = m.color_id
     where m.user_id = ${userId} and m.id = ${id}
     limit 1
   `;
@@ -237,7 +274,7 @@ const memoInput = z.object({
     .refine((value) => value == null || value.length <= 50, "飼い主は50文字以内にしてください"),
   breedId: z.string().nullable(),
   sex: z.enum(["オス", "メス", "不明"]).nullable(),
-  color: z.enum(["白", "茶", "こげ茶", "黒"]).nullable(),
+  colorId: z.string().nullable(),
   birthday: optionalDate,
   ageYears: z
     .number()
@@ -253,10 +290,13 @@ const memoInput = z.object({
   imagePathname: z.string().nullable(),
 });
 
-async function normalize(input: MemoInput, breeds: DogBreed[]): Promise<MemoInput> {
+async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[]): Promise<MemoInput> {
   const today = todayJst();
   if (input.breedId && !breeds.some((breed) => breed.id === input.breedId)) {
     throw new Error("種類の選択が正しくありません");
+  }
+  if (input.colorId && !colors.some((color) => color.id === input.colorId)) {
+    throw new Error("色の選択が正しくありません");
   }
   for (const date of [input.birthday, input.lastMetOn, input.rainbowBridgeOn]) {
     if (date && isFutureDate(date, today)) {
@@ -271,7 +311,7 @@ async function normalize(input: MemoInput, breeds: DogBreed[]): Promise<MemoInpu
     ownerName: input.ownerName?.trim() || null,
     breedId: input.breedId || null,
     sex: input.sex || null,
-    color: input.color || null,
+    colorId: input.colorId || null,
     ageYears,
     note: input.note.trim(),
     rainbowBridgeOn,
@@ -283,9 +323,14 @@ async function normalize(input: MemoInput, breeds: DogBreed[]): Promise<MemoInpu
 export const getWalkState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const [breeds, memos] = await Promise.all([listBreeds(), listMemos(context.userId)]);
+    const [breeds, colors, memos] = await Promise.all([
+      listBreeds(),
+      listColors(),
+      listMemos(context.userId),
+    ]);
     return {
       breeds,
+      colors,
       memos,
       blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || process.env.VERCEL),
     };
@@ -295,10 +340,15 @@ export const getWalkMemo = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
   .handler(async ({ context, data }) => {
-    const [breeds, memo] = await Promise.all([listBreeds(), getOwned(context.userId, data.id)]);
+    const [breeds, colors, memo] = await Promise.all([
+      listBreeds(),
+      listColors(),
+      getOwned(context.userId, data.id),
+    ]);
     if (!memo) throw new Error("カードが見つかりません");
     return {
       breeds,
+      colors,
       memo,
       blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || process.env.VERCEL),
     };
@@ -309,12 +359,13 @@ export const createWalkMemo = createServerFn({ method: "POST" })
   .validator((input: unknown) => parse(memoInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const breeds = await listBreeds();
-    const next = await normalize(data, breeds);
+    const [breeds, colors] = await Promise.all([listBreeds(), listColors()]);
+    const next = await normalize(data, breeds, colors);
     const id = crypto.randomUUID();
+    const colorName = next.colorId ? colors.find((color) => color.id === next.colorId)?.name ?? null : null;
     await sql`
       insert into memos (
-        id, user_id, name, owner_name, breed_id, sex, color, birthday, age_years, note,
+        id, user_id, name, owner_name, breed_id, sex, color_id, color, birthday, age_years, note,
         last_met_on, rainbow_bridge, rainbow_bridge_on, image_url, image_pathname
       )
       values (
@@ -324,7 +375,8 @@ export const createWalkMemo = createServerFn({ method: "POST" })
         ${next.ownerName},
         ${next.breedId},
         ${next.sex},
-        ${next.color},
+        ${next.colorId},
+        ${colorName},
         ${next.birthday},
         ${next.ageYears},
         ${next.note || null},
@@ -352,8 +404,8 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
     const sql = await getSql();
     const current = await getOwned(context.userId, data.id);
     if (!current) throw new Error("カードが見つかりません");
-    const breeds = await listBreeds();
-    const next = await normalize(data, breeds);
+    const [breeds, colors] = await Promise.all([listBreeds(), listColors()]);
+    const next = await normalize(data, breeds, colors);
 
     let imageUrl = current.imageUrl;
     let imagePathname = current.imagePathname;
@@ -367,6 +419,8 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
       imagePathname = next.imagePathname;
     }
 
+    const colorName = next.colorId ? colors.find((color) => color.id === next.colorId)?.name ?? null : null;
+
     await sql`
       update memos
       set
@@ -374,7 +428,8 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
         owner_name = ${next.ownerName},
         breed_id = ${next.breedId},
         sex = ${next.sex},
-        color = ${next.color},
+        color_id = ${next.colorId},
+        color = ${colorName},
         birthday = ${next.birthday},
         age_years = ${next.ageYears},
         note = ${next.note || null},

@@ -5,13 +5,14 @@ import { MemoForm } from "@/components/walk/memo-form";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState } from "@/lib/walk/api";
-import type { DogBreed } from "@/lib/walk/types";
+import type { DogBreed, DogColor } from "@/lib/walk/types";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/walk/new")({ component: WalkNew });
 
 function WalkNew() {
   const [breeds, setBreeds] = useState<DogBreed[] | null>(null);
+  const [colors, setColors] = useState<DogColor[]>([]);
   const [blobConfigured, setBlobConfigured] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,6 +22,7 @@ function WalkNew() {
       .then((state) => {
         if (cancelled) return;
         setBreeds(state.breeds);
+        setColors(state.colors);
         setBlobConfigured(state.blobConfigured);
       })
       .catch((err: unknown) => {
@@ -51,7 +53,7 @@ function WalkNew() {
       {!breeds ? (
         <Skeleton className="h-80 w-full rounded-xl" />
       ) : (
-        <MemoForm breeds={breeds} blobConfigured={blobConfigured} />
+        <MemoForm breeds={breeds} colors={colors} blobConfigured={blobConfigured} />
       )}
     </div>
   );
