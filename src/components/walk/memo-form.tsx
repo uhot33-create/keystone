@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
+import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
 import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
 import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -95,7 +95,7 @@ export function MemoForm({
     const target = event.target;
     if (target instanceof HTMLElement) {
       const tag = target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
     }
     const pasted = imageFileFromClipboard(event.clipboardData);
     if (!pasted) return;
@@ -104,6 +104,51 @@ export function MemoForm({
     void applyFile(pasted).catch((err: unknown) => {
       setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
     });
+  }
+
+  function onZonePaste(event: ClipboardEvent) {
+    const pasted = imageFileFromClipboard(event.clipboardData);
+    if (!pasted) return;
+    event.preventDefault();
+    setError(null);
+    void applyFile(pasted).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
+    });
+  }
+
+  function onZoneInput(event: FormEvent<HTMLDivElement>) {
+    const root = event.currentTarget;
+    const img = root.querySelector("img");
+    const src = img?.getAttribute("src") ?? "";
+    root.innerHTML = "";
+    if (!src) return;
+    setError(null);
+    void fileFromImageSrc(src)
+      .then(async (pasted) => {
+        if (pasted) await applyFile(pasted);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
+      });
+  }
+
+  async function onPasteButton() {
+    setError(null);
+    try {
+      if (navigator.clipboard && "read" in navigator.clipboard) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const type = item.types.find((value) => value.startsWith("image/"));
+          if (!type) continue;
+          const blob = await item.getType(type);
+          await applyFile(new File([blob], "paste.jpg", { type: blob.type || type, lastModified: Date.now() }));
+          return;
+        }
+      }
+      setError("クリップボードに画像がありません。iPhone は枠を長押しして「ペースト」してください");
+    } catch {
+      setError("この端末ではボタン貼り付けが制限されています。枠を長押しして「ペースト」してください");
+    }
   }
 
   function onClearImage() {
@@ -296,13 +341,29 @@ export function MemoForm({
         tabIndex={0}
       >
         <p className="text-sm font-medium text-fg">対象画像</p>
-        {preview ? (
-          <img src={preview} alt="" className="h-40 w-full rounded-md object-cover" />
-        ) : (
-          <div className="grid h-40 place-items-center rounded-md bg-surface-2 px-4 text-center text-sm text-subtle">
-            画像なし。ここに貼り付けもできます
-          </div>
-        )}
+        <div className="relative h-40 overflow-hidden rounded-md bg-surface-2">
+          {preview ? (
+            <img src={preview} alt="" className="size-full object-cover" />
+          ) : (
+            <div className="grid size-full place-items-center px-4 text-center text-sm text-subtle">
+              iPhone はここを長押しして「ペースト」
+            </div>
+          )}
+          <div
+            data-image-paste
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            aria-label="画像を貼り付け"
+            className="absolute inset-0 z-10 caret-transparent text-transparent outline-none"
+            onPaste={onZonePaste}
+            onInput={onZoneInput}
+            onKeyDown={(event) => {
+              if (event.metaKey || event.ctrlKey) return;
+              event.preventDefault();
+            }}
+          />
+        </div>
         <p className="text-xs text-muted">{IMAGE_HINT}</p>
         {!blobConfigured ? (
           <p className="text-xs text-muted">
@@ -314,7 +375,7 @@ export function MemoForm({
             画像を選択
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+              accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
               className="sr-only"
               onChange={(event) => {
                 void onPick(event.target.files);
@@ -322,6 +383,9 @@ export function MemoForm({
               }}
             />
           </Label>
+          <Button type="button" variant="outline" onClick={() => void onPasteButton()} disabled={pending !== "idle"}>
+            貼り付け
+          </Button>
           {preview ? (
             <Button type="button" variant="outline" onClick={onClearImage} disabled={pending !== "idle"}>
               クリア

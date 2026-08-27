@@ -122,15 +122,25 @@ export function fileToBase64(file: Blob): Promise<string> {
 export function imageFileFromClipboard(data: DataTransfer | null): File | null {
   if (!data) return null;
   for (const file of Array.from(data.files)) {
-    if (file.type.startsWith("image/")) return namedPaste(file);
+    if (file.type.startsWith("image/") || isAllowedImage(file)) return namedPaste(file);
   }
   for (const item of Array.from(data.items)) {
-    if (item.kind === "file" && item.type.startsWith("image/")) {
+    const type = item.type.toLowerCase();
+    if (item.kind === "file" && (type.startsWith("image/") || type.includes("png") || type.includes("jpeg") || type.includes("jpg") || type.includes("heic"))) {
       const picked = item.getAsFile();
       if (picked) return namedPaste(picked);
     }
   }
   return null;
+}
+
+export async function fileFromImageSrc(src: string): Promise<File | null> {
+  if (!src.startsWith("data:") && !src.startsWith("blob:")) return null;
+  const res = await fetch(src);
+  const blob = await res.blob();
+  if (!blob.size) return null;
+  const type = blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+  return namedPaste(new File([blob], "paste.jpg", { type, lastModified: Date.now() }));
 }
 
 function namedPaste(file: File): File {
@@ -145,5 +155,5 @@ export function walkMemoImageSrc(memo: { id: string; imageUrl: string | null }):
 }
 
 export const IMAGE_HINT =
-  "ファイル選択、または貼り付け（Ctrl+V / ⌘V）。iPhone の HEIC は JPEG にします。8MB 以下。";
+  "ファイル選択、または貼り付け。iPhone は写真をコピーしたあと、枠を長押しして「ペースト」。HEIC は JPEG にします。8MB 以下。";
 
