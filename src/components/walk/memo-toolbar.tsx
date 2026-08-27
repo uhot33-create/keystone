@@ -1,5 +1,7 @@
+import { useEffect, useState, type FormEvent } from "react";
 import type { DogBreed, WalkSearch } from "@/lib/walk/types";
 import { SORT_OPTIONS } from "@/lib/walk/types";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -17,17 +19,34 @@ export function MemoToolbar({
   shown: number;
   onChange: (next: WalkSearch) => void;
 }) {
+  const [draftQ, setDraftQ] = useState(search.q);
+
+  useEffect(() => {
+    setDraftQ(search.q);
+  }, [search.q]);
+
+  function onSearch(event: FormEvent) {
+    event.preventDefault();
+    onChange({ ...search, q: draftQ.trim() });
+  }
+
   return (
     <div className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card">
-      <div className="space-y-1.5">
+      <form className="space-y-1.5" onSubmit={onSearch}>
         <Label htmlFor="walk-q">名前・飼い主で探す</Label>
-        <Input
-          id="walk-q"
-          value={search.q}
-          placeholder="名前や飼い主"
-          onChange={(event) => onChange({ ...search, q: event.target.value })}
-        />
-      </div>
+        <div className="flex gap-2">
+          <Input
+            id="walk-q"
+            value={draftQ}
+            placeholder="名前や飼い主"
+            autoComplete="off"
+            onChange={(event) => setDraftQ(event.target.value)}
+          />
+          <Button type="submit" className="shrink-0">
+            検索
+          </Button>
+        </div>
+      </form>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="walk-sort">並び順</Label>
