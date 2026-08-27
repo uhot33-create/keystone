@@ -24,13 +24,7 @@ export const Route = createFileRoute("/api/blob/upload")({
             body,
             request,
             onBeforeGenerateToken: async () => ({
-              allowedContentTypes: [
-                "image/jpeg",
-                "image/png",
-                "image/webp",
-                "image/heic",
-                "image/heif",
-              ],
+              allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
               maximumSizeInBytes: MAX_IMAGE_BYTES,
               addRandomSuffix: true,
               tokenPayload: JSON.stringify({ userId: user.id }),

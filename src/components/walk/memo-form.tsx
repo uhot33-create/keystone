@@ -1,9 +1,9 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { upload } from "@vercel/blob/client";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { assertImageFile, IMAGE_HINT } from "@/lib/walk/image";
+import { blobUploadName, IMAGE_HINT, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
 import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
 import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -71,23 +71,48 @@ export function MemoForm({
     });
   }
 
+  async function applyFile(picked: File) {
+    const prepared = await prepareImageFile(picked);
+    setPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(prepared);
+    });
+    setFile(prepared);
+    setClearImage(false);
+  }
+
   async function onPick(list: FileList | null) {
     const picked = list?.[0];
     if (!picked) return;
     setError(null);
     try {
-      assertImageFile(picked);
-      setFile(picked);
-      setClearImage(false);
-      setPreview(URL.createObjectURL(picked));
+      await applyFile(picked);
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像を選べませんでした");
     }
   }
 
+  function onPasteImage(event: ClipboardEvent) {
+    const target = event.target;
+    if (target instanceof HTMLElement) {
+      const tag = target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+    }
+    const pasted = imageFileFromClipboard(event.clipboardData);
+    if (!pasted) return;
+    event.preventDefault();
+    setError(null);
+    void applyFile(pasted).catch((err: unknown) => {
+      setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
+    });
+  }
+
   function onClearImage() {
+    setPreview((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
     setFile(null);
-    setPreview(null);
     setClearImage(true);
   }
 
@@ -104,9 +129,10 @@ export function MemoForm({
         }
         setPending("uploading");
         const uploaded = await Promise.race([
-          upload(file.name, file, {
+          upload(blobUploadName(file), file, {
             access: "public",
-            handleUploadUrl: "/api/blob/upload",
+            contentType: file.type || "image/jpeg",
+            handleUploadUrl: `${window.location.origin}/api/blob/upload`,
           }),
           new Promise<never>((_, reject) => {
             window.setTimeout(() => {
@@ -166,7 +192,7 @@ export function MemoForm({
   }
 
   return (
-    <form className="flex flex-col gap-5" onSubmit={onSubmit}>
+    <form className="flex flex-col gap-5" onSubmit={onSubmit} onPaste={onPasteImage}>
       <div className="space-y-1.5">
         <Label htmlFor="memo-name">名前</Label>
         <Input
@@ -272,13 +298,16 @@ export function MemoForm({
         />
       </div>
 
-      <div className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card">
+      <div
+        className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+        tabIndex={0}
+      >
         <p className="text-sm font-medium text-fg">対象画像</p>
         {preview ? (
           <img src={preview} alt="" className="h-40 w-full rounded-md object-cover" />
         ) : (
-          <div className="grid h-40 place-items-center rounded-md bg-surface-2 text-sm text-subtle">
-            画像なし
+          <div className="grid h-40 place-items-center rounded-md bg-surface-2 px-4 text-center text-sm text-subtle">
+            画像なし。ここに貼り付けもできます
           </div>
         )}
         <p className="text-xs text-muted">{IMAGE_HINT}</p>
