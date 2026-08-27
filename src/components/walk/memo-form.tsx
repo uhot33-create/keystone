@@ -1,9 +1,8 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
-import { upload } from "@vercel/blob/client";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { blobUploadName, IMAGE_HINT, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
+import { IMAGE_HINT, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
 import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
 import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -128,11 +127,21 @@ export function MemoForm({
           throw new Error("画像の保存には Vercel Blob の設定が必要です");
         }
         setPending("uploading");
+        const body = new FormData();
+        body.append("file", file, file.name);
         const uploaded = await Promise.race([
-          upload(blobUploadName(file), file, {
-            access: "public",
-            contentType: file.type || "image/jpeg",
-            handleUploadUrl: `${window.location.origin}/api/blob/upload`,
+          fetch("/api/blob/upload", {
+            method: "POST",
+            body,
+            credentials: "same-origin",
+          }).then(async (res) => {
+            const data = (await res.json().catch(() => null)) as
+              | { url?: string; pathname?: string; error?: string }
+              | null;
+            if (!res.ok || !data?.url) {
+              throw new Error(data?.error ?? "画像を保存できませんでした");
+            }
+            return { url: data.url, pathname: data.pathname ?? null };
           }),
           new Promise<never>((_, reject) => {
             window.setTimeout(() => {

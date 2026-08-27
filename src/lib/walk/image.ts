@@ -1,4 +1,6 @@
 export const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+/** Vercel のリクエスト上限 4.5MB を避ける */
+export const MAX_UPLOAD_BYTES = 3.5 * 1024 * 1024;
 
 const ALLOWED_EXT = /\.(jpe?g|png|webp|heic|heif)$/i;
 const ALLOWED_MIME = new Set([
@@ -30,14 +32,14 @@ export function assertImageFile(file: File): void {
   }
 }
 
-function toJpegFile(bitmap: ImageBitmap, name: string): Promise<File> {
+function drawToJpeg(bitmap: ImageBitmap, name: string, quality: number, maxEdge: number): Promise<File> {
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   const ctx = canvas.getContext("2d");
   if (!ctx) return Promise.reject(new Error("画像を処理できませんでした"));
-  ctx.drawImage(bitmap, 0, 0);
-  bitmap.close();
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   const base = name.replace(/\.(heic|heif|jpe?g|png|webp)$/i, "") || "photo";
   return new Promise((resolve, reject) => {
     canvas.toBlob(
@@ -49,27 +51,48 @@ function toJpegFile(bitmap: ImageBitmap, name: string): Promise<File> {
         resolve(new File([blob], `${base}.jpg`, { type: "image/jpeg", lastModified: Date.now() }));
       },
       "image/jpeg",
-      0.92,
+      quality,
     );
   });
 }
 
-/** HEIC はブラウザから Blob へ直接送れないため、縮小せず JPEG にする。 */
-export async function prepareImageFile(file: File): Promise<File> {
-  assertImageFile(file);
-  if (!isHeic(file)) return file;
+async function toJpeg(file: File, quality: number, maxEdge: number): Promise<File> {
+  const bitmap = await createImageBitmap(file);
   try {
-    const bitmap = await createImageBitmap(file);
-    return await toJpegFile(bitmap, file.name);
-  } catch {
-    throw new Error("この端末では HEIC を送れません。写真アプリで「JPEG」や「最も互換性のある形式」にしてから選んでください");
+    return await drawToJpeg(bitmap, file.name, quality, maxEdge);
+  } finally {
+    bitmap.close();
   }
 }
 
-export function blobUploadName(file: File): string {
-  const subtype = (file.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
-  const ext = ["jpg", "png", "webp"].includes(subtype) ? subtype : "jpg";
-  return `walk/${crypto.randomUUID()}.${ext}`;
+/** HEIC は JPEG 化。Vercel の 4.5MB 制限を超えるときだけ縮小する。 */
+export async function prepareImageFile(file: File): Promise<File> {
+  assertImageFile(file);
+  let next = file;
+  if (isHeic(file)) {
+    try {
+      next = await toJpeg(file, 0.92, 4096);
+    } catch {
+      throw new Error(
+        "この端末では HEIC を送れません。写真アプリで「JPEG」や「最も互換性のある形式」にしてから選んでください",
+      );
+    }
+  }
+  if (next.size <= MAX_UPLOAD_BYTES) return next;
+
+  try {
+    for (const [quality, edge] of [
+      [0.84, 2048],
+      [0.76, 1600],
+      [0.7, 1280],
+    ] as const) {
+      next = await toJpeg(next, quality, edge);
+      if (next.size <= MAX_UPLOAD_BYTES) return next;
+    }
+  } catch {
+    throw new Error("画像を送れませんでした。別の写真を選んでください");
+  }
+  throw new Error("画像が大きすぎます。別の写真を選んでください");
 }
 
 export function imageFileFromClipboard(data: DataTransfer | null): File | null {
@@ -79,8 +102,8 @@ export function imageFileFromClipboard(data: DataTransfer | null): File | null {
   }
   for (const item of Array.from(data.items)) {
     if (item.kind === "file" && item.type.startsWith("image/")) {
-      const next = item.getAsFile();
-      if (next) return namedPaste(next);
+      const picked = item.getAsFile();
+      if (picked) return namedPaste(picked);
     }
   }
   return null;
@@ -93,4 +116,4 @@ function namedPaste(file: File): File {
 }
 
 export const IMAGE_HINT =
-  "ファイル選択、または貼り付け（Ctrl+V / ⌘V）。iPhone の HEIC は JPEG に変換して送ります。8MB 以下。";
+  "ファイル選択、または貼り付け（Ctrl+V / ⌘V）。iPhone の HEIC は JPEG にします。8MB 以下。";

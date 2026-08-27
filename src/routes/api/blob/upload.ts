@@ -1,7 +1,7 @@
-import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
+import { put } from "@vercel/blob";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
-import { MAX_IMAGE_BYTES } from "@/lib/walk/image";
+import { MAX_UPLOAD_BYTES } from "@/lib/walk/image";
 
 export const Route = createFileRoute("/api/blob/upload")({
   server: {
@@ -18,19 +18,28 @@ export const Route = createFileRoute("/api/blob/upload")({
           );
         }
 
-        const body = (await request.json()) as HandleUploadBody;
+        const form = await request.formData();
+        const file = form.get("file");
+        if (!(file instanceof File) || file.size === 0) {
+          return Response.json({ error: "画像ファイルを選んでください" }, { status: 400 });
+        }
+        if (file.size > MAX_UPLOAD_BYTES) {
+          return Response.json({ error: "画像が大きすぎます" }, { status: 400 });
+        }
+
+        const type = file.type || "image/jpeg";
+        if (!["image/jpeg", "image/png", "image/webp"].includes(type)) {
+          return Response.json({ error: "jpeg / png / webp の画像にしてください" }, { status: 400 });
+        }
+
+        const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
         try {
-          const json = await handleUpload({
-            body,
-            request,
-            onBeforeGenerateToken: async () => ({
-              allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
-              maximumSizeInBytes: MAX_IMAGE_BYTES,
-              addRandomSuffix: true,
-              tokenPayload: JSON.stringify({ userId: user.id }),
-            }),
+          const blob = await put(`walk/${user.id}/${crypto.randomUUID()}.${ext}`, file, {
+            access: "public",
+            addRandomSuffix: false,
+            contentType: type,
           });
-          return Response.json(json);
+          return Response.json({ url: blob.url, pathname: blob.pathname });
         } catch (err) {
           const message = err instanceof Error ? err.message : "アップロードに失敗しました";
           return Response.json({ error: message }, { status: 400 });

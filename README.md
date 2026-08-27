@@ -41,7 +41,7 @@ npm run dev
 
 1. Vercel の Storage で Blob ストアを作る
 2. `BLOB_READ_WRITE_TOKEN` を Production / Preview に設定する
-3. 画像は選んだファイルをそのまま Vercel Blob へ送ります（上限 8MB）。Neon には URL のみ保存します
+3. 画像はアプリの API 経由で Vercel Blob に保存します（Neon には URL のみ）。iPhone の HEIC は JPEG にします。Vercel の上限のため、大きい写真は自動で縮小します
 
 未設定でもカードの文字情報は保存できます。画像だけ保存できません。
 
