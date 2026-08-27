@@ -6,7 +6,7 @@ import { MemoToolbar } from "@/components/walk/memo-toolbar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState } from "@/lib/walk/api";
-import { filterMemos, isSortKey } from "@/lib/walk/filter";
+import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/walk/")({
@@ -99,7 +99,7 @@ function WalkIndex() {
       ) : (
         <div className="flex flex-col gap-2">
           {shown.map((memo) => (
-            <MemoCard key={memo.id} memo={memo} />
+            <MemoCard key={memo.id} memo={memo} mates={memos ? householdMates(memos, memo) : []} />
           ))}
         </div>
       )}

@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 type Draft = {
   name: string;
+  ownerName: string;
   breedId: string;
   sex: string;
   color: string;
@@ -27,6 +28,7 @@ type Draft = {
 function fromMemo(memo?: WalkMemo | null): Draft {
   return {
     name: memo?.name ?? "",
+    ownerName: memo?.ownerName ?? "",
     breedId: memo?.breedId ?? "",
     sex: memo?.sex ?? "",
     color: memo?.color ?? "",
@@ -189,6 +191,7 @@ export function MemoForm({
       const ageRaw = draft.ageYears.trim();
       const payload = {
         name: draft.name,
+        ownerName: draft.ownerName.trim() || null,
         breedId: draft.breedId || null,
         sex: (draft.sex || null) as SexValue | null,
         color: (draft.color || null) as ColorValue | null,
@@ -240,6 +243,18 @@ export function MemoForm({
           required
           onChange={(event) => patch({ name: event.target.value })}
         />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="memo-owner">飼い主</Label>
+        <Input
+          id="memo-owner"
+          value={draft.ownerName}
+          maxLength={50}
+          placeholder="例: 山田さんち"
+          onChange={(event) => patch({ ownerName: event.target.value })}
+        />
+        <p className="text-xs text-muted">同じ表記にすると、多頭飼いの子がつながって表示されます。</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

@@ -38,6 +38,7 @@ export type DogBreed = {
 export type WalkMemo = {
   id: string;
   name: string;
+  ownerName: string | null;
   breedId: string | null;
   breedName: string | null;
   sex: SexValue | null;
@@ -68,6 +69,7 @@ export const DEFAULT_WALK_SEARCH: WalkSearch = {
 
 export type MemoInput = {
   name: string;
+  ownerName: string | null;
   breedId: string | null;
   sex: SexValue | null;
   color: ColorValue | null;

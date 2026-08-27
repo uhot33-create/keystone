@@ -18,7 +18,13 @@ export function filterMemos(
 ): WalkMemo[] {
   const needle = query.q.trim().toLocaleLowerCase("ja-JP");
   let rows = memos.filter((memo) => {
-    if (needle && !memo.name.toLocaleLowerCase("ja-JP").includes(needle)) return false;
+    if (needle) {
+      const hay = [memo.name, memo.ownerName, memo.note, memo.breedName]
+        .filter(Boolean)
+        .join("\n")
+        .toLocaleLowerCase("ja-JP");
+      if (!hay.includes(needle)) return false;
+    }
     if (query.breed && memo.breedId !== query.breed) return false;
     return true;
   });
@@ -58,4 +64,12 @@ function compareNullableNum(a: number | null, b: number | null): number {
   if (a == null) return 1;
   if (b == null) return -1;
   return a - b;
+}
+
+export function householdMates(memos: WalkMemo[], memo: WalkMemo): string[] {
+  const owner = memo.ownerName?.trim();
+  if (!owner) return [];
+  return memos
+    .filter((row) => row.id !== memo.id && row.ownerName?.trim() === owner)
+    .map((row) => row.name);
 }

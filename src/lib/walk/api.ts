@@ -50,6 +50,7 @@ function intOrNull(value: unknown): number | null {
 type MemoRow = {
   id: string;
   name: string;
+  owner_name: string | null;
   breed_id: string | null;
   breed_name: string | null;
   sex: string | null;
@@ -76,6 +77,7 @@ function mapMemo(row: MemoRow): WalkMemo {
   return {
     id: row.id,
     name: row.name,
+    ownerName: row.owner_name?.trim() ? row.owner_name.trim() : null,
     breedId: row.breed_id,
     breedName: row.breed_name,
     sex: asSex(row.sex),
@@ -153,6 +155,7 @@ async function listMemos(userId: string): Promise<WalkMemo[]> {
     select
       m.id,
       m.name,
+      m.owner_name,
       m.breed_id,
       b.name as breed_name,
       m.sex,
@@ -181,6 +184,7 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
     select
       m.id,
       m.name,
+      m.owner_name,
       m.breed_id,
       b.name as breed_name,
       m.sex,
@@ -224,6 +228,13 @@ const memoInput = z.object({
     .trim()
     .min(1, "名前を入力してください")
     .max(50, "名前は50文字以内にしてください"),
+  ownerName: z
+    .union([z.string(), z.null()])
+    .transform((value) => {
+      const next = (value ?? "").trim();
+      return next.length > 0 ? next : null;
+    })
+    .refine((value) => value == null || value.length <= 50, "飼い主は50文字以内にしてください"),
   breedId: z.string().nullable(),
   sex: z.enum(["オス", "メス", "不明"]).nullable(),
   color: z.enum(["白", "茶", "こげ茶", "黒"]).nullable(),
@@ -257,6 +268,7 @@ async function normalize(input: MemoInput, breeds: DogBreed[]): Promise<MemoInpu
   const rainbowBridgeOn = input.rainbowBridge ? input.rainbowBridgeOn : null;
   return {
     ...input,
+    ownerName: input.ownerName?.trim() || null,
     breedId: input.breedId || null,
     sex: input.sex || null,
     color: input.color || null,
@@ -302,13 +314,14 @@ export const createWalkMemo = createServerFn({ method: "POST" })
     const id = crypto.randomUUID();
     await sql`
       insert into memos (
-        id, user_id, name, breed_id, sex, color, birthday, age_years, note,
+        id, user_id, name, owner_name, breed_id, sex, color, birthday, age_years, note,
         last_met_on, rainbow_bridge, rainbow_bridge_on, image_url, image_pathname
       )
       values (
         ${id},
         ${context.userId},
         ${next.name},
+        ${next.ownerName},
         ${next.breedId},
         ${next.sex},
         ${next.color},
@@ -358,6 +371,7 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
       update memos
       set
         name = ${next.name},
+        owner_name = ${next.ownerName},
         breed_id = ${next.breedId},
         sex = ${next.sex},
         color = ${next.color},

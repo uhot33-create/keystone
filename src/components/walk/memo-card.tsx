@@ -4,7 +4,7 @@ import { displayAge } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 
-export function MemoCard({ memo }: { memo: WalkMemo }) {
+export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
   const age = displayAge(memo);
   const imageSrc = walkMemoImageSrc(memo);
   const [open, setOpen] = useState(false);
@@ -23,6 +23,12 @@ export function MemoCard({ memo }: { memo: WalkMemo }) {
           className="min-w-0 flex-1 px-4 py-3 outline-none transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2/80 focus-visible:ring-2 focus-visible:ring-ring/35"
         >
           <p className="font-display text-base font-semibold text-fg">{memo.name}</p>
+          {memo.ownerName ? (
+            <p className="mt-0.5 text-xs text-muted">
+              飼い主 {memo.ownerName}
+              {mates.length > 0 ? `　ほか ${mates.join("・")}` : ""}
+            </p>
+          ) : null}
           <p className="mt-0.5 text-xs text-muted">
             犬種 {memo.breedName || "—"}　年齢 {age || "—"}
           </p>

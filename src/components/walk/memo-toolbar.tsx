@@ -20,11 +20,11 @@ export function MemoToolbar({
   return (
     <div className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card">
       <div className="space-y-1.5">
-        <Label htmlFor="walk-q">名前で探す</Label>
+        <Label htmlFor="walk-q">名前・飼い主で探す</Label>
         <Input
           id="walk-q"
           value={search.q}
-          placeholder="名前の一部"
+          placeholder="名前や飼い主"
           onChange={(event) => onChange({ ...search, q: event.target.value })}
         />
       </div>
