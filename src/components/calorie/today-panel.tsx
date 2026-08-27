@@ -1,18 +1,19 @@
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, getCalorieState } from "@/lib/calorie/api";
 import {
   dailyEnergy,
   formatJaDate,
+  formatQuantity,
+  kcalForQuantity,
   shiftIsoDate,
   weekdayJa,
 } from "@/lib/calorie/formula";
-import type { CalorieState, DogFood } from "@/lib/calorie/types";
+import type { CalorieState } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const QUICK_ADD = [10, 50, 100] as const;
+import { Select } from "@/components/ui/select";
 
 export function TodayPanel({
   state,
@@ -23,7 +24,11 @@ export function TodayPanel({
   onChange: (next: CalorieState) => void;
   onOpenPlan: () => void;
 }) {
-  const [kcal, setKcal] = useState("");
+  const [foodId, setFoodId] = useState("");
+  const [foodQty, setFoodQty] = useState("");
+  const [customName, setCustomName] = useState("");
+  const [customKcal, setCustomKcal] = useState("");
+  const [customQty, setCustomQty] = useState("1");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +39,15 @@ export function TodayPanel({
   const over = target > 0 && total > target;
   const ringPct = Math.min(100, Math.max(0, ratio * 100));
   const ringColor = over ? "var(--color-danger)" : "var(--color-primary)";
+
+  const selected = useMemo(
+    () => state.foods.find((item) => String(item.id) === foodId) ?? null,
+    [state.foods, foodId],
+  );
+  const registeredKcal = selected
+    ? kcalForQuantity(selected.kcal, selected.amount, Number(foodQty))
+    : 0;
+  const customTotal = kcalForQuantity(Number(customKcal), 1, Number(customQty));
 
   async function run(action: () => Promise<CalorieState>) {
     setPending(true);
@@ -47,13 +61,13 @@ export function TodayPanel({
     }
   }
 
-  function addQuick(amount: number, label: string, kind: "other" | "food" | "treat", foodId: number | null) {
+  function addLog(label: string, kcal: number, kind: "other" | "food" | "treat", foodId: number | null) {
     void run(() =>
       addCalorieLog({
         data: {
           date: state.date,
           label,
-          kcal: amount,
+          kcal,
           kind,
           foodId,
         },
@@ -61,19 +75,37 @@ export function TodayPanel({
     );
   }
 
-  function onCustom(event: FormEvent) {
+  function onRegistered(event: FormEvent) {
     event.preventDefault();
-    const amount = Number(kcal);
-    if (!(amount > 0)) {
-      setError("カロリーを入力してください");
+    if (!selected) {
+      setError("フードを選んでください");
       return;
     }
-    setKcal("");
-    addQuick(amount, "手入力", "other", null);
+    if (!(registeredKcal > 0)) {
+      setError("数量を入力してください");
+      return;
+    }
+    const qty = Number(foodQty);
+    setFoodQty("");
+    addLog(`${selected.name} ${formatQuantity(qty, selected.unit)}`, registeredKcal, selected.kind, selected.id);
   }
 
-  function addFood(food: DogFood) {
-    addQuick(food.kcal, food.name, food.kind, food.id);
+  function onCustom(event: FormEvent) {
+    event.preventDefault();
+    const name = customName.trim();
+    if (!name) {
+      setError("名称を入力してください");
+      return;
+    }
+    if (!(customTotal > 0)) {
+      setError("カロリーと数量を入力してください");
+      return;
+    }
+    const qty = Number(customQty);
+    setCustomName("");
+    setCustomKcal("");
+    setCustomQty("1");
+    addLog(`${name} ×${Number.isInteger(qty) ? qty : qty.toFixed(1)}`, customTotal, "other", null);
   }
 
   const maxWeek = Math.max(target, ...state.week.map((day) => day.total), 1);
@@ -171,76 +203,113 @@ export function TodayPanel({
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
-        <p className="font-display text-lg font-semibold text-fg">かんたん加算</p>
-        <p className="mt-1 text-sm text-muted">タップするだけで今日のカロリーに足せます。</p>
+        <p className="font-display text-lg font-semibold text-fg">今日に足す</p>
+        <p className="mt-1 text-sm text-muted">登録したフードを選ぶか、未登録のものを入力します。</p>
 
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          {QUICK_ADD.map((amount) => (
-            <Button
-              key={amount}
-              type="button"
-              variant="outline"
-              disabled={pending}
-              aria-label={`${amount}kcalを足す`}
-              onClick={() => addQuick(amount, `+${amount}`, "other", null)}
+        <form className="mt-5 space-y-3" onSubmit={onRegistered}>
+          <p className="text-xs font-medium tracking-widest text-subtle">登録したフード</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="log-food">フード</Label>
+            <Select
+              id="log-food"
+              value={foodId}
+              onChange={(event) => {
+                const next = event.target.value;
+                setFoodId(next);
+                const food = state.foods.find((item) => String(item.id) === next);
+                setFoodQty(food ? String(food.amount) : "");
+              }}
             >
-              <Plus />
-              {amount}
-            </Button>
-          ))}
-        </div>
-
-        <form className="mt-4 flex gap-2" onSubmit={onCustom}>
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <Label htmlFor="custom-kcal" className="sr-only">
-              カロリー
-            </Label>
-            <Input
-              id="custom-kcal"
-              inputMode="decimal"
-              type="number"
-              min={1}
-              step={1}
-              placeholder="kcal を入力"
-              value={kcal}
-              onChange={(event) => setKcal(event.target.value)}
-            />
+              <option value="">未選択</option>
+              {state.foods.map((food) => (
+                <option key={food.id} value={String(food.id)}>
+                  {food.name}（{food.kcal}kcal / {formatQuantity(food.amount, food.unit)}）
+                </option>
+              ))}
+            </Select>
           </div>
-          <Button type="submit" disabled={pending} className="shrink-0">
-            足す
-          </Button>
+          <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="log-food-qty">数量{selected ? `（${selected.unit}）` : ""}</Label>
+              <Input
+                id="log-food-qty"
+                type="number"
+                inputMode="decimal"
+                min={0.1}
+                step="any"
+                placeholder={selected ? selected.unit : "数量"}
+                value={foodQty}
+                onChange={(event) => setFoodQty(event.target.value)}
+                disabled={!selected}
+              />
+            </div>
+            <Button type="submit" disabled={pending || !selected} className="shrink-0">
+              足す
+            </Button>
+          </div>
+          {selected && registeredKcal > 0 ? (
+            <p className="text-sm text-muted">加算 {registeredKcal} kcal</p>
+          ) : state.foods.length === 0 ? (
+            <p className="text-sm text-muted">
+              フードが未登録です。
+              <button
+                type="button"
+                className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
+                onClick={onOpenPlan}
+              >
+                登録する
+              </button>
+            </p>
+          ) : null}
         </form>
 
-        {state.foods.length > 0 ? (
-          <div className="mt-5">
-            <p className="text-xs font-medium tracking-widest text-subtle">登録したフード・おやつ</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {state.foods.map((food) => (
-                <button
-                  key={food.id}
-                  type="button"
-                  disabled={pending}
-                  onClick={() => addFood(food)}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-md border border-border bg-surface-2 px-3 text-sm text-fg transition-colors hover:bg-border/40 disabled:opacity-50"
-                >
-                  <span>{food.name}</span>
-                  <span className="tabular-nums text-muted">{food.kcal}kcal</span>
-                </button>
-              ))}
+        <form className="mt-6 space-y-3 border-t border-border pt-5" onSubmit={onCustom}>
+          <p className="text-xs font-medium tracking-widest text-subtle">未登録のフード</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="log-custom-name">名称</Label>
+            <Input
+              id="log-custom-name"
+              value={customName}
+              maxLength={40}
+              placeholder="例 チーズ"
+              onChange={(event) => setCustomName(event.target.value)}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="log-custom-kcal">カロリー（1あたり）</Label>
+              <Input
+                id="log-custom-kcal"
+                type="number"
+                inputMode="decimal"
+                min={0.1}
+                step="any"
+                placeholder="kcal"
+                value={customKcal}
+                onChange={(event) => setCustomKcal(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="log-custom-qty">数量</Label>
+              <Input
+                id="log-custom-qty"
+                type="number"
+                inputMode="decimal"
+                min={0.1}
+                step="any"
+                placeholder="数量"
+                value={customQty}
+                onChange={(event) => setCustomQty(event.target.value)}
+              />
             </div>
           </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted">
-            フードやおやつを登録すると、ワンタップで加算できます。
-            <button
-              type="button"
-              className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
-              onClick={onOpenPlan}
-            >
-              登録する
-            </button>
-          </p>
-        )}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted">{customTotal > 0 ? `加算 ${customTotal} kcal` : "1あたり × 数量"}</p>
+            <Button type="submit" disabled={pending}>
+              足す
+            </Button>
+          </div>
+        </form>
       </div>
 
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">

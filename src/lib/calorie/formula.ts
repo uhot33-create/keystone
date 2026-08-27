@@ -47,6 +47,11 @@ export function splitMealsAndTreats(targetKcal: number, treatRatio: number) {
   return { mealKcal, treatKcal };
 }
 
+export function kcalForQuantity(kcal: number, baseAmount: number, quantity: number): number {
+  if (!(kcal > 0) || !(baseAmount > 0) || !(quantity > 0)) return 0;
+  return Math.round((kcal / baseAmount) * quantity * 10) / 10;
+}
+
 export function quantityForBudget(kcalPerServing: number, servingAmount: number, budgetKcal: number): number {
   if (!(kcalPerServing > 0) || !(servingAmount > 0) || !(budgetKcal > 0)) return 0;
   const kcalPerUnit = kcalPerServing / servingAmount;
