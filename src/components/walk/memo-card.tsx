@@ -1,9 +1,20 @@
 import { Link } from "@tanstack/react-router";
-import { Rainbow } from "lucide-react";
 import { useState } from "react";
 import { displayAge } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
+
+function RainbowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0" aria-label="虹渡り" role="img">
+      <path d="M3 18a9 9 0 0 1 18 0" fill="none" stroke="#e24b4b" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M5 18a7 7 0 0 1 14 0" fill="none" stroke="#e08a2a" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M7 18a5 5 0 0 1 10 0" fill="none" stroke="#d4b02a" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M9 18a3 3 0 0 1 6 0" fill="none" stroke="#4a9a5b" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M11 18a1 1 0 0 1 2 0" fill="none" stroke="#4a74c4" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
   const age = displayAge(memo);
@@ -25,9 +36,7 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
         >
           <div className="flex items-center gap-1.5">
             <p className="min-w-0 truncate font-display text-base font-semibold text-fg">{memo.name}</p>
-            {memo.rainbowBridge ? (
-              <Rainbow className="size-4 shrink-0 text-primary" strokeWidth={1.75} aria-label="虹渡り" />
-            ) : null}
+            {memo.rainbowBridge ? <RainbowIcon /> : null}
           </div>
           {memo.ownerName ? (
             <p className="mt-0.5 text-xs text-muted">
