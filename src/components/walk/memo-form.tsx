@@ -4,8 +4,8 @@ import { upload } from "@vercel/blob/client";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { compressImage, IMAGE_TARGET_HINT } from "@/lib/walk/image";
-import type { DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
-import { DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
+import type { ColorValue, DogBreed, SexValue, WalkMemo } from "@/lib/walk/types";
+import { COLOR_OPTIONS, DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ type Draft = {
   name: string;
   breedId: string;
   sex: string;
+  color: string;
   birthday: string;
   ageYears: string;
   note: string;
@@ -29,6 +30,7 @@ function fromMemo(memo?: WalkMemo | null): Draft {
     name: memo?.name ?? "",
     breedId: memo?.breedId ?? "",
     sex: memo?.sex ?? "",
+    color: memo?.color ?? "",
     birthday: memo?.birthday ?? "",
     ageYears: memo?.ageYears != null ? String(memo.ageYears) : "",
     note: memo?.note ?? "",
@@ -116,6 +118,7 @@ export function MemoForm({
         name: draft.name,
         breedId: draft.breedId || null,
         sex: (draft.sex || null) as SexValue | null,
+        color: (draft.color || null) as ColorValue | null,
         birthday: draft.birthday || null,
         ageYears: ageRaw === "" ? null : Number(ageRaw),
         note: draft.note,
@@ -166,7 +169,7 @@ export function MemoForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="memo-breed">種類</Label>
           <Select
@@ -190,6 +193,20 @@ export function MemoForm({
             onChange={(event) => patch({ sex: event.target.value })}
           >
             {SEX_OPTIONS.map((item) => (
+              <option key={item.label} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="memo-color">色</Label>
+          <Select
+            id="memo-color"
+            value={draft.color}
+            onChange={(event) => patch({ color: event.target.value })}
+          >
+            {COLOR_OPTIONS.map((item) => (
               <option key={item.label} value={item.value}>
                 {item.label}
               </option>
@@ -234,30 +251,6 @@ export function MemoForm({
           value={draft.lastMetOn}
           onChange={(event) => patch({ lastMetOn: event.target.value })}
         />
-      </div>
-
-      <div className="rounded-md bg-surface-2 px-4 py-3">
-        <label className="flex min-h-11 items-center gap-2 text-sm text-fg">
-          <input
-            type="checkbox"
-            className="size-4 accent-primary"
-            checked={draft.rainbowBridge}
-            onChange={(event) => patch({ rainbowBridge: event.target.checked })}
-          />
-          虹渡り
-        </label>
-        {draft.rainbowBridge ? (
-          <div className="mt-3 space-y-1.5">
-            <Label htmlFor="memo-rainbow-on">虹渡り日</Label>
-            <Input
-              id="memo-rainbow-on"
-              type="date"
-              max={today}
-              value={draft.rainbowBridgeOn}
-              onChange={(event) => patch({ rainbowBridgeOn: event.target.value })}
-            />
-          </div>
-        ) : null}
       </div>
 
       <div className="space-y-1.5">
@@ -306,6 +299,30 @@ export function MemoForm({
             </Button>
           ) : null}
         </div>
+      </div>
+
+      <div className="rounded-md bg-surface-2 px-4 py-3">
+        <label className="flex min-h-11 items-center gap-2 text-sm text-fg">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={draft.rainbowBridge}
+            onChange={(event) => patch({ rainbowBridge: event.target.checked })}
+          />
+          虹渡り
+        </label>
+        {draft.rainbowBridge ? (
+          <div className="mt-3 space-y-1.5">
+            <Label htmlFor="memo-rainbow-on">虹渡り日</Label>
+            <Input
+              id="memo-rainbow-on"
+              type="date"
+              max={today}
+              value={draft.rainbowBridgeOn}
+              onChange={(event) => patch({ rainbowBridgeOn: event.target.value })}
+            />
+          </div>
+        ) : null}
       </div>
 
       {error ? (

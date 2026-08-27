@@ -7,6 +7,16 @@ export const SEX_OPTIONS = [
 
 export type SexValue = "オス" | "メス" | "不明";
 
+export const COLOR_OPTIONS = [
+  { value: "", label: "未選択" },
+  { value: "白", label: "白" },
+  { value: "茶", label: "茶" },
+  { value: "こげ茶", label: "こげ茶" },
+  { value: "黒", label: "黒" },
+] as const;
+
+export type ColorValue = "白" | "茶" | "こげ茶" | "黒";
+
 export const SORT_OPTIONS = [
   { value: "name_asc", label: "名前昇順" },
   { value: "name_desc", label: "名前降順" },
@@ -18,8 +28,6 @@ export const SORT_OPTIONS = [
 ] as const;
 
 export type SortKey = (typeof SORT_OPTIONS)[number]["value"];
-
-export type BridgeFilter = "all" | "yes" | "no";
 
 export type DogBreed = {
   id: string;
@@ -33,6 +41,7 @@ export type WalkMemo = {
   breedId: string | null;
   breedName: string | null;
   sex: SexValue | null;
+  color: ColorValue | null;
   birthday: string | null;
   ageYears: number | null;
   note: string | null;
@@ -48,14 +57,12 @@ export type WalkMemo = {
 export type WalkSearch = {
   q: string;
   sort: SortKey;
-  bridge: BridgeFilter;
   breed: string;
 };
 
 export const DEFAULT_WALK_SEARCH: WalkSearch = {
   q: "",
   sort: "name_asc",
-  bridge: "all",
   breed: "",
 };
 
@@ -63,6 +70,7 @@ export type MemoInput = {
   name: string;
   breedId: string | null;
   sex: SexValue | null;
+  color: ColorValue | null;
   birthday: string | null;
   ageYears: number | null;
   note: string;

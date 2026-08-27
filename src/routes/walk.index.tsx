@@ -6,14 +6,13 @@ import { MemoToolbar } from "@/components/walk/memo-toolbar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState } from "@/lib/walk/api";
-import { filterMemos, isBridgeFilter, isSortKey } from "@/lib/walk/filter";
+import { filterMemos, isSortKey } from "@/lib/walk/filter";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/walk/")({
   validateSearch: (search: Record<string, unknown>): WalkSearch => ({
     q: typeof search.q === "string" ? search.q : "",
     sort: isSortKey(search.sort) ? search.sort : "name_asc",
-    bridge: isBridgeFilter(search.bridge) ? search.bridge : "all",
     breed: typeof search.breed === "string" ? search.breed : "",
   }),
   component: WalkIndex,

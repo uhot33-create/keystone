@@ -28,7 +28,7 @@ export function MemoToolbar({
           onChange={(event) => onChange({ ...search, q: event.target.value })}
         />
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="walk-sort">並び順</Label>
           <Select
@@ -43,20 +43,6 @@ export function MemoToolbar({
                 {item.label}
               </option>
             ))}
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="walk-bridge">虹渡り</Label>
-          <Select
-            id="walk-bridge"
-            value={search.bridge}
-            onChange={(event) =>
-              onChange({ ...search, bridge: event.target.value as WalkSearch["bridge"] })
-            }
-          >
-            <option value="all">すべて</option>
-            <option value="yes">虹渡りのみ</option>
-            <option value="no">虹渡り以外</option>
           </Select>
         </div>
         <div className="space-y-1.5">

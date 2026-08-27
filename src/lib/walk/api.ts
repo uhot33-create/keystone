@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { ageFromBirthday, isFutureDate, todayJst } from "./age";
-import type { DogBreed, MemoInput, SexValue, WalkMemo } from "./types";
+import type { ColorValue, DogBreed, MemoInput, SexValue, WalkMemo } from "./types";
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -15,6 +15,11 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
 
 function asSex(value: string | null): SexValue | null {
   if (value === "オス" || value === "メス" || value === "不明") return value;
+  return null;
+}
+
+function asColor(value: string | null): ColorValue | null {
+  if (value === "白" || value === "茶" || value === "こげ茶" || value === "黒") return value;
   return null;
 }
 
@@ -48,6 +53,7 @@ type MemoRow = {
   breed_id: string | null;
   breed_name: string | null;
   sex: string | null;
+  color: string | null;
   birthday: unknown;
   age_years: unknown;
   note: string | null;
@@ -73,6 +79,7 @@ function mapMemo(row: MemoRow): WalkMemo {
     breedId: row.breed_id,
     breedName: row.breed_name,
     sex: asSex(row.sex),
+    color: asColor(row.color),
     birthday: asDate(row.birthday),
     ageYears: intOrNull(row.age_years),
     note: row.note,
@@ -149,6 +156,7 @@ async function listMemos(userId: string): Promise<WalkMemo[]> {
       m.breed_id,
       b.name as breed_name,
       m.sex,
+      m.color,
       m.birthday,
       m.age_years,
       m.note,
@@ -176,6 +184,7 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
       m.breed_id,
       b.name as breed_name,
       m.sex,
+      m.color,
       m.birthday,
       m.age_years,
       m.note,
@@ -217,6 +226,7 @@ const memoInput = z.object({
     .max(50, "名前は50文字以内にしてください"),
   breedId: z.string().nullable(),
   sex: z.enum(["オス", "メス", "不明"]).nullable(),
+  color: z.enum(["白", "茶", "こげ茶", "黒"]).nullable(),
   birthday: optionalDate,
   ageYears: z
     .number()
@@ -249,6 +259,7 @@ async function normalize(input: MemoInput, breeds: DogBreed[]): Promise<MemoInpu
     ...input,
     breedId: input.breedId || null,
     sex: input.sex || null,
+    color: input.color || null,
     ageYears,
     note: input.note.trim(),
     rainbowBridgeOn,
@@ -291,7 +302,7 @@ export const createWalkMemo = createServerFn({ method: "POST" })
     const id = crypto.randomUUID();
     await sql`
       insert into memos (
-        id, user_id, name, breed_id, sex, birthday, age_years, note,
+        id, user_id, name, breed_id, sex, color, birthday, age_years, note,
         last_met_on, rainbow_bridge, rainbow_bridge_on, image_url, image_pathname
       )
       values (
@@ -300,6 +311,7 @@ export const createWalkMemo = createServerFn({ method: "POST" })
         ${next.name},
         ${next.breedId},
         ${next.sex},
+        ${next.color},
         ${next.birthday},
         ${next.ageYears},
         ${next.note || null},
@@ -348,6 +360,7 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
         name = ${next.name},
         breed_id = ${next.breedId},
         sex = ${next.sex},
+        color = ${next.color},
         birthday = ${next.birthday},
         age_years = ${next.ageYears},
         note = ${next.note || null},

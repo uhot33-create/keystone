@@ -7,7 +7,7 @@ export function MemoCard({ memo }: { memo: WalkMemo }) {
   const age = displayAge(memo);
   const lastMet = formatJaSlashDate(memo.lastMetOn);
   const rainbowOn = formatJaSlashDate(memo.rainbowBridgeOn);
-  const meta = [memo.breedName, memo.sex].filter(Boolean).join(" · ");
+  const meta = [memo.breedName, memo.sex, memo.color].filter(Boolean).join(" · ");
 
   return (
     <Link

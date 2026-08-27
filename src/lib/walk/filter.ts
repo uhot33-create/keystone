@@ -1,13 +1,9 @@
 import { ageFromBirthday } from "./age";
-import type { BridgeFilter, SortKey, WalkMemo } from "./types";
+import type { SortKey, WalkMemo } from "./types";
 import { SORT_OPTIONS } from "./types";
 
 export function isSortKey(value: unknown): value is SortKey {
   return SORT_OPTIONS.some((item) => item.value === value);
-}
-
-export function isBridgeFilter(value: unknown): value is BridgeFilter {
-  return value === "all" || value === "yes" || value === "no";
 }
 
 function ageOf(memo: WalkMemo): number | null {
@@ -18,13 +14,11 @@ function ageOf(memo: WalkMemo): number | null {
 
 export function filterMemos(
   memos: WalkMemo[],
-  query: { q: string; sort: SortKey; bridge: BridgeFilter; breed: string },
+  query: { q: string; sort: SortKey; breed: string },
 ): WalkMemo[] {
   const needle = query.q.trim().toLocaleLowerCase("ja-JP");
   let rows = memos.filter((memo) => {
     if (needle && !memo.name.toLocaleLowerCase("ja-JP").includes(needle)) return false;
-    if (query.bridge === "yes" && !memo.rainbowBridge) return false;
-    if (query.bridge === "no" && memo.rainbowBridge) return false;
     if (query.breed && memo.breedId !== query.breed) return false;
     return true;
   });
