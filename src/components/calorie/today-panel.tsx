@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { useMemo, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, getCalorieState } from "@/lib/calorie/api";
 import {
+  FOOD_UNITS,
   dailyEnergy,
   formatJaDate,
   formatQuantity,
@@ -26,6 +27,7 @@ export function TodayPanel({
 }) {
   const [foodId, setFoodId] = useState("");
   const [foodQty, setFoodQty] = useState("");
+  const [foodUnit, setFoodUnit] = useState("");
   const [customName, setCustomName] = useState("");
   const [customKcal, setCustomKcal] = useState("");
   const [customQty, setCustomQty] = useState("1");
@@ -44,7 +46,8 @@ export function TodayPanel({
     () => state.foods.find((item) => String(item.id) === foodId) ?? null,
     [state.foods, foodId],
   );
-  const registeredKcal = selected
+  const unitOk = Boolean(selected && foodUnit && foodUnit === selected.unit);
+  const registeredKcal = selected && unitOk
     ? kcalForQuantity(selected.kcal, selected.amount, Number(foodQty))
     : 0;
   const customTotal = kcalForQuantity(Number(customKcal), 1, Number(customQty));
@@ -81,13 +84,21 @@ export function TodayPanel({
       setError("フードを選んでください");
       return;
     }
+    if (!foodUnit) {
+      setError("単位を選んでください");
+      return;
+    }
+    if (foodUnit !== selected.unit) {
+      setError(`このフードは ${selected.unit} で登録されています`);
+      return;
+    }
     if (!(registeredKcal > 0)) {
       setError("数量を入力してください");
       return;
     }
     const qty = Number(foodQty);
     setFoodQty("");
-    addLog(`${selected.name} ${formatQuantity(qty, selected.unit)}`, registeredKcal, selected.kind, selected.id);
+    addLog(`${selected.name} ${formatQuantity(qty, foodUnit)}`, registeredKcal, selected.kind, selected.id);
   }
 
   function onCustom(event: FormEvent) {
@@ -217,7 +228,8 @@ export function TodayPanel({
                 const next = event.target.value;
                 setFoodId(next);
                 const food = state.foods.find((item) => String(item.id) === next);
-                setFoodQty(food ? String(food.amount) : "");
+                setFoodQty("");
+                setFoodUnit(food?.unit ?? "");
               }}
             >
               <option value="">未選択</option>
@@ -228,39 +240,65 @@ export function TodayPanel({
               ))}
             </Select>
           </div>
-          <div className="grid grid-cols-[1fr_auto] items-end gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="log-food-qty">数量{selected ? `（${selected.unit}）` : ""}</Label>
+              <Label htmlFor="log-food-qty">数量</Label>
               <Input
                 id="log-food-qty"
                 type="number"
                 inputMode="decimal"
                 min={0.1}
                 step="any"
-                placeholder={selected ? selected.unit : "数量"}
+                placeholder="数量"
                 value={foodQty}
                 onChange={(event) => setFoodQty(event.target.value)}
                 disabled={!selected}
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="log-food-unit">単位</Label>
+              <Select
+                id="log-food-unit"
+                value={foodUnit}
+                onChange={(event) => setFoodUnit(event.target.value)}
+                disabled={!selected}
+              >
+                <option value="">未選択</option>
+                {FOOD_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 text-sm text-muted">
+              {selected && unitOk && registeredKcal > 0
+                ? `${selected.kcal}kcal / ${formatQuantity(selected.amount, selected.unit)} × ${formatQuantity(Number(foodQty), foodUnit)} ＝ ${registeredKcal} kcal`
+                : selected && foodUnit && foodUnit !== selected.unit
+                  ? `単位は登録の ${selected.unit} で入力してください`
+                  : selected
+                    ? `${selected.kcal}kcal / ${formatQuantity(selected.amount, selected.unit)} で計算します`
+                    : state.foods.length === 0
+                      ? (
+                        <>
+                          フードが未登録です。
+                          <button
+                            type="button"
+                            className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
+                            onClick={onOpenPlan}
+                          >
+                            登録する
+                          </button>
+                        </>
+                      )
+                      : "フードを選んで数量と単位を入力"}
+            </div>
             <Button type="submit" disabled={pending || !selected} className="shrink-0">
               足す
             </Button>
           </div>
-          {selected && registeredKcal > 0 ? (
-            <p className="text-sm text-muted">加算 {registeredKcal} kcal</p>
-          ) : state.foods.length === 0 ? (
-            <p className="text-sm text-muted">
-              フードが未登録です。
-              <button
-                type="button"
-                className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
-                onClick={onOpenPlan}
-              >
-                登録する
-              </button>
-            </p>
-          ) : null}
         </form>
 
         <form className="mt-6 space-y-3 border-t border-border pt-5" onSubmit={onCustom}>
