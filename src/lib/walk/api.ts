@@ -115,6 +115,7 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
   ["a1000000-0000-4000-8000-000000000019", "ボーダーコリー", 190],
   ["a1000000-0000-4000-8000-000000000020", "ゴールデンレトリバー", 200],
   ["a1000000-0000-4000-8000-000000000021", "ラブラドールレトリバー", 210],
+  ["a1000000-0000-4000-8000-000000000027", "アイリッシュセター", 215],
   ["a1000000-0000-4000-8000-000000000022", "ドイツシェパード", 220],
   ["a1000000-0000-4000-8000-000000000023", "シベリアンハスキー", 230],
   ["a1000000-0000-4000-8000-000000000024", "サモエド", 240],
@@ -124,15 +125,12 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
 
 async function listBreeds(): Promise<DogBreed[]> {
   const sql = await getSql();
-  const count = await sql<{ n: number }>`select count(*)::int as n from dog_breeds`;
-  if ((count[0]?.n ?? 0) === 0) {
-    for (const breed of BREED_SEED) {
-      await sql`
-        insert into dog_breeds (id, name, sort_order)
-        values (${breed.id}, ${breed.name}, ${breed.sort})
-        on conflict (name) do nothing
-      `;
-    }
+  for (const breed of BREED_SEED) {
+    await sql`
+      insert into dog_breeds (id, name, sort_order)
+      values (${breed.id}, ${breed.name}, ${breed.sort})
+      on conflict (name) do nothing
+    `;
   }
   const rows = await sql<BreedRow>`
     select id, name, sort_order
