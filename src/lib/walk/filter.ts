@@ -42,9 +42,9 @@ export function filterMemos(
       case "name_desc":
         return b.name.localeCompare(a.name, "ja");
       case "last_met_desc":
-        return compareNullable(b.lastMetOn, a.lastMetOn);
+        return compareLastMet(a.lastMetOn, b.lastMetOn, true);
       case "last_met_asc":
-        return compareNullable(a.lastMetOn, b.lastMetOn);
+        return compareLastMet(a.lastMetOn, b.lastMetOn, false);
       case "created_desc":
         return b.createdAt.localeCompare(a.createdAt);
       case "age_desc":
@@ -58,6 +58,16 @@ export function filterMemos(
   });
 
   return rows;
+}
+
+function compareLastMet(a: string | null, b: string | null, newestFirst: boolean): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  const left = a.slice(0, 10);
+  const right = b.slice(0, 10);
+  const cmp = left.localeCompare(right);
+  return newestFirst ? -cmp : cmp;
 }
 
 function compareNullable(a: string | null, b: string | null): number {
