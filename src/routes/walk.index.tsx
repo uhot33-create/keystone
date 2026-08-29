@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { MemoCard } from "@/components/walk/memo-card";
 import { MemoToolbar } from "@/components/walk/memo-toolbar";
+import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState } from "@/lib/walk/api";
@@ -56,6 +57,8 @@ function WalkIndex() {
           <Link to="/walk/new">追加</Link>
         </Button>
       </div>
+
+      <WalkSubnav current="cards" />
 
       <MemoToolbar
         search={search}

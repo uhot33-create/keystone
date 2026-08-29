@@ -15,11 +15,14 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SmokingRouteImport } from './routes/smoking'
 import { Route as WalkRouteImport } from './routes/walk'
 import { Route as WalkIndexRouteImport } from './routes/walk.index'
+import { Route as WalkLogsRouteImport } from './routes/walk.logs'
 import { Route as WalkNewRouteImport } from './routes/walk.new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob/upload'
 import { Route as ApiWalkImageRouteImport } from './routes/api/walk/image'
 import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
+import { Route as WalkLogsIndexRouteImport } from './routes/walk.logs.index'
+import { Route as WalkLogsIdRouteImport } from './routes/walk.logs.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +54,11 @@ const WalkIndexRoute = WalkIndexRouteImport.update({
   path: '/',
   getParentRoute: () => WalkRoute,
 } as any)
+const WalkLogsRoute = WalkLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => WalkRoute,
+} as any)
 const WalkNewRoute = WalkNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -76,6 +84,16 @@ const WalkIdEditRoute = WalkIdEditRouteImport.update({
   path: '/$id/edit',
   getParentRoute: () => WalkRoute,
 } as any)
+const WalkLogsIndexRoute = WalkLogsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WalkLogsRoute,
+} as any)
+const WalkLogsIdRoute = WalkLogsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => WalkLogsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -83,12 +101,15 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/smoking': typeof SmokingRoute
   '/walk': typeof WalkRouteWithChildren
+  '/walk/logs': typeof WalkLogsRouteWithChildren
   '/walk/new': typeof WalkNewRoute
   '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
+  '/walk/logs/$id': typeof WalkLogsIdRoute
+  '/walk/logs/': typeof WalkLogsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -101,6 +122,8 @@ export interface FileRoutesByTo {
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
+  '/walk/logs/$id': typeof WalkLogsIdRoute
+  '/walk/logs': typeof WalkLogsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,12 +132,15 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/smoking': typeof SmokingRoute
   '/walk': typeof WalkRouteWithChildren
+  '/walk/logs': typeof WalkLogsRouteWithChildren
   '/walk/new': typeof WalkNewRoute
   '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
+  '/walk/logs/$id': typeof WalkLogsIdRoute
+  '/walk/logs/': typeof WalkLogsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,12 +150,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/smoking'
     | '/walk'
+    | '/walk/logs'
     | '/walk/new'
     | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/walk/image'
     | '/walk/$id/edit'
+    | '/walk/logs/$id'
+    | '/walk/logs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -142,6 +171,8 @@ export interface FileRouteTypes {
     | '/api/blob/upload'
     | '/api/walk/image'
     | '/walk/$id/edit'
+    | '/walk/logs/$id'
+    | '/walk/logs'
   id:
     | '__root__'
     | '/'
@@ -149,12 +180,15 @@ export interface FileRouteTypes {
     | '/login'
     | '/smoking'
     | '/walk'
+    | '/walk/logs'
     | '/walk/new'
     | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/walk/image'
     | '/walk/$id/edit'
+    | '/walk/logs/$id'
+    | '/walk/logs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalkIndexRouteImport
       parentRoute: typeof WalkRoute
     }
+    '/walk/logs': {
+      id: '/walk/logs'
+      path: '/logs'
+      fullPath: '/walk/logs'
+      preLoaderRoute: typeof WalkLogsRouteImport
+      parentRoute: typeof WalkRoute
+    }
     '/walk/new': {
       id: '/walk/new'
       path: '/new'
@@ -247,16 +288,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalkIdEditRouteImport
       parentRoute: typeof WalkRoute
     }
+    '/walk/logs/': {
+      id: '/walk/logs/'
+      path: '/'
+      fullPath: '/walk/logs/'
+      preLoaderRoute: typeof WalkLogsIndexRouteImport
+      parentRoute: typeof WalkLogsRoute
+    }
+    '/walk/logs/$id': {
+      id: '/walk/logs/$id'
+      path: '/$id'
+      fullPath: '/walk/logs/$id'
+      preLoaderRoute: typeof WalkLogsIdRouteImport
+      parentRoute: typeof WalkLogsRoute
+    }
   }
 }
 
+interface WalkLogsRouteChildren {
+  WalkLogsIdRoute: typeof WalkLogsIdRoute
+  WalkLogsIndexRoute: typeof WalkLogsIndexRoute
+}
+
+const WalkLogsRouteChildren: WalkLogsRouteChildren = {
+  WalkLogsIdRoute: WalkLogsIdRoute,
+  WalkLogsIndexRoute: WalkLogsIndexRoute,
+}
+
+const WalkLogsRouteWithChildren = WalkLogsRoute._addFileChildren(
+  WalkLogsRouteChildren,
+)
+
 interface WalkRouteChildren {
+  WalkLogsRoute: typeof WalkLogsRouteWithChildren
   WalkNewRoute: typeof WalkNewRoute
   WalkIndexRoute: typeof WalkIndexRoute
   WalkIdEditRoute: typeof WalkIdEditRoute
 }
 
 const WalkRouteChildren: WalkRouteChildren = {
+  WalkLogsRoute: WalkLogsRouteWithChildren,
   WalkNewRoute: WalkNewRoute,
   WalkIndexRoute: WalkIndexRoute,
   WalkIdEditRoute: WalkIdEditRoute,
