@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CountPanel } from "@/components/smoking/count-panel";
 import { MasterPanel } from "@/components/smoking/master-panel";
+import { BadgePanel } from "@/components/smoking/badge-panel";
 import { Protected } from "@/components/protected";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSmokingState } from "@/lib/smoking/api";
@@ -18,7 +19,7 @@ function SmokingPage() {
 }
 
 function SmokingApp() {
-  const [tab, setTab] = useState<"count" | "master">("count");
+  const [tab, setTab] = useState<"count" | "master" | "badge">("count");
   const [state, setState] = useState<SmokingState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +49,15 @@ function SmokingApp() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 rounded-md bg-surface-2 p-1">
+      <div className="grid grid-cols-3 rounded-md bg-surface-2 p-1">
         <button type="button" className={tabClass(tab === "count")} onClick={() => setTab("count")}>
           減算
         </button>
         <button type="button" className={tabClass(tab === "master")} onClick={() => setTab("master")}>
           上限の設定
+        </button>
+        <button type="button" className={tabClass(tab === "badge")} onClick={() => setTab("badge")}>
+          バッチ
         </button>
       </div>
 
@@ -70,8 +74,10 @@ function SmokingApp() {
         </div>
       ) : tab === "count" ? (
         <CountPanel state={state} onChange={setState} onOpenMaster={() => setTab("master")} />
-      ) : (
+      ) : tab === "master" ? (
         <MasterPanel state={state} onChange={setState} />
+      ) : (
+        <BadgePanel state={state} />
       )}
     </div>
   );

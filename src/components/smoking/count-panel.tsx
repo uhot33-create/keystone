@@ -109,13 +109,18 @@ export function CountPanel({
           type="button"
           size="lg"
           className="mt-4 w-full"
-          disabled={pending || empty}
+          variant={empty ? "outline" : "default"}
+          disabled={pending}
           onClick={() => void run(() => smokeOne())}
         >
-          1本 減らす
+          {empty ? "限度を超えて吸った" : "1本 減らす"}
         </Button>
         {empty ? (
-          <p className="mt-3 text-sm text-muted">リセットまで待つ、または修正で本数を戻せます。</p>
+          <p className="mt-3 text-sm text-muted">
+            {state.exceeded
+              ? "今日は限度を超えています。ナイスは付きません。"
+              : "これ以上吸うと、今日のナイスは付きません。"}
+          </p>
         ) : null}
       </div>
 
