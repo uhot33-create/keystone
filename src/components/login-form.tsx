@@ -5,6 +5,7 @@ import { authClient, authEnabled } from "@/lib/auth/client";
 import { toJapaneseAuthError } from "@/lib/auth-errors";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-meta";
 import { BrandMark } from "@/components/brand-mark";
+import { PaperWash } from "@/components/theme-motif";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,8 +72,8 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="paper-wash grid min-h-dvh place-items-center px-5 py-10">
-      <div className="stagger-in w-full max-w-sm">
+    <PaperWash className="grid min-h-dvh place-items-center px-5 py-10">
+      <div className="relative z-10 stagger-in w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
           <BrandMark className="size-10" />
           <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight text-fg">
@@ -175,19 +176,19 @@ export function LoginScreen() {
           メールアドレス形式のみでご利用いただけます。
         </p>
       </div>
-    </div>
+    </PaperWash>
   );
 }
 
 export function AuthSplash() {
   return (
-    <div className="paper-wash grid min-h-dvh place-items-center px-5">
-      <div className="flex flex-col items-center text-center">
+    <PaperWash className="grid min-h-dvh place-items-center px-5">
+      <div className="relative z-10 flex flex-col items-center text-center">
         <BrandMark className="size-10" />
         <p className="mt-4 font-display text-2xl font-semibold text-fg">{APP_NAME}</p>
         <p className="mt-2 text-sm text-muted">読み込み中</p>
       </div>
-    </div>
+    </PaperWash>
   );
 }
 

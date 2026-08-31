@@ -1,6 +1,16 @@
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { ThemeId } from "@/lib/theme";
+import { cn } from "@/lib/utils";
+
+export function PaperWash({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn("paper-wash relative isolate overflow-hidden", className)}>
+      <ThemeMotif />
+      {children}
+    </div>
+  );
+}
 
 export function ThemeMotif() {
   const { theme } = useTheme();
@@ -8,11 +18,8 @@ export function ThemeMotif() {
   const Motif = MOTIFS[theme];
   if (!Motif) return null;
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
-      <svg
-        viewBox="0 0 420 420"
-        className="absolute -right-10 -bottom-16 h-[min(92vh,40rem)] w-[min(92vw,40rem)] opacity-[0.26] sm:-right-6 sm:-bottom-10"
-      >
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+      <svg viewBox="0 0 420 420" className="absolute -right-8 bottom-[-6%] h-[min(85vh,36rem)] w-[min(90vw,36rem)]">
         <Motif />
       </svg>
     </div>
