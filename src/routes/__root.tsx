@@ -3,6 +3,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeMotif } from "@/components/theme-motif";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-meta";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import appCss from "../styles.css?url";
@@ -52,9 +53,12 @@ function RootDocument() {
       <body className="antialiased">
         <PreviewHostBridge />
         <ThemeProvider>
-          <AuthProvider>
-            <Outlet />
-          </AuthProvider>
+          <ThemeMotif />
+          <div className="relative z-10">
+            <AuthProvider>
+              <Outlet />
+            </AuthProvider>
+          </div>
         </ThemeProvider>
         <Scripts />
       </body>

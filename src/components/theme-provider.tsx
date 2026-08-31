@@ -10,7 +10,9 @@ const ThemeContext = createContext<{
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<ThemeId>("default");
+  const [theme, setThemeState] = useState<ThemeId>(() =>
+    typeof window === "undefined" ? "default" : readStoredTheme(),
+  );
 
   useEffect(() => {
     const stored = readStoredTheme();
