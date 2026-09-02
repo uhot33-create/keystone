@@ -6,7 +6,8 @@
 - **喫煙管理** — 1日の上限本数と減算、毎日0時にリセット、前回吸った日時
 - **お散歩メモ** — 出会った子のカード（種類・画像・虹渡り）と、GPX の散歩ログと、Strava の散歩ログ
 
-Vercel + Neon（Postgres）で動作します。お散歩メモの画像は Vercel Blob に保存します（Neon には URL のみ）。Hobby / Neon Free を想定しています。
+Vercel + Neon（Postgres）で動作します。お散歩メモの画像は Vercel Blob に保存します（Neon には URL のみ）。Hobby / Neon Free を想定しています。メニュー下部の「今日は何の日」「今日の格言」「今日の占い」は、Wikipedia・祝日API・名言API・朝日新聞デジタルなど公開Webからその日の内容を取得します。
+
 
 ## 最初に実行するコマンド
 

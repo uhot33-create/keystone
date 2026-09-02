@@ -5,6 +5,7 @@ import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user
 import { AppShell } from "@/components/app-shell";
 import { AuthSplash, LoginScreen } from "@/components/login-form";
 import { ThemeSettings } from "@/components/theme-settings";
+import { DeskPanel } from "@/components/desk-panel";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -64,6 +65,8 @@ function MenuScreen() {
           );
         })}
       </nav>
+
+      <DeskPanel />
     </div>
   );
 }
