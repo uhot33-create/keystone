@@ -74,7 +74,7 @@ function WalkLogsPage() {
           {pending ? "取り込み中…" : "GPX を取り込む"}
           <input
             type="file"
-            accept=".gpx,application/gpx+xml,text/xml,application/xml"
+            accept="*/*,.gpx,.xml,application/gpx+xml,text/xml,application/octet-stream"
             className="sr-only"
             disabled={pending}
             onChange={(event) => {
@@ -83,7 +83,9 @@ function WalkLogsPage() {
             }}
           />
         </Label>
-        <p className="mt-3 text-xs text-muted">iPhone は「ファイル」から GPX を選びます。8MB 以下。</p>
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          Geographica などは「書き出し → GPX → ファイルに保存」してから選んでください。iPhone の一覧に出ないときは、共有シートで「ファイルに保存」したあとに「ブラウズ」から探します。8MB 以下。
+        </p>
       </div>
 
       {error ? (
