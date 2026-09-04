@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageLightbox } from "@/components/walk/image-lightbox";
 
 type Draft = {
   name: string;
@@ -85,6 +86,7 @@ export function MemoForm({
   const [draft, setDraft] = useState<Draft>(() => fromMemo(memo));
   const [slots, setSlots] = useState<ImageSlot[]>(() => slotsFromMemo(memo));
   const [coverIndex, setCoverIndex] = useState(() => memo?.coverIndex ?? 0);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const [pending, setPending] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
   const today = todayJst();
@@ -413,70 +415,77 @@ export function MemoForm({
             本番では Vercel Blob（BLOB_READ_WRITE_TOKEN）を設定すると画像を保存できます。
           </p>
         ) : null}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-col gap-4">
           {slots.map((slot, index) => (
             <div key={index} className="flex flex-col gap-2">
-              <div
-                className="relative h-28 overflow-hidden rounded-md bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-                tabIndex={0}
-              >
+              <p className="text-xs font-medium text-subtle">画像 {index + 1}</p>
+              <div className="relative min-h-52 overflow-hidden rounded-md bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/25">
                 {slot.preview ? (
-                  <img src={slot.preview} alt="" className="size-full object-cover" />
+                  <button
+                    type="button"
+                    className="grid min-h-52 w-full place-items-center p-2"
+                    aria-label={`画像${index + 1}を拡大`}
+                    onClick={() => setLightbox(slot.preview)}
+                  >
+                    <img src={slot.preview} alt="" className="max-h-64 w-full object-contain" />
+                  </button>
                 ) : (
-                  <div className="grid size-full place-items-center px-1 text-center text-[11px] leading-snug text-subtle">
-                    長押しでペースト
-                  </div>
+                  <>
+                    <div className="grid min-h-52 place-items-center px-3 text-center text-sm text-subtle">
+                      長押しでペースト
+                    </div>
+                    <div
+                      data-image-paste
+                      contentEditable
+                      suppressContentEditableWarning
+                      role="textbox"
+                      aria-label={`画像${index + 1}を貼り付け`}
+                      className="absolute inset-0 z-10 caret-transparent text-transparent outline-none"
+                      onPaste={(event) => onZonePaste(event, index)}
+                      onInput={(event) => onZoneInput(event, index)}
+                      onKeyDown={(event) => {
+                        if (event.metaKey || event.ctrlKey) return;
+                        event.preventDefault();
+                      }}
+                    />
+                  </>
                 )}
-                <div
-                  data-image-paste
-                  contentEditable
-                  suppressContentEditableWarning
-                  role="textbox"
-                  aria-label={`画像${index + 1}を貼り付け`}
-                  className="absolute inset-0 z-10 caret-transparent text-transparent outline-none"
-                  onPaste={(event) => onZonePaste(event, index)}
-                  onInput={(event) => onZoneInput(event, index)}
-                  onKeyDown={(event) => {
-                    if (event.metaKey || event.ctrlKey) return;
-                    event.preventDefault();
-                  }}
-                />
               </div>
-              <Label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-border bg-surface px-2 text-[11px] font-medium shadow-card">
-                選択
-                <input
-                  type="file"
-                  accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
-                  className="sr-only"
-                  onChange={(event) => {
-                    void onPick(event.target.files, index);
-                    event.target.value = "";
-                  }}
-                />
-              </Label>
-              {slot.preview ? (
-                <button
-                  type="button"
-                  className="text-[11px] text-muted underline-offset-2 hover:underline"
-                  onClick={() => onClearSlot(index)}
-                  disabled={pending !== "idle"}
-                >
-                  クリア
-                </button>
-              ) : (
-                <span className="h-4" />
-              )}
-              <label className="flex min-h-8 items-start gap-1 text-[11px] leading-snug text-fg">
-                <input
-                  type="radio"
-                  name="cover-image"
-                  className="mt-0.5 size-3.5 accent-primary"
-                  checked={coverIndex === index}
-                  disabled={!slot.preview}
-                  onChange={() => setCoverIndex(index)}
-                />
-                一覧に表示
-              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Label className="inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium shadow-card">
+                  選択
+                  <input
+                    type="file"
+                    accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                    className="sr-only"
+                    onChange={(event) => {
+                      void onPick(event.target.files, index);
+                      event.target.value = "";
+                    }}
+                  />
+                </Label>
+                {slot.preview ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onClearSlot(index)}
+                    disabled={pending !== "idle"}
+                  >
+                    クリア
+                  </Button>
+                ) : null}
+                <label className="ml-auto flex min-h-11 items-center gap-2 text-sm text-fg">
+                  <input
+                    type="radio"
+                    name="cover-image"
+                    className="size-4 accent-primary"
+                    checked={coverIndex === index}
+                    disabled={!slot.preview}
+                    onChange={() => setCoverIndex(index)}
+                  />
+                  一覧に表示
+                </label>
+              </div>
             </div>
           ))}
         </div>
@@ -542,6 +551,10 @@ export function MemoForm({
         <Button type="button" variant="outline" disabled={pending !== "idle"} onClick={() => void onDelete()}>
           削除
         </Button>
+      ) : null}
+
+      {lightbox ? (
+        <ImageLightbox src={lightbox} alt="対象画像" onClose={() => setLightbox(null)} />
       ) : null}
     </form>
   );

@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useState, type MouseEvent } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { displayAge } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
+import { ImageLightbox } from "@/components/walk/image-lightbox";
 
 function RainbowIcon() {
   return (
@@ -21,12 +21,6 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
   const age = displayAge(memo);
   const imageSrc = walkMemoImageSrc(memo);
   const [open, setOpen] = useState(false);
-  const [originY, setOriginY] = useState(0);
-
-  function openImage(event: MouseEvent<HTMLButtonElement>) {
-    setOriginY(event.clientY);
-    setOpen(true);
-  }
 
   return (
     <>
@@ -62,32 +56,15 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
             type="button"
             className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
             aria-label={`${memo.name}の写真`}
-            onClick={openImage}
+            onClick={() => setOpen(true)}
           >
             <img src={imageSrc} alt="" className="h-full w-full object-cover" />
           </button>
         ) : null}
       </article>
-      {open && imageSrc && typeof document !== "undefined"
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-50 bg-fg/55"
-              role="dialog"
-              aria-modal="true"
-              aria-label={`${memo.name}の写真`}
-              onClick={() => setOpen(false)}
-            >
-              <img
-                src={imageSrc}
-                alt={memo.name}
-                className="pointer-events-auto absolute left-1/2 max-h-[85vh] max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-md bg-surface shadow-card-hover"
-                style={{ top: originY }}
-                onClick={(event) => event.stopPropagation()}
-              />
-            </div>,
-            document.body,
-          )
-        : null}
+      {open && imageSrc ? (
+        <ImageLightbox src={imageSrc} alt={`${memo.name}の写真`} onClose={() => setOpen(false)} />
+      ) : null}
     </>
   );
 }
