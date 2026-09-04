@@ -4,7 +4,7 @@ import { TrackMap } from "@/components/walk/track-map";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteWalkLog, getWalkLog, type WalkLog } from "@/lib/walk-log/api";
+import { deleteWalkLog, getWalkLog, type WalkLogDetail } from "@/lib/walk-log/api";
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
 
 export const Route = createFileRoute("/walk/logs/$id")({
@@ -14,12 +14,14 @@ export const Route = createFileRoute("/walk/logs/$id")({
 function WalkLogDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const [log, setLog] = useState<WalkLog | null>(null);
+  const [log, setLog] = useState<WalkLogDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setLog(null);
+    setError(null);
     getWalkLog({ data: { id } })
       .then((next) => {
         if (!cancelled) setLog(next);
@@ -37,7 +39,8 @@ function WalkLogDetail() {
     setPending(true);
     try {
       await deleteWalkLog({ data: { id: log.id } });
-      await navigate({ to: "/walk/logs" });
+      const fallback = log.nextId || log.prevId;
+      await navigate(fallback ? { to: "/walk/logs/$id", params: { id: fallback } } : { to: "/walk/logs" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除できませんでした");
       setPending(false);
@@ -54,6 +57,7 @@ function WalkLogDetail() {
       <Link to="/walk/logs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
         ログ一覧へ
       </Link>
+      <LogNav prevId={log?.prevId} nextId={log?.nextId} />
       {error ? (
         <p className="text-sm text-danger" role="alert">
           {error}
@@ -70,10 +74,40 @@ function WalkLogDetail() {
             {log.sourceName ? <p className="mt-2 text-xs text-subtle">{log.sourceName}</p> : null}
           </div>
           <TrackMap encoded={log.summaryPolyline} />
+          <LogNav prevId={log.prevId} nextId={log.nextId} />
           <Button type="button" variant="outline" onClick={() => void onDelete()} disabled={pending}>
             このログを削除
           </Button>
         </>
+      )}
+    </div>
+  );
+}
+
+function LogNav({ prevId, nextId }: { prevId?: string | null; nextId?: string | null }) {
+  return (
+    <div className="flex gap-2">
+      {prevId ? (
+        <Button asChild variant="outline" className="flex-1">
+          <Link to="/walk/logs/$id" params={{ id: prevId }}>
+            前のログ
+          </Link>
+        </Button>
+      ) : (
+        <Button type="button" variant="outline" className="flex-1" disabled>
+          前のログ
+        </Button>
+      )}
+      {nextId ? (
+        <Button asChild variant="outline" className="flex-1">
+          <Link to="/walk/logs/$id" params={{ id: nextId }}>
+            次のログ
+          </Link>
+        </Button>
+      ) : (
+        <Button type="button" variant="outline" className="flex-1" disabled>
+          次のログ
+        </Button>
       )}
     </div>
   );

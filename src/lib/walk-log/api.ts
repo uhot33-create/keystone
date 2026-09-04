@@ -13,6 +13,11 @@ export type WalkLog = {
   sourceName: string | null;
 };
 
+export type WalkLogDetail = WalkLog & {
+  prevId: string | null;
+  nextId: string | null;
+};
+
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -71,6 +76,15 @@ export const getWalkLog = createServerFn({ method: "GET" })
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const ids = await sql<{ id: string }>`
+      select id
+      from walk_logs
+      where user_id = ${context.userId}
+      order by started_at desc nulls last, created_at desc
+      limit 100
+    `;
+    const index = ids.findIndex((row) => row.id === data.id);
+    if (index < 0) throw new Error("記録がありません");
     const rows = await sql<LogRow>`
       select id, name, started_at, elapsed_sec, distance_m, summary_polyline, source_name
       from walk_logs
@@ -79,7 +93,11 @@ export const getWalkLog = createServerFn({ method: "GET" })
     `;
     const row = rows[0];
     if (!row) throw new Error("記録がありません");
-    return mapLog(row);
+    return {
+      ...mapLog(row),
+      nextId: index > 0 ? ids[index - 1]!.id : null,
+      prevId: index < ids.length - 1 ? ids[index + 1]!.id : null,
+    };
   });
 
 const saveInput = z.object({
