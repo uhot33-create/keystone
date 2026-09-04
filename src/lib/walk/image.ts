@@ -149,11 +149,20 @@ function namedPaste(file: File): File {
   return new File([file], `paste.${subtype}`, { type: file.type, lastModified: Date.now() });
 }
 
-export function walkMemoImageSrc(memo: { id: string; imageUrl: string | null }): string | null {
-  if (!memo.imageUrl) return null;
-  return `/api/walk/image?id=${encodeURIComponent(memo.id)}`;
+export function walkMemoImageSrc(
+  memo: { id: string; imageUrl?: string | null; images?: { url: string }[]; coverIndex?: number },
+  index?: number,
+): string | null {
+  const count = memo.images?.length
+    ? memo.images.length
+    : memo.imageUrl
+      ? 1
+      : 0;
+  if (count === 0) return null;
+  const i = Math.min(Math.max(0, index ?? memo.coverIndex ?? 0), count - 1);
+  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}`;
 }
 
 export const IMAGE_HINT =
-  "ファイル選択、または貼り付け。iPhone は写真をコピーしたあと、枠を長押しして「ペースト」。HEIC は JPEG にします。8MB 以下。";
+  "1枚のカードに3枚まで。ファイル選択、または貼り付け。iPhone は写真をコピーしたあと、枠を長押しして「ペースト」。HEIC は JPEG にします。8MB 以下。";
 

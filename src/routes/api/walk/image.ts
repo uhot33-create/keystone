@@ -10,19 +10,53 @@ export const Route = createFileRoute("/api/walk/image")({
         if (!user) {
           return new Response("ログインが必要です", { status: 401 });
         }
-        const id = new URL(request.url).searchParams.get("id")?.trim();
+        const url = new URL(request.url);
+        const id = url.searchParams.get("id")?.trim();
+        const indexRaw = url.searchParams.get("i");
         if (!id) {
           return new Response("id がありません", { status: 400 });
         }
         const sql = await getSql();
-        const rows = await sql<{ image_url: string | null; image_pathname: string | null }>`
-          select image_url, image_pathname
+        const rows = await sql<{
+          images: unknown;
+          cover_index: unknown;
+          image_url: string | null;
+          image_pathname: string | null;
+        }>`
+          select images, cover_index, image_url, image_pathname
           from memos
           where id = ${id} and user_id = ${user.id}
           limit 1
         `;
         const row = rows[0];
-        const target = row?.image_url || row?.image_pathname;
+        if (!row) {
+          return new Response("画像がありません", { status: 404 });
+        }
+        const parsed = typeof row.images === "string"
+          ? (() => {
+              try {
+                return JSON.parse(row.images) as unknown;
+              } catch {
+                return [];
+              }
+            })()
+          : row.images;
+        const list = Array.isArray(parsed)
+          ? parsed.flatMap((item) => {
+              if (!item || typeof item !== "object") return [];
+              const rec = item as { url?: unknown; pathname?: unknown };
+              const href = typeof rec.url === "string" ? rec.url : "";
+              if (!href) return [];
+              return [{ url: href, pathname: typeof rec.pathname === "string" ? rec.pathname : null }];
+            })
+          : [];
+        const fallback = row.image_url
+          ? [{ url: row.image_url, pathname: row.image_pathname }]
+          : [];
+        const images = list.length > 0 ? list : fallback;
+        const parsedIndex = indexRaw == null || indexRaw === "" ? Number(row.cover_index) || 0 : Number(indexRaw);
+        const i = Number.isFinite(parsedIndex) ? Math.min(Math.max(0, Math.round(parsedIndex)), Math.max(0, images.length - 1)) : 0;
+        const target = images[i]?.url || images[i]?.pathname || row.image_url || row.image_pathname;
         if (!target) {
           return new Response("画像がありません", { status: 404 });
         }

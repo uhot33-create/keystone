@@ -31,6 +31,13 @@ export type DogColor = {
   sortOrder: number;
 };
 
+export const MAX_MEMO_IMAGES = 3;
+
+export type MemoImage = {
+  url: string;
+  pathname: string | null;
+};
+
 export type WalkMemo = {
   id: string;
   name: string;
@@ -46,6 +53,8 @@ export type WalkMemo = {
   lastMetOn: string | null;
   rainbowBridge: boolean;
   rainbowBridgeOn: string | null;
+  images: MemoImage[];
+  coverIndex: number;
   imageUrl: string | null;
   imagePathname: string | null;
   createdAt: string;
@@ -76,6 +85,6 @@ export type MemoInput = {
   lastMetOn: string | null;
   rainbowBridge: boolean;
   rainbowBridgeOn: string | null;
-  imageUrl: string | null;
-  imagePathname: string | null;
+  images: MemoImage[];
+  coverIndex: number;
 };

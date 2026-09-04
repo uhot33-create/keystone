@@ -5,7 +5,7 @@ import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from 
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
 import type { DogBreed, DogColor, SexValue, WalkMemo } from "@/lib/walk/types";
-import { DEFAULT_WALK_SEARCH, SEX_OPTIONS } from "@/lib/walk/types";
+import { DEFAULT_WALK_SEARCH, MAX_MEMO_IMAGES, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +25,33 @@ type Draft = {
   rainbowBridge: boolean;
   rainbowBridgeOn: string;
 };
+
+type ImageSlot = {
+  preview: string | null;
+  file: File | null;
+  url: string | null;
+  pathname: string | null;
+};
+
+function emptySlot(): ImageSlot {
+  return { preview: null, file: null, url: null, pathname: null };
+}
+
+function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
+  const images = memo?.images?.length
+    ? memo.images
+    : memo?.imageUrl
+      ? [{ url: memo.imageUrl, pathname: memo.imagePathname }]
+      : [];
+  const slots: ImageSlot[] = images.map((image, index) => ({
+    preview: memo ? walkMemoImageSrc(memo, index) : null,
+    file: null,
+    url: image.url,
+    pathname: image.pathname,
+  }));
+  while (slots.length < MAX_MEMO_IMAGES) slots.push(emptySlot());
+  return slots.slice(0, MAX_MEMO_IMAGES);
+}
 
 function fromMemo(memo?: WalkMemo | null): Draft {
   return {
@@ -56,9 +83,8 @@ export function MemoForm({
   const navigate = useNavigate();
   const editing = Boolean(memo);
   const [draft, setDraft] = useState<Draft>(() => fromMemo(memo));
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(() => (memo ? walkMemoImageSrc(memo) : null));
-  const [clearImage, setClearImage] = useState(false);
+  const [slots, setSlots] = useState<ImageSlot[]>(() => slotsFromMemo(memo));
+  const [coverIndex, setCoverIndex] = useState(() => memo?.coverIndex ?? 0);
   const [pending, setPending] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
   const today = todayJst();
@@ -75,22 +101,36 @@ export function MemoForm({
     });
   }
 
-  async function applyFile(picked: File) {
+  async function applyFile(picked: File, slotIndex?: number) {
     const prepared = await prepareImageFile(picked);
-    setPreview((prev) => {
-      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(prepared);
+    let assigned = -1;
+    setSlots((prev) => {
+      const next = prev.map((slot) => ({ ...slot }));
+      const target =
+        slotIndex != null && slotIndex >= 0 && slotIndex < MAX_MEMO_IMAGES
+          ? slotIndex
+          : next.findIndex((slot) => !slot.preview);
+      assigned = target;
+      if (target < 0) return prev;
+      const current = next[target]!;
+      if (current.preview?.startsWith("blob:")) URL.revokeObjectURL(current.preview);
+      next[target] = {
+        preview: URL.createObjectURL(prepared),
+        file: prepared,
+        url: null,
+        pathname: null,
+      };
+      return next;
     });
-    setFile(prepared);
-    setClearImage(false);
+    if (assigned < 0) throw new Error("画像は3枚までです");
   }
 
-  async function onPick(list: FileList | null) {
+  async function onPick(list: FileList | null, slotIndex: number) {
     const picked = list?.[0];
     if (!picked) return;
     setError(null);
     try {
-      await applyFile(picked);
+      await applyFile(picked, slotIndex);
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像を選べませんでした");
     }
@@ -111,17 +151,17 @@ export function MemoForm({
     });
   }
 
-  function onZonePaste(event: ClipboardEvent) {
+  function onZonePaste(event: ClipboardEvent<HTMLDivElement>, slotIndex: number) {
     const pasted = imageFileFromClipboard(event.clipboardData);
     if (!pasted) return;
     event.preventDefault();
     setError(null);
-    void applyFile(pasted).catch((err: unknown) => {
+    void applyFile(pasted, slotIndex).catch((err: unknown) => {
       setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
     });
   }
 
-  function onZoneInput(event: FormEvent<HTMLDivElement>) {
+  function onZoneInput(event: FormEvent<HTMLDivElement>, slotIndex: number) {
     const root = event.currentTarget;
     const img = root.querySelector("img");
     const src = img?.getAttribute("src") ?? "";
@@ -130,7 +170,7 @@ export function MemoForm({
     setError(null);
     void fileFromImageSrc(src)
       .then(async (pasted) => {
-        if (pasted) await applyFile(pasted);
+        if (pasted) await applyFile(pasted, slotIndex);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
@@ -156,13 +196,15 @@ export function MemoForm({
     }
   }
 
-  function onClearImage() {
-    setPreview((prev) => {
-      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-      return null;
+  function onClearSlot(slotIndex: number) {
+    setSlots((prev) => {
+      const next = prev.map((slot) => ({ ...slot }));
+      const current = next[slotIndex];
+      if (current?.preview?.startsWith("blob:")) URL.revokeObjectURL(current.preview);
+      next[slotIndex] = emptySlot();
+      return next;
     });
-    setFile(null);
-    setClearImage(true);
+    setCoverIndex((prev) => (prev === slotIndex ? 0 : prev > slotIndex ? prev : prev));
   }
 
   async function onSubmit(event: FormEvent) {
@@ -170,26 +212,29 @@ export function MemoForm({
     setPending("saving");
     setError(null);
     try {
-      let imageUrl = memo?.imageUrl ?? null;
-      let imagePathname = memo?.imagePathname ?? null;
-      if (file) {
-        if (!blobConfigured) {
-          throw new Error("画像の保存には Vercel Blob の設定が必要です");
-        }
-        setPending("uploading");
-        const uploaded = await uploadWalkImage({
-          data: {
-            type: imageContentType(file),
-            base64: await fileToBase64(file),
-          },
-        });
-        imageUrl = uploaded.url;
-        imagePathname = uploaded.pathname;
-        setPending("saving");
-      } else if (clearImage) {
-        imageUrl = null;
-        imagePathname = null;
+      if (!blobConfigured && slots.some((slot) => slot.file)) {
+        throw new Error("画像の保存には Vercel Blob の設定が必要です");
       }
+      const images: { url: string; pathname: string | null }[] = [];
+      const sourceIndexes: number[] = [];
+      for (const [index, slot] of slots.entries()) {
+        if (slot.file) {
+          setPending("uploading");
+          const uploaded = await uploadWalkImage({
+            data: {
+              type: imageContentType(slot.file),
+              base64: await fileToBase64(slot.file),
+            },
+          });
+          images.push({ url: uploaded.url, pathname: uploaded.pathname });
+          sourceIndexes.push(index);
+        } else if (slot.url) {
+          images.push({ url: slot.url, pathname: slot.pathname });
+          sourceIndexes.push(index);
+        }
+      }
+      setPending("saving");
+      const nextCover = Math.max(0, sourceIndexes.indexOf(coverIndex));
 
       const ageRaw = draft.ageYears.trim();
       const payload = {
@@ -204,12 +249,12 @@ export function MemoForm({
         lastMetOn: draft.lastMetOn || null,
         rainbowBridge: draft.rainbowBridge,
         rainbowBridgeOn: draft.rainbowBridge ? draft.rainbowBridgeOn || null : null,
-        imageUrl,
-        imagePathname,
+        images,
+        coverIndex: images.length === 0 ? 0 : nextCover < 0 ? 0 : nextCover,
       };
 
       if (memo) {
-        await updateWalkMemo({ data: { id: memo.id, clearImage, ...payload } });
+        await updateWalkMemo({ data: { id: memo.id, ...payload } });
       } else {
         await createWalkMemo({ data: payload });
       }
@@ -360,62 +405,84 @@ export function MemoForm({
         />
       </div>
 
-      <div
-        className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
-        tabIndex={0}
-      >
+      <div className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card">
         <p className="text-sm font-medium text-fg">対象画像</p>
-        <div className="relative h-40 overflow-hidden rounded-md bg-surface-2">
-          {preview ? (
-            <img src={preview} alt="" className="size-full object-cover" />
-          ) : (
-            <div className="grid size-full place-items-center px-4 text-center text-sm text-subtle">
-              iPhone はここを長押しして「ペースト」
-            </div>
-          )}
-          <div
-            data-image-paste
-            contentEditable
-            suppressContentEditableWarning
-            role="textbox"
-            aria-label="画像を貼り付け"
-            className="absolute inset-0 z-10 caret-transparent text-transparent outline-none"
-            onPaste={onZonePaste}
-            onInput={onZoneInput}
-            onKeyDown={(event) => {
-              if (event.metaKey || event.ctrlKey) return;
-              event.preventDefault();
-            }}
-          />
-        </div>
         <p className="text-xs text-muted">{IMAGE_HINT}</p>
         {!blobConfigured ? (
           <p className="text-xs text-muted">
             本番では Vercel Blob（BLOB_READ_WRITE_TOKEN）を設定すると画像を保存できます。
           </p>
         ) : null}
-        <div className="flex flex-wrap gap-2">
-          <Label className="inline-flex h-11 cursor-pointer items-center rounded-md border border-border bg-surface px-4 text-sm font-medium shadow-card">
-            画像を選択
-            <input
-              type="file"
-              accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
-              className="sr-only"
-              onChange={(event) => {
-                void onPick(event.target.files);
-                event.target.value = "";
-              }}
-            />
-          </Label>
-          <Button type="button" variant="outline" onClick={() => void onPasteButton()} disabled={pending !== "idle"}>
-            貼り付け
-          </Button>
-          {preview ? (
-            <Button type="button" variant="outline" onClick={onClearImage} disabled={pending !== "idle"}>
-              クリア
-            </Button>
-          ) : null}
+        <div className="grid grid-cols-3 gap-2">
+          {slots.map((slot, index) => (
+            <div key={index} className="flex flex-col gap-2">
+              <div
+                className="relative h-28 overflow-hidden rounded-md bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/25"
+                tabIndex={0}
+              >
+                {slot.preview ? (
+                  <img src={slot.preview} alt="" className="size-full object-cover" />
+                ) : (
+                  <div className="grid size-full place-items-center px-1 text-center text-[11px] leading-snug text-subtle">
+                    長押しでペースト
+                  </div>
+                )}
+                <div
+                  data-image-paste
+                  contentEditable
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-label={`画像${index + 1}を貼り付け`}
+                  className="absolute inset-0 z-10 caret-transparent text-transparent outline-none"
+                  onPaste={(event) => onZonePaste(event, index)}
+                  onInput={(event) => onZoneInput(event, index)}
+                  onKeyDown={(event) => {
+                    if (event.metaKey || event.ctrlKey) return;
+                    event.preventDefault();
+                  }}
+                />
+              </div>
+              <Label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-md border border-border bg-surface px-2 text-[11px] font-medium shadow-card">
+                選択
+                <input
+                  type="file"
+                  accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                  className="sr-only"
+                  onChange={(event) => {
+                    void onPick(event.target.files, index);
+                    event.target.value = "";
+                  }}
+                />
+              </Label>
+              {slot.preview ? (
+                <button
+                  type="button"
+                  className="text-[11px] text-muted underline-offset-2 hover:underline"
+                  onClick={() => onClearSlot(index)}
+                  disabled={pending !== "idle"}
+                >
+                  クリア
+                </button>
+              ) : (
+                <span className="h-4" />
+              )}
+              <label className="flex min-h-8 items-start gap-1 text-[11px] leading-snug text-fg">
+                <input
+                  type="radio"
+                  name="cover-image"
+                  className="mt-0.5 size-3.5 accent-primary"
+                  checked={coverIndex === index}
+                  disabled={!slot.preview}
+                  onChange={() => setCoverIndex(index)}
+                />
+                一覧に表示
+              </label>
+            </div>
+          ))}
         </div>
+        <Button type="button" variant="outline" onClick={() => void onPasteButton()} disabled={pending !== "idle"}>
+          貼り付け
+        </Button>
       </div>
 
       <div className="rounded-md bg-surface-2 px-4 py-3">

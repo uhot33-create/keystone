@@ -3,7 +3,8 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { ageFromBirthday, isFutureDate, todayJst } from "./age";
-import type { DogBreed, DogColor, MemoInput, SexValue, WalkMemo } from "./types";
+import type { DogBreed, DogColor, MemoImage, MemoInput, SexValue, WalkMemo } from "./types";
+import { MAX_MEMO_IMAGES } from "./types";
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -58,6 +59,8 @@ type MemoRow = {
   last_met_on: unknown;
   rainbow_bridge: unknown;
   rainbow_bridge_on: unknown;
+  images: unknown;
+  cover_index: unknown;
   image_url: string | null;
   image_pathname: string | null;
   created_at: unknown;
@@ -70,7 +73,38 @@ type BreedRow = {
   sort_order: unknown;
 };
 
+function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: string | null): MemoImage[] {
+  const raw = typeof value === "string" ? (() => {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return [];
+    }
+  })() : value;
+  const fromJson = Array.isArray(raw)
+    ? raw.flatMap((item) => {
+        if (!item || typeof item !== "object") return [];
+        const rec = item as { url?: unknown; pathname?: unknown };
+        const url = typeof rec.url === "string" ? rec.url : "";
+        if (!url) return [];
+        return [{ url, pathname: typeof rec.pathname === "string" ? rec.pathname : null }];
+      })
+    : [];
+  if (fromJson.length > 0) return fromJson.slice(0, MAX_MEMO_IMAGES);
+  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath }];
+  return [];
+}
+
+function asCoverIndex(value: unknown, count: number): number {
+  if (count <= 0) return 0;
+  const n = intOrNull(value) ?? 0;
+  return Math.min(Math.max(0, n), count - 1);
+}
+
 function mapMemo(row: MemoRow): WalkMemo {
+  const images = asImages(row.images, row.image_url, row.image_pathname);
+  const coverIndex = asCoverIndex(row.cover_index, images.length);
+  const cover = images[coverIndex] ?? null;
   return {
     id: row.id,
     name: row.name,
@@ -86,8 +120,10 @@ function mapMemo(row: MemoRow): WalkMemo {
     lastMetOn: asDate(row.last_met_on),
     rainbowBridge: Boolean(row.rainbow_bridge),
     rainbowBridgeOn: asDate(row.rainbow_bridge_on),
-    imageUrl: row.image_url,
-    imagePathname: row.image_pathname,
+    images,
+    coverIndex,
+    imageUrl: cover?.url ?? null,
+    imagePathname: cover?.pathname ?? null,
     createdAt: asIso(row.created_at),
     updatedAt: asIso(row.updated_at),
   };
@@ -194,6 +230,8 @@ async function listMemos(userId: string): Promise<WalkMemo[]> {
       m.last_met_on,
       m.rainbow_bridge,
       m.rainbow_bridge_on,
+      m.images,
+      m.cover_index,
       m.image_url,
       m.image_pathname,
       m.created_at,
@@ -226,6 +264,8 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
       m.last_met_on,
       m.rainbow_bridge,
       m.rainbow_bridge_on,
+      m.images,
+      m.cover_index,
       m.image_url,
       m.image_pathname,
       m.created_at,
@@ -281,8 +321,15 @@ const memoInput = z.object({
   lastMetOn: optionalDate,
   rainbowBridge: z.boolean(),
   rainbowBridgeOn: optionalDate,
-  imageUrl: z.string().nullable(),
-  imagePathname: z.string().nullable(),
+  images: z
+    .array(
+      z.object({
+        url: z.string().min(1),
+        pathname: z.string().nullable(),
+      }),
+    )
+    .max(MAX_MEMO_IMAGES, "画像は3枚までです"),
+  coverIndex: z.number().int().min(0).max(MAX_MEMO_IMAGES - 1),
 });
 
 async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[]): Promise<MemoInput> {
@@ -301,6 +348,8 @@ async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[
   const birthday = input.birthday;
   const ageYears = birthday ? (ageFromBirthday(birthday, today) ?? input.ageYears) : input.ageYears;
   const rainbowBridgeOn = input.rainbowBridge ? input.rainbowBridgeOn : null;
+  const images = input.images.slice(0, MAX_MEMO_IMAGES);
+  const coverIndex = images.length === 0 ? 0 : Math.min(Math.max(0, input.coverIndex), images.length - 1);
   return {
     ...input,
     ownerName: input.ownerName?.trim() || null,
@@ -310,8 +359,8 @@ async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[
     ageYears,
     note: input.note.trim(),
     rainbowBridgeOn,
-    imageUrl: input.imageUrl || null,
-    imagePathname: input.imagePathname || null,
+    images,
+    coverIndex,
   };
 }
 
@@ -358,10 +407,11 @@ export const createWalkMemo = createServerFn({ method: "POST" })
     const next = await normalize(data, breeds, colors);
     const id = crypto.randomUUID();
     const colorName = next.colorId ? colors.find((color) => color.id === next.colorId)?.name ?? null : null;
+    const cover = next.images[next.coverIndex] ?? null;
     await sql`
       insert into memos (
         id, user_id, name, owner_name, breed_id, sex, color_id, color, birthday, age_years, note,
-        last_met_on, rainbow_bridge, rainbow_bridge_on, image_url, image_pathname
+        last_met_on, rainbow_bridge, rainbow_bridge_on, images, cover_index, image_url, image_pathname
       )
       values (
         ${id},
@@ -378,8 +428,10 @@ export const createWalkMemo = createServerFn({ method: "POST" })
         ${next.lastMetOn},
         ${next.rainbowBridge},
         ${next.rainbowBridgeOn},
-        ${next.imageUrl},
-        ${next.imagePathname}
+        ${JSON.stringify(next.images)}::jsonb,
+        ${next.coverIndex},
+        ${cover?.url ?? null},
+        ${cover?.pathname ?? null}
       )
     `;
     const memo = await getOwned(context.userId, id);
@@ -389,7 +441,6 @@ export const createWalkMemo = createServerFn({ method: "POST" })
 
 const updateInput = memoInput.extend({
   id: z.string().min(1),
-  clearImage: z.boolean(),
 });
 
 export const updateWalkMemo = createServerFn({ method: "POST" })
@@ -401,18 +452,11 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
     if (!current) throw new Error("カードが見つかりません");
     const [breeds, colors] = await Promise.all([listBreeds(), listColors()]);
     const next = await normalize(data, breeds, colors);
-
-    let imageUrl = current.imageUrl;
-    let imagePathname = current.imagePathname;
-    if (data.clearImage) {
-      await removeBlob(current.imageUrl);
-      imageUrl = null;
-      imagePathname = null;
-    } else if (next.imageUrl && next.imageUrl !== current.imageUrl) {
-      await removeBlob(current.imageUrl);
-      imageUrl = next.imageUrl;
-      imagePathname = next.imagePathname;
+    const keep = new Set(next.images.map((item) => item.url));
+    for (const image of current.images) {
+      if (!keep.has(image.url)) await removeBlob(image.url);
     }
+    const cover = next.images[next.coverIndex] ?? null;
 
     const colorName = next.colorId ? colors.find((color) => color.id === next.colorId)?.name ?? null : null;
 
@@ -431,8 +475,10 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
         last_met_on = ${next.lastMetOn},
         rainbow_bridge = ${next.rainbowBridge},
         rainbow_bridge_on = ${next.rainbowBridgeOn},
-        image_url = ${imageUrl},
-        image_pathname = ${imagePathname},
+        images = ${JSON.stringify(next.images)}::jsonb,
+        cover_index = ${next.coverIndex},
+        image_url = ${cover?.url ?? null},
+        image_pathname = ${cover?.pathname ?? null},
         updated_at = now()
       where id = ${data.id} and user_id = ${context.userId}
     `;
@@ -483,7 +529,9 @@ export const deleteWalkMemo = createServerFn({ method: "POST" })
     const sql = await getSql();
     const current = await getOwned(context.userId, data.id);
     if (!current) throw new Error("カードが見つかりません");
-    await removeBlob(current.imageUrl);
+    for (const image of current.images) {
+      await removeBlob(image.url);
+    }
     await sql`delete from memos where id = ${data.id} and user_id = ${context.userId}`;
     return { ok: true as const };
   });
