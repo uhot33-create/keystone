@@ -1,12 +1,32 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeSettings } from "@/components/theme-settings";
 
 export function AccountChip() {
   const user = useCurrentUser();
   const [signingOut, setSigningOut] = useState(false);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   if (!user) {
     return <Skeleton className="h-11 w-40 rounded-md" />;
@@ -16,16 +36,30 @@ export function AccountChip() {
   const initial = label.charAt(0).toUpperCase();
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <span
-        className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm font-semibold text-primary"
-        aria-hidden="true"
+    <div ref={rootRef} className="relative flex min-w-0 items-center gap-2">
+      <button
+        type="button"
+        className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 font-display text-sm font-semibold text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label="アカウント"
+        onClick={() => setOpen((value) => !value)}
       >
         {initial}
-      </span>
-      <span className="hidden min-w-0 truncate text-sm text-muted sm:inline">
-        {label}
-      </span>
+      </button>
+      {open ? (
+        <div
+          id={panelId}
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-[min(18rem,calc(100vw-2.5rem))] rounded-xl border border-border bg-surface p-4 shadow-card-hover"
+        >
+          <p className="text-sm text-muted">ようこそ、{label}</p>
+          <p className="mt-2 text-xs font-medium tracking-widest text-subtle">MENU</p>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span className="text-sm text-fg">配色</span>
+            <ThemeSettings />
+          </div>
+        </div>
+      ) : null}
       <Button
         type="button"
         variant="ghost"

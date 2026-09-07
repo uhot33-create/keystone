@@ -1,10 +1,9 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { ChevronRight, Cigarette, Footprints, PawPrint } from "lucide-react";
 import { MENUS } from "@/lib/app-meta";
-import { useCurrentUser, useCurrentUserState } from "@/lib/auth/use-current-user";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { AppShell } from "@/components/app-shell";
 import { AuthSplash, LoginScreen } from "@/components/login-form";
-import { ThemeSettings } from "@/components/theme-settings";
 import { DeskPanel } from "@/components/desk-panel";
 
 export const Route = createFileRoute("/")({ component: Home });
@@ -31,19 +30,8 @@ function Home() {
 }
 
 function MenuScreen() {
-  const user = useCurrentUser();
-  const greeting = user?.primaryEmail ?? user?.displayName ?? "ゲスト";
-
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted">ようこそ、{greeting}</p>
-          <h1 className="mt-2 text-xs font-medium tracking-widest text-subtle">MENU</h1>
-        </div>
-        <ThemeSettings />
-      </div>
-
       <nav aria-label="メインメニュー" className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
         {MENUS.map((item) => {
           const Icon = ICONS[item.to];

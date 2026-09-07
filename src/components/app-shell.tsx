@@ -8,7 +8,7 @@ import { PaperWash } from "@/components/theme-motif";
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <PaperWash className="flex min-h-dvh flex-col">
-      <header className="relative z-10 border-b border-border/80 bg-surface/80">
+      <header className="relative z-20 border-b border-border/80 bg-surface/80">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-3 px-5">
           <Link
             to="/"
