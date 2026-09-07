@@ -31,7 +31,13 @@ export function ThemeSettings() {
       </Button>
       {open && typeof document !== "undefined"
         ? createPortal(
-            <div className="fixed inset-0 z-50 grid place-items-center bg-fg/40 p-4" role="presentation" onClick={() => setOpen(false)}>
+            <div
+              className="fixed inset-0 z-50 grid place-items-center bg-fg/40 p-4"
+              role="presentation"
+              data-theme-dialog
+              onClick={() => setOpen(false)}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
               <div
                 role="dialog"
                 aria-modal="true"

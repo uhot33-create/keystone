@@ -15,10 +15,16 @@ export function AccountChip() {
   useEffect(() => {
     if (!open) return;
     function onPointer(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (rootRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest("[data-theme-dialog]")) return;
+      setOpen(false);
     }
     function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      if (document.querySelector("[data-theme-dialog]")) return;
+      setOpen(false);
     }
     window.addEventListener("pointerdown", onPointer);
     window.addEventListener("keydown", onKey);
@@ -47,19 +53,17 @@ export function AccountChip() {
       >
         {initial}
       </button>
-      {open ? (
-        <div
-          id={panelId}
-          className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-[min(18rem,calc(100vw-2.5rem))] rounded-xl border border-border bg-surface p-4 shadow-card-hover"
-        >
-          <p className="text-sm text-muted">ようこそ、{label}</p>
-          <p className="mt-2 text-xs font-medium tracking-widest text-subtle">MENU</p>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-sm text-fg">配色</span>
-            <ThemeSettings />
-          </div>
+      <div
+        id={panelId}
+        hidden={!open}
+        className="absolute right-0 top-[calc(100%+0.5rem)] z-30 w-[min(18rem,calc(100vw-2.5rem))] rounded-xl border border-border bg-surface p-4 shadow-card-hover"
+      >
+        <p className="break-all text-sm text-fg">{label}</p>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <span className="text-sm text-fg">配色</span>
+          <ThemeSettings />
         </div>
-      ) : null}
+      </div>
       <Button
         type="button"
         variant="ghost"
