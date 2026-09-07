@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { APP_NAME } from "@/lib/app-meta";
 import { AccountChip } from "@/components/account-chip";
 import { BrandMark } from "@/components/brand-mark";
-import { PaperWash } from "@/components/theme-motif";
+import { PaperWash, ThemeMotif } from "@/components/theme-motif";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +19,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               {APP_NAME}
             </span>
           </Link>
-          <AccountChip />
+          <div className="flex min-w-0 items-center gap-2">
+            <ThemeMotif compact />
+            <AccountChip />
+          </div>
         </div>
       </header>
       <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-8 sm:py-12">

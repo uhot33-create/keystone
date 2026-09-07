@@ -4,19 +4,23 @@ import type { ThemeId } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
 export function PaperWash({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={cn("paper-wash relative isolate overflow-hidden", className)}>
-      <ThemeMotif />
-      {children}
-    </div>
-  );
+  return <div className={cn("paper-wash relative isolate overflow-hidden", className)}>{children}</div>;
 }
 
-export function ThemeMotif() {
+export function ThemeMotif({ compact = false }: { compact?: boolean }) {
   const { theme } = useTheme();
   if (theme === "default") return null;
   const Motif = MOTIFS[theme];
   if (!Motif) return null;
+  if (compact) {
+    return (
+      <span className="grid h-11 w-14 shrink-0 place-items-center overflow-hidden" aria-hidden="true">
+        <svg viewBox="0 0 420 420" className="h-11 w-14">
+          <Motif />
+        </svg>
+      </span>
+    );
+  }
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
       <svg viewBox="0 0 420 420" className="absolute -right-8 bottom-[-6%] h-[min(85vh,36rem)] w-[min(90vw,36rem)]">
