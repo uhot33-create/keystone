@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
@@ -63,6 +64,13 @@ export function AccountChip() {
           <span className="text-sm text-fg">配色</span>
           <ThemeSettings />
         </div>
+        <Link
+          to="/password"
+          className="mt-3 inline-flex min-h-11 items-center text-sm text-primary underline-offset-4 hover:underline"
+          onClick={() => setOpen(false)}
+        >
+          パスワードの再設定
+        </Link>
       </div>
       <Button
         type="button"
@@ -71,6 +79,7 @@ export function AccountChip() {
         disabled={signingOut}
         className="shrink-0 text-muted"
         onClick={() => {
+          if (!window.confirm("ログアウトしますか？")) return;
           setSigningOut(true);
           void signOut("/login").catch(() => setSigningOut(false));
         }}

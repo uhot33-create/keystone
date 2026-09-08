@@ -29,6 +29,8 @@ npm run dev
 | `BETTER_AUTH_URL` | 公開 URL（末尾スラッシュなし） |
 | `VITE_AUTH_ENABLED` | `true` |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob の読み書きトークン（お散歩メモの画像用） |
+| `RESEND_API_KEY` | パスワード再設定メール（[Resend](https://resend.com)） |
+| `RESET_EMAIL_FROM` | 任意。再設定メールの差出人（例: `暮らし帳 <noreply@example.com>`） |
 
 ## Neon
 
@@ -45,6 +47,14 @@ npm run dev
 3. 画像はアプリの API 経由で Vercel Blob に保存します（Neon には URL のみ）。iPhone の HEIC は JPEG にします。Vercel の上限のため、大きい写真は自動で縮小します
 
 未設定でもカードの文字情報は保存できます。画像だけ保存できません。
+
+## パスワード再設定
+
+1. ログイン画面の「パスワードを忘れた」からメールアドレスを送る
+2. 届いたリンクで新しいパスワードを設定する
+3. ログイン中は右上の丸 → 「パスワードの再設定」でも変更できる
+
+メール送信には Vercel の `RESEND_API_KEY` が必要です。Resend の無料枠で API キーを作り、差出人ドメインを確認してください。未設定だと再設定メールは送れません。
 
 ## 散歩ログ（GPX）
 

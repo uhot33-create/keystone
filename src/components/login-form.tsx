@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
 import { authClient, authEnabled } from "@/lib/auth/client";
@@ -169,6 +169,13 @@ export function LoginScreen() {
                   ? "登録してはじめる"
                   : "ログイン"}
             </Button>
+            {mode === "signin" ? (
+              <p className="text-center text-sm">
+                <Link to="/forgot-password" className="text-primary underline-offset-4 hover:underline">
+                  パスワードを忘れた
+                </Link>
+              </p>
+            ) : null}
           </form>
         </div>
 

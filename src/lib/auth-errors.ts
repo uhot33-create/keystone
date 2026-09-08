@@ -5,6 +5,9 @@ export function toJapaneseAuthError(err: unknown): string {
       : String(err ?? "");
   const lower = message.toLowerCase();
 
+  if (lower.includes("current password")) {
+    return "現在のパスワードが正しくありません";
+  }
   if (
     lower.includes("invalid") &&
     (lower.includes("password") || lower.includes("email") || lower.includes("credentials"))
@@ -22,8 +25,14 @@ export function toJapaneseAuthError(err: unknown): string {
   if (lower.includes("too short") || lower.includes("min")) {
     return "パスワードは8文字以上にしてください";
   }
-  if (lower.includes("user not found") || lower.includes("not found")) {
-    return "このメールアドレスは登録されていません";
+  if (lower.includes("reset password isn't enabled") || lower.includes("reset_password_disabled")) {
+    return "パスワード再設定の準備ができていません";
+  }
+  if (lower.includes("invalid_token") || (lower.includes("token") && (lower.includes("invalid") || lower.includes("expired")))) {
+    return "再設定用のリンクが無効か、期限切れです。もう一度メールを送ってください";
+  }
+  if (lower.includes("resend") || lower.includes("メール")) {
+    return message || "メールを送れませんでした";
   }
 
   return message || "処理に失敗しました。時間をおいて再度お試しください。";

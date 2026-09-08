@@ -75,6 +75,7 @@ export function UserButton() {
           type="button"
           disabled={signingOut}
           onClick={() => {
+            if (!window.confirm("ログアウトしますか？")) return;
             setSigningOut(true);
             // Success navigates away; on failure re-enable so it can be retried.
             void signOut().catch(() => setSigningOut(false));

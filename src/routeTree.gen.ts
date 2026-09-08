@@ -11,7 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalorieRouteImport } from './routes/calorie'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PasswordRouteImport } from './routes/password'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SmokingRouteImport } from './routes/smoking'
 import { Route as WalkRouteImport } from './routes/walk'
 import { Route as WalkIndexRouteImport } from './routes/walk.index'
@@ -34,9 +37,24 @@ const CalorieRoute = CalorieRouteImport.update({
   path: '/calorie',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordRoute = PasswordRouteImport.update({
+  id: '/password',
+  path: '/password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SmokingRoute = SmokingRouteImport.update({
@@ -98,7 +116,10 @@ const WalkLogsIdRoute = WalkLogsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/password': typeof PasswordRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
   '/walk': typeof WalkRouteWithChildren
   '/walk/logs': typeof WalkLogsRouteWithChildren
@@ -114,7 +135,10 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/password': typeof PasswordRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
   '/walk/new': typeof WalkNewRoute
   '/walk': typeof WalkIndexRoute
@@ -129,7 +153,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
+  '/password': typeof PasswordRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
   '/walk': typeof WalkRouteWithChildren
   '/walk/logs': typeof WalkLogsRouteWithChildren
@@ -147,7 +174,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calorie'
+    | '/forgot-password'
     | '/login'
+    | '/password'
+    | '/reset-password'
     | '/smoking'
     | '/walk'
     | '/walk/logs'
@@ -163,7 +193,10 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calorie'
+    | '/forgot-password'
     | '/login'
+    | '/password'
+    | '/reset-password'
     | '/smoking'
     | '/walk/new'
     | '/walk'
@@ -177,7 +210,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calorie'
+    | '/forgot-password'
     | '/login'
+    | '/password'
+    | '/reset-password'
     | '/smoking'
     | '/walk'
     | '/walk/logs'
@@ -194,7 +230,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalorieRoute: typeof CalorieRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
+  PasswordRoute: typeof PasswordRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SmokingRoute: typeof SmokingRoute
   WalkRoute: typeof WalkRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -218,11 +257,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CalorieRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password': {
+      id: '/password'
+      path: '/password'
+      fullPath: '/password'
+      preLoaderRoute: typeof PasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/smoking': {
@@ -338,7 +398,10 @@ const WalkRouteWithChildren = WalkRoute._addFileChildren(WalkRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalorieRoute: CalorieRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
+  PasswordRoute: PasswordRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SmokingRoute: SmokingRoute,
   WalkRoute: WalkRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
