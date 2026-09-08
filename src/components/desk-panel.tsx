@@ -118,6 +118,20 @@ export function DeskPanel() {
         )}
       </DeskCard>
 
+      <DeskCard title="今日の小話">
+        {!desk ? (
+          <Skeleton className="h-16 w-full rounded-md" />
+        ) : desk.story ? (
+          <>
+            <p className="font-display text-base font-semibold text-fg">{desk.story.title}</p>
+            <p className="mt-2 text-sm leading-relaxed text-fg">{desk.story.text}</p>
+            <p className="mt-3 text-[11px] text-subtle">出典 {desk.story.source}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">小話を表示できませんでした。</p>
+        )}
+      </DeskCard>
+
       <DeskCard title="今日の占い">
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">

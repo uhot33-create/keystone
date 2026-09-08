@@ -55,6 +55,12 @@ export type DailyQuote = {
   source: string;
 };
 
+export type DailyStory = {
+  title: string;
+  text: string;
+  source: string;
+};
+
 export type FortuneLine = {
   label: string;
   score: number | null;
@@ -72,6 +78,7 @@ export type DailyFortune = {
 export type DeskState = {
   onThisDay: OnThisDay | null;
   quote: DailyQuote | null;
+  story: DailyStory | null;
   fortune: DailyFortune | null;
   errors: string[];
 };

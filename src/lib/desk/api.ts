@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import type { DailyFortune, DailyQuote, FortuneKind, FortuneLine, OnThisDay } from "./types";
+import type { DailyFortune, DailyQuote, DailyStory, FortuneKind, FortuneLine, OnThisDay } from "./types";
 import { BLOOD_OPTIONS, ETO_OPTIONS, FORTUNE_KINDS, ZODIAC_OPTIONS } from "./types";
 
 const UA = "KurashiCho/1.0 (https://github.com/uhot33-create/keystone)";
@@ -141,6 +141,145 @@ async function loadQuote(): Promise<DailyQuote> {
   });
 }
 
+const STORY_TOPICS = [
+  "カモノハシ",
+  "ナマケモノ",
+  "メンダコ",
+  "ハダカデバネズミ",
+  "クマムシ",
+  "タツノオトシゴ",
+  "ハシビロコウ",
+  "レッサーパンダ",
+  "アホウドリ",
+  "ホタルイカ",
+  "ミツバチ",
+  "カラス",
+  "ペンギン",
+  "フラミンゴ",
+  "キリン",
+  "ゾウ",
+  "三毛猫",
+  "柴犬",
+  "招き猫",
+  "こたつ",
+  "温泉",
+  "銭湯",
+  "寿司",
+  "納豆",
+  "味噌",
+  "醤油",
+  "抹茶",
+  "和菓子",
+  "チョコレート",
+  "コーヒー",
+  "蜂蜜",
+  "わさび",
+  "新幹線",
+  "自動販売機",
+  "郵便ポスト",
+  "信号機",
+  "富士山",
+  "桜島",
+  "オーロラ",
+  "虹",
+  "雷",
+  "彗星",
+  "折り紙",
+  "風呂敷",
+  "そろばん",
+  "だるま",
+  "風鈴",
+  "浴衣",
+  "下駄",
+  "扇子",
+  "おせち料理",
+  "恵方巻",
+  "節分",
+  "七夕",
+  "花火",
+  "金魚",
+  "朝顔",
+  "ひまわり",
+  "桜",
+  "紅葉",
+  "銀杏",
+  "盆栽",
+  "鳥居",
+  "おみくじ",
+  "絵馬",
+  "こけし",
+  "マンホール",
+  "踏切",
+  "ホタル",
+  "セミ",
+  "カブトムシ",
+  "クラゲ",
+  "オカピ",
+  "ウーパールーパー",
+];
+
+const FALLBACK_STORIES: DailyStory[] = [
+  {
+    title: "カモノハシ",
+    text: "ほ乳類なのに卵を産み、後ろ足に毒の蹴爪まで持つ。発見当時は剥製のいたずらだと疑われました。",
+    source: "暮らし帳",
+  },
+  {
+    title: "自動販売機",
+    text: "日本は世界でも有数の自販機大国。飲料だけでなく、卵や氷、傘まで並ぶことがあります。",
+    source: "暮らし帳",
+  },
+  {
+    title: "クマムシ",
+    text: "乾燥すると樽のような状態になり、宇宙空間でも生き延びた記録があります。体長は1ミリにも満たないことが多いです。",
+    source: "暮らし帳",
+  },
+];
+
+function firstSentences(text: string, max = 180): string {
+  const parts = text.split(/(?<=。)/);
+  let out = "";
+  for (const part of parts) {
+    const next = part.trim();
+    if (!next) continue;
+    if (out && out.length + next.length > max) break;
+    out += next;
+    if (out.length >= 90) break;
+  }
+  return out || text.slice(0, max).trim();
+}
+
+function topicIndex(dateKey: string): number {
+  let hash = 0;
+  for (const ch of dateKey) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
+  return hash % STORY_TOPICS.length;
+}
+
+async function loadStory(): Promise<DailyStory> {
+  const { dateKey } = jstNow();
+  return cached(`story:${dateKey}`, 6 * 60 * 60 * 1000, async () => {
+    const title = STORY_TOPICS[topicIndex(dateKey)]!;
+    try {
+      const payload = await fetchJson<{
+        title?: string;
+        description?: string;
+        extract?: string;
+      }>(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+      const text = firstSentences((payload.extract || payload.description || "").replace(/\s+/g, " ").trim());
+      if (text.length >= 20) {
+        return {
+          title: payload.title || title,
+          text,
+          source: "Wikipedia",
+        };
+      }
+    } catch {
+      /* fallback */
+    }
+    return FALLBACK_STORIES[topicIndex(dateKey) % FALLBACK_STORIES.length]!;
+  });
+}
+
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
@@ -230,16 +369,19 @@ export const getDesk = createServerFn({ method: "GET" })
     const key = options.some((item) => item.id === data.key) ? data.key : options[0]!.id;
     const title = options.find((item) => item.id === key)?.label ?? key;
     const errors: string[] = [];
-    const [dayRes, quoteRes, fortuneRes] = await Promise.allSettled([
+    const [dayRes, quoteRes, storyRes, fortuneRes] = await Promise.allSettled([
       loadOnThisDay(),
       loadQuote(),
+      loadStory(),
       kind === "zodiac" ? loadZodiac(key) : loadAdviceFortune(kind, key, title),
     ]);
     const onThisDay = dayRes.status === "fulfilled" ? dayRes.value : null;
     const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
+    const story = storyRes.status === "fulfilled" ? storyRes.value : null;
     const fortune = fortuneRes.status === "fulfilled" ? fortuneRes.value : null;
     if (dayRes.status === "rejected") errors.push("今日は何の日を取得できませんでした");
     if (quoteRes.status === "rejected") errors.push("格言を取得できませんでした");
+    if (storyRes.status === "rejected") errors.push("小話を取得できませんでした");
     if (fortuneRes.status === "rejected") errors.push("占いを取得できませんでした");
-    return { onThisDay, quote, fortune, errors };
+    return { onThisDay, quote, story, fortune, errors };
   });
