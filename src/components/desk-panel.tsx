@@ -8,6 +8,7 @@ import {
   type DeskState,
   type FortuneKind,
 } from "@/lib/desk/types";
+import { useDeskVisibility } from "@/lib/desk/visibility";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,6 +51,8 @@ function Score({ value }: { value: number | null }) {
 }
 
 export function DeskPanel() {
+  const visible = useDeskVisibility();
+  const anyVisible = visible.onThisDay || visible.quote || visible.story || visible.fortune;
   const initial = useMemo(readStored, []);
   const [kind, setKind] = useState<FortuneKind>(initial.kind);
   const [key, setKey] = useState(initial.key);
@@ -57,6 +60,7 @@ export function DeskPanel() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!anyVisible) return;
     let cancelled = false;
     setDesk(null);
     getDesk({ data: { kind, key } })
@@ -69,7 +73,7 @@ export function DeskPanel() {
     return () => {
       cancelled = true;
     };
-  }, [kind, key]);
+  }, [kind, key, anyVisible]);
 
   function persist(nextKind: FortuneKind, nextKey: string) {
     setKind(nextKind);
@@ -83,9 +87,11 @@ export function DeskPanel() {
   }
 
   const options = optionsFor(kind);
+  if (!anyVisible) return null;
 
   return (
     <div className="flex flex-col gap-4">
+      {visible.onThisDay ? (
       <DeskCard title="今日は何の日">
         {!desk ? (
           <Skeleton className="h-20 w-full rounded-md" />
@@ -103,7 +109,9 @@ export function DeskPanel() {
           <p className="text-sm text-muted">今日は何の日を表示できませんでした。</p>
         )}
       </DeskCard>
+      ) : null}
 
+      {visible.quote ? (
       <DeskCard title="今日の格言">
         {!desk ? (
           <Skeleton className="h-16 w-full rounded-md" />
@@ -117,7 +125,9 @@ export function DeskPanel() {
           <p className="text-sm text-muted">格言を表示できませんでした。</p>
         )}
       </DeskCard>
+      ) : null}
 
+      {visible.story ? (
       <DeskCard title="今日の小話">
         {!desk ? (
           <Skeleton className="h-16 w-full rounded-md" />
@@ -131,7 +141,9 @@ export function DeskPanel() {
           <p className="text-sm text-muted">小話を表示できませんでした。</p>
         )}
       </DeskCard>
+      ) : null}
 
+      {visible.fortune ? (
       <DeskCard title="今日の占い">
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1.5">
@@ -187,6 +199,7 @@ export function DeskPanel() {
           <p className="mt-4 text-sm text-muted">占いを表示できませんでした。</p>
         )}
       </DeskCard>
+      ) : null}
 
       {error || desk?.errors.length ? (
         <p className="text-xs text-muted">{error || desk?.errors.join(" / ")}</p>

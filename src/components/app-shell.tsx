@@ -4,8 +4,10 @@ import { APP_NAME } from "@/lib/app-meta";
 import { AccountChip } from "@/components/account-chip";
 import { BrandMark } from "@/components/brand-mark";
 import { PaperWash, ThemeMotif } from "@/components/theme-motif";
+import { useHydrateDeskVisibility } from "@/lib/desk/visibility";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  useHydrateDeskVisibility();
   return (
     <PaperWash className="flex min-h-dvh flex-col">
       <header className="relative z-20 border-b border-border/80 bg-surface/80">
