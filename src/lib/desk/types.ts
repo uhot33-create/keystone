@@ -79,6 +79,7 @@ export type DeskState = {
   onThisDay: OnThisDay | null;
   quote: DailyQuote | null;
   story: DailyStory | null;
+  dogFact: DailyStory | null;
   fortune: DailyFortune | null;
   errors: string[];
 };

@@ -5,6 +5,7 @@ export const DESK_ITEMS = [
   { id: "onThisDay", label: "今日は何の日" },
   { id: "quote", label: "今日の格言" },
   { id: "story", label: "今日の小話" },
+  { id: "dogFact", label: "今日の犬の豆知識" },
   { id: "fortune", label: "今日の占い" },
 ] as const;
 
@@ -16,6 +17,7 @@ export const DEFAULT_VISIBILITY: DeskVisibility = {
   onThisDay: true,
   quote: true,
   story: true,
+  dogFact: true,
   fortune: true,
 };
 

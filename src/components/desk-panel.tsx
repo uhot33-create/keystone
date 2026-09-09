@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { getDesk, refreshQuote, refreshStory } from "@/lib/desk/api";
+import { getDesk, refreshDogFact, refreshQuote, refreshStory } from "@/lib/desk/api";
 import { Button } from "@/components/ui/button";
 import {
   BLOOD_OPTIONS,
@@ -53,13 +53,14 @@ function Score({ value }: { value: number | null }) {
 
 export function DeskPanel() {
   const visible = useDeskVisibility();
-  const anyVisible = visible.onThisDay || visible.quote || visible.story || visible.fortune;
+  const anyVisible =
+    visible.onThisDay || visible.quote || visible.story || visible.dogFact || visible.fortune;
   const initial = useMemo(readStored, []);
   const [kind, setKind] = useState<FortuneKind>(initial.kind);
   const [key, setKey] = useState(initial.key);
   const [desk, setDesk] = useState<DeskState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState<"quote" | "story" | null>(null);
+  const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | null>(null);
 
   useEffect(() => {
     if (!anyVisible) return;
@@ -77,16 +78,19 @@ export function DeskPanel() {
     };
   }, [kind, key, anyVisible]);
 
-  async function onRefresh(kind: "quote" | "story") {
-    setRefreshing(kind);
+  async function onRefresh(part: "quote" | "story" | "dogFact") {
+    setRefreshing(part);
     setError(null);
     try {
-      if (kind === "quote") {
+      if (part === "quote") {
         const quote = await refreshQuote();
         setDesk((current) => (current ? { ...current, quote } : current));
-      } else {
+      } else if (part === "story") {
         const story = await refreshStory();
         setDesk((current) => (current ? { ...current, story } : current));
+      } else {
+        const dogFact = await refreshDogFact();
+        setDesk((current) => (current ? { ...current, dogFact } : current));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新できませんでした");
@@ -169,6 +173,27 @@ export function DeskPanel() {
           </>
         ) : (
           <p className="text-sm text-muted">小話を表示できませんでした。</p>
+        )}
+      </DeskCard>
+      ) : null}
+
+      {visible.dogFact ? (
+      <DeskCard
+        title="今日の犬の豆知識"
+        onRefresh={() => void onRefresh("dogFact")}
+        refreshing={refreshing === "dogFact"}
+        refreshDisabled={!desk || refreshing !== null}
+      >
+        {!desk ? (
+          <Skeleton className="h-16 w-full rounded-md" />
+        ) : desk.dogFact ? (
+          <>
+            <p className="font-display text-base font-semibold text-fg">{desk.dogFact.title}</p>
+            <p className="mt-2 text-sm leading-relaxed text-fg">{desk.dogFact.text}</p>
+            <p className="mt-3 text-[11px] text-subtle">出典 {desk.dogFact.source}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">犬の豆知識を表示できませんでした。</p>
         )}
       </DeskCard>
       ) : null}
