@@ -24,9 +24,11 @@ function jstNow(ms = Date.now()) {
   return { dateKey, dateLabel, year: year!, month: month!, day: day! };
 }
 
-function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  const hit = memory.get(key);
-  if (hit && hit.exp > Date.now()) return Promise.resolve(hit.value as T);
+function cached<T>(key: string, ttlMs: number, load: () => Promise<T>, force = false): Promise<T> {
+  if (!force) {
+    const hit = memory.get(key);
+    if (hit && hit.exp > Date.now()) return Promise.resolve(hit.value as T);
+  }
   return load().then((value) => {
     memory.set(key, { exp: Date.now() + ttlMs, value });
     return value;
@@ -113,36 +115,46 @@ async function loadOnThisDay(): Promise<OnThisDay> {
   });
 }
 
-async function loadQuote(): Promise<DailyQuote> {
-  const { dateKey } = jstNow();
-  return cached(`quote:${dateKey}`, 6 * 60 * 60 * 1000, async () => {
-    try {
-      const rows = await fetchJson<{ meigen?: string; auther?: string; author?: string }[]>(
-        "https://meigen.doodlenote.net/api/json.php?c=1",
-      );
-      const row = rows[0];
-      const text = row?.meigen?.trim();
-      if (text) {
-        return {
-          text,
-          author: (row.auther || row.author || "").trim(),
-          source: "名言教えるよ",
-        };
-      }
-    } catch {
-      /* fallback */
-    }
-    const proverb = await fetchJson<{ text?: string; meaning?: string; kana?: string }>(
-      "https://apis-cloud.net/kotowaza/random",
+async function fetchQuoteOnce(): Promise<DailyQuote> {
+  try {
+    const rows = await fetchJson<{ meigen?: string; auther?: string; author?: string }[]>(
+      "https://meigen.doodlenote.net/api/json.php?c=1",
     );
-    const text = proverb.text?.trim();
-    if (!text) throw new Error("格言を取得できませんでした");
-    return {
-      text: proverb.meaning ? `${text}（${proverb.meaning}）` : text,
-      author: proverb.kana ?? "",
-      source: "ことわざ・故事成語API",
-    };
-  });
+    const row = rows[0];
+    const text = row?.meigen?.trim();
+    if (text) {
+      return {
+        text,
+        author: (row.auther || row.author || "").trim(),
+        source: "名言教えるよ",
+      };
+    }
+  } catch {
+    /* fallback */
+  }
+  const proverb = await fetchJson<{ text?: string; meaning?: string; kana?: string }>(
+    "https://apis-cloud.net/kotowaza/random",
+  );
+  const text = proverb.text?.trim();
+  if (!text) throw new Error("格言を取得できませんでした");
+  return {
+    text: proverb.meaning ? `${text}（${proverb.meaning}）` : text,
+    author: proverb.kana ?? "",
+    source: "ことわざ・故事成語API",
+  };
+}
+
+async function loadQuote(force = false): Promise<DailyQuote> {
+  const { dateKey } = jstNow();
+  const key = `quote:${dateKey}`;
+  const previous = force ? (memory.get(key)?.value as DailyQuote | undefined) : undefined;
+  return cached(key, 6 * 60 * 60 * 1000, async () => {
+    let quote = await fetchQuoteOnce();
+    if (force && previous && quote.text === previous.text) {
+      quote = await fetchQuoteOnce();
+    }
+    return quote;
+  }, force);
 }
 
 const STORY_TOPICS = [
@@ -259,29 +271,35 @@ function topicIndex(dateKey: string): number {
   return hash % STORY_TOPICS.length;
 }
 
-async function loadStory(): Promise<DailyStory> {
-  const { dateKey } = jstNow();
-  return cached(`story:${dateKey}`, 6 * 60 * 60 * 1000, async () => {
-    const title = STORY_TOPICS[topicIndex(dateKey)]!;
-    try {
-      const payload = await fetchJson<{
-        title?: string;
-        description?: string;
-        extract?: string;
-      }>(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
-      const text = firstSentences((payload.extract || payload.description || "").replace(/\s+/g, " ").trim());
-      if (text.length >= 20) {
-        return {
-          title: payload.title || title,
-          text,
-          source: "Wikipedia",
-        };
-      }
-    } catch {
-      /* fallback */
+const storyOffset = new Map<string, number>();
+
+async function fetchStoryAt(index: number): Promise<DailyStory> {
+  const title = STORY_TOPICS[index]!;
+  try {
+    const payload = await fetchJson<{
+      title?: string;
+      description?: string;
+      extract?: string;
+    }>(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
+    const text = firstSentences((payload.extract || payload.description || "").replace(/\s+/g, " ").trim());
+    if (text.length >= 20) {
+      return {
+        title: payload.title || title,
+        text,
+        source: "Wikipedia",
+      };
     }
-    return FALLBACK_STORIES[topicIndex(dateKey) % FALLBACK_STORIES.length]!;
-  });
+  } catch {
+    /* fallback */
+  }
+  return FALLBACK_STORIES[index % FALLBACK_STORIES.length]!;
+}
+
+async function loadStory(force = false): Promise<DailyStory> {
+  const { dateKey } = jstNow();
+  if (force) storyOffset.set(dateKey, (storyOffset.get(dateKey) ?? 0) + 1);
+  const index = (topicIndex(dateKey) + (storyOffset.get(dateKey) ?? 0)) % STORY_TOPICS.length;
+  return cached(`story:${dateKey}`, 6 * 60 * 60 * 1000, () => fetchStoryAt(index), force);
 }
 
 function stripHtml(html: string): string {
@@ -389,3 +407,7 @@ export const getDesk = createServerFn({ method: "GET" })
     if (fortuneRes.status === "rejected") errors.push("占いを取得できませんでした");
     return { onThisDay, quote, story, fortune, errors };
   });
+
+export const refreshQuote = createServerFn({ method: "POST" }).handler(async () => loadQuote(true));
+
+export const refreshStory = createServerFn({ method: "POST" }).handler(async () => loadStory(true));

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { getDesk } from "@/lib/desk/api";
+import { getDesk, refreshQuote, refreshStory } from "@/lib/desk/api";
+import { Button } from "@/components/ui/button";
 import {
   BLOOD_OPTIONS,
   ETO_OPTIONS,
@@ -58,6 +59,7 @@ export function DeskPanel() {
   const [key, setKey] = useState(initial.key);
   const [desk, setDesk] = useState<DeskState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<"quote" | "story" | null>(null);
 
   useEffect(() => {
     if (!anyVisible) return;
@@ -74,6 +76,24 @@ export function DeskPanel() {
       cancelled = true;
     };
   }, [kind, key, anyVisible]);
+
+  async function onRefresh(kind: "quote" | "story") {
+    setRefreshing(kind);
+    setError(null);
+    try {
+      if (kind === "quote") {
+        const quote = await refreshQuote();
+        setDesk((current) => (current ? { ...current, quote } : current));
+      } else {
+        const story = await refreshStory();
+        setDesk((current) => (current ? { ...current, story } : current));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新できませんでした");
+    } finally {
+      setRefreshing(null);
+    }
+  }
 
   function persist(nextKind: FortuneKind, nextKey: string) {
     setKind(nextKind);
@@ -112,7 +132,12 @@ export function DeskPanel() {
       ) : null}
 
       {visible.quote ? (
-      <DeskCard title="今日の格言">
+      <DeskCard
+        title="今日の格言"
+        onRefresh={() => void onRefresh("quote")}
+        refreshing={refreshing === "quote"}
+        refreshDisabled={!desk || refreshing !== null}
+      >
         {!desk ? (
           <Skeleton className="h-16 w-full rounded-md" />
         ) : desk.quote ? (
@@ -128,7 +153,12 @@ export function DeskPanel() {
       ) : null}
 
       {visible.story ? (
-      <DeskCard title="今日の小話">
+      <DeskCard
+        title="今日の小話"
+        onRefresh={() => void onRefresh("story")}
+        refreshing={refreshing === "story"}
+        refreshDisabled={!desk || refreshing !== null}
+      >
         {!desk ? (
           <Skeleton className="h-16 w-full rounded-md" />
         ) : desk.story ? (
@@ -208,10 +238,29 @@ export function DeskPanel() {
   );
 }
 
-function DeskCard({ title, children }: { title: string; children: ReactNode }) {
+function DeskCard({
+  title,
+  children,
+  onRefresh,
+  refreshing = false,
+  refreshDisabled = false,
+}: {
+  title: string;
+  children: ReactNode;
+  onRefresh?: () => void;
+  refreshing?: boolean;
+  refreshDisabled?: boolean;
+}) {
   return (
     <section className="rounded-xl border border-border bg-surface p-5 shadow-card">
-      <h2 className="text-xs font-medium tracking-widest text-subtle">{title}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xs font-medium tracking-widest text-subtle">{title}</h2>
+        {onRefresh ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onRefresh} disabled={refreshDisabled}>
+            {refreshing ? "更新中…" : "更新"}
+          </Button>
+        ) : null}
+      </div>
       <div className="mt-3">{children}</div>
     </section>
   );
