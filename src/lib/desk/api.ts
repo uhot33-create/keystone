@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { COUNTRY_TEMPLATES } from "./countries";
 import type { DailyFortune, DailyQuote, DailyStory, FortuneKind, FortuneLine, OnThisDay } from "./types";
 import { BLOOD_OPTIONS, ETO_OPTIONS, FORTUNE_KINDS, ZODIAC_OPTIONS } from "./types";
 
@@ -49,6 +50,8 @@ async function fetchJson<T>(url: string): Promise<T> {
 
 function cleanWiki(text: string): string {
   return text
+    .replace(/\{\{仮リンク\|([^}|]+)[^}]*\}\}/g, "$1")
+    .replace(/\{\{\s*([A-Za-z]{2,3})\s*\}\}/g, (_, code: string) => COUNTRY_TEMPLATES[code.toUpperCase()] ?? "")
     .replace(/\{\{[\s\S]*?\}\}/g, "")
     .replace(/\[\[ファイル:[^\]]*\]\]/gi, "")
     .replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2")
@@ -56,6 +59,7 @@ function cleanWiki(text: string): string {
     .replace(/<ref[\s\S]*?<\/ref>/gi, "")
     .replace(/<[^>]+>/g, "")
     .replace(/'{2,}/g, "")
+    .replace(/（\s*）/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
