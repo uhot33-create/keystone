@@ -59,6 +59,7 @@ export type DailyStory = {
   title: string;
   text: string;
   source: string;
+  sourceUrl?: string;
 };
 
 export type FortuneLine = {

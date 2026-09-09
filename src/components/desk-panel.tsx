@@ -190,7 +190,21 @@ export function DeskPanel() {
           <>
             <p className="font-display text-base font-semibold text-fg">{desk.dogFact.title}</p>
             <p className="mt-2 text-sm leading-relaxed text-fg">{desk.dogFact.text}</p>
-            <p className="mt-3 text-[11px] text-subtle">出典 {desk.dogFact.source}</p>
+            <p className="mt-3 text-[11px] text-subtle">
+              出典{" "}
+              {desk.dogFact.sourceUrl ? (
+                <a
+                  href={desk.dogFact.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline-offset-2 hover:underline"
+                >
+                  {desk.dogFact.source}
+                </a>
+              ) : (
+                desk.dogFact.source
+              )}
+            </p>
           </>
         ) : (
           <p className="text-sm text-muted">犬の豆知識を表示できませんでした。</p>

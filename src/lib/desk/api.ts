@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { authMiddleware } from "@/lib/auth/middleware";
 import { COUNTRY_TEMPLATES } from "./countries";
+import { loadDogFact } from "./dog-facts";
 import type { DailyFortune, DailyQuote, DailyStory, FortuneKind, FortuneLine, OnThisDay } from "./types";
 import { BLOOD_OPTIONS, ETO_OPTIONS, FORTUNE_KINDS, ZODIAC_OPTIONS } from "./types";
 
@@ -302,113 +304,6 @@ async function loadStory(force = false): Promise<DailyStory> {
   return cached(`story:${dateKey}`, 6 * 60 * 60 * 1000, () => fetchStoryAt(index), force);
 }
 
-const DOG_TOPICS = [
-  "犬",
-  "柴犬",
-  "秋田犬",
-  "日本犬",
-  "忠犬ハチ公",
-  "嗅覚",
-  "肉球",
-  "犬の年齢",
-  "盲導犬",
-  "聴導犬",
-  "介助犬",
-  "警察犬",
-  "災害救助犬",
-  "番犬",
-  "オオカミ",
-  "イエイヌ",
-  "犬ぞり",
-  "ドッグフード",
-  "マイクロチップ (動物)",
-  "狂犬病",
-  "フィラリア",
-  "熱中症",
-  "しつけ",
-  "リード (動物)",
-  "ボーダー・コリー",
-  "ラブラドール・レトリーバー",
-  "ゴールデン・レトリーバー",
-  "トイプードル",
-  "チワワ",
-  "フレンチ・ブルドッグ",
-  "パグ",
-  "ビーグル",
-  "コーギー",
-  "ミニチュア・ダックスフント",
-  "ポメラニアン",
-  "シベリアン・ハスキー",
-  "甲斐犬",
-  "紀州犬",
-  "四国犬",
-  "狆",
-  "犬笛",
-  "ドッグラン",
-  "社会化 (動物)",
-  "換毛",
-  "パンティング",
-  "色覚",
-  "聴覚",
-  "犬歯",
-  "家畜化",
-];
-
-const FALLBACK_DOG_FACTS: DailyStory[] = [
-  {
-    title: "嗅覚",
-    text: "犬の嗅覚は人の数千倍から1万倍以上とも言われます。散歩で地面を嗅ぐのは、その日の「新聞」を読んでいるようなものです。",
-    source: "暮らし帳",
-  },
-  {
-    title: "肉球",
-    text: "肉球は衝撃をやわらげ、滑り止めにもなります。汗をかく場所でもあり、暑い日は熱中症に注意です。",
-    source: "暮らし帳",
-  },
-  {
-    title: "しっぽ",
-    text: "しっぽは気持ちの合図です。高さや振り方で、うれしい・不安・警戒など状態が変わります。",
-    source: "暮らし帳",
-  },
-];
-
-const dogOffset = new Map<string, number>();
-
-function dogTopicIndex(dateKey: string): number {
-  let hash = 7;
-  for (const ch of dateKey) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
-  return hash % DOG_TOPICS.length;
-}
-
-async function fetchDogFactAt(index: number): Promise<DailyStory> {
-  const title = DOG_TOPICS[index]!;
-  try {
-    const payload = await fetchJson<{
-      title?: string;
-      description?: string;
-      extract?: string;
-    }>(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
-    const text = firstSentences((payload.extract || payload.description || "").replace(/\s+/g, " ").trim());
-    if (text.length >= 20) {
-      return {
-        title: payload.title || title,
-        text,
-        source: "Wikipedia",
-      };
-    }
-  } catch {
-    /* fallback */
-  }
-  return FALLBACK_DOG_FACTS[index % FALLBACK_DOG_FACTS.length]!;
-}
-
-async function loadDogFact(force = false): Promise<DailyStory> {
-  const { dateKey } = jstNow();
-  if (force) dogOffset.set(dateKey, (dogOffset.get(dateKey) ?? 0) + 1);
-  const index = (dogTopicIndex(dateKey) + (dogOffset.get(dateKey) ?? 0)) % DOG_TOPICS.length;
-  return cached(`dog:${dateKey}`, 6 * 60 * 60 * 1000, () => fetchDogFactAt(index), force);
-}
-
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
@@ -487,12 +382,13 @@ const fortuneInput = z.object({
 });
 
 export const getDesk = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
   .validator((input: unknown) => {
     const parsed = fortuneInput.safeParse(input ?? {});
     if (!parsed.success) return { kind: "zodiac", key: "aries" };
     return parsed.data;
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const kind: FortuneKind = isKind(data.kind) ? data.kind : "zodiac";
     const options = optionsFor(kind);
     const key = options.some((item) => item.id === data.key) ? data.key : options[0]!.id;
@@ -502,7 +398,7 @@ export const getDesk = createServerFn({ method: "GET" })
       loadOnThisDay(),
       loadQuote(),
       loadStory(),
-      loadDogFact(),
+      loadDogFact(context.userId, false),
       kind === "zodiac" ? loadZodiac(key) : loadAdviceFortune(kind, key, title),
     ]);
     const onThisDay = dayRes.status === "fulfilled" ? dayRes.value : null;
@@ -522,4 +418,6 @@ export const refreshQuote = createServerFn({ method: "POST" }).handler(async () 
 
 export const refreshStory = createServerFn({ method: "POST" }).handler(async () => loadStory(true));
 
-export const refreshDogFact = createServerFn({ method: "POST" }).handler(async () => loadDogFact(true));
+export const refreshDogFact = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => loadDogFact(context.userId, true));
