@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 
 function kgText(value: number): string {
   if (!(value > 0)) return "";
-  return String(Math.round(value * 10) / 10);
+  return (Math.round(value * 100) / 100).toFixed(2);
 }
 
 export function ProfilePanel({
@@ -75,8 +75,8 @@ export function ProfilePanel({
               id="current-kg"
               type="number"
               inputMode="decimal"
-              min={0.1}
-              step={0.1}
+              min={0.01}
+              step={0.01}
               value={current}
               onChange={(event) => setCurrent(event.target.value)}
               required
@@ -88,8 +88,8 @@ export function ProfilePanel({
               id="ideal-kg"
               type="number"
               inputMode="decimal"
-              min={0.1}
-              step={0.1}
+              min={0.01}
+              step={0.01}
               value={ideal}
               onChange={(event) => setIdeal(event.target.value)}
               required

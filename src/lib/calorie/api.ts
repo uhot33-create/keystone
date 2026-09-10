@@ -337,13 +337,14 @@ export const saveWeightLog = createServerFn({ method: "POST" })
     const sql = await getSql();
     const dog = await ensureDog(context.userId);
     const measuredAt = measuredAt20(data.date);
+    const weightKg = num(data.weightKg, 2);
     await sql`
       insert into dog_weight_logs (user_id, dog_id, log_date, weight_kg, measured_at, updated_at)
       values (
         ${context.userId},
         ${dog.id},
         ${data.date},
-        ${data.weightKg},
+        ${weightKg},
         ${measuredAt}::timestamptz,
         now()
       )
@@ -354,7 +355,7 @@ export const saveWeightLog = createServerFn({ method: "POST" })
     `;
     await sql`
       update dogs
-      set current_weight_kg = ${data.weightKg}, updated_at = now()
+      set current_weight_kg = ${weightKg}, updated_at = now()
       where id = ${dog.id} and user_id = ${context.userId}
         and not exists (
           select 1 from dog_weight_logs

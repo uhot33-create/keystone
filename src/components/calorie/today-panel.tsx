@@ -45,13 +45,13 @@ export function TodayPanel({
   const [kcalText, setKcalText] = useState("");
   const [kcalTouched, setKcalTouched] = useState(false);
   const [weightText, setWeightText] = useState(
-    state.todayWeightKg != null ? String(state.todayWeightKg) : "",
+    state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "",
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setWeightText(state.todayWeightKg != null ? String(state.todayWeightKg) : "");
+    setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
   }, [state.date, state.todayWeightKg]);
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
@@ -154,7 +154,7 @@ export function TodayPanel({
 
   function onSaveWeight(event: FormEvent) {
     event.preventDefault();
-    const weightKg = Number(weightText);
+    const weightKg = Math.round(Number(weightText) * 100) / 100;
     if (!(weightKg > 0)) {
       setError("体重を入力してください");
       return;
@@ -231,10 +231,10 @@ export function TodayPanel({
           <Input
             type="number"
             inputMode="decimal"
-            min={0.1}
+            min={0.01}
             max={120}
-            step={0.1}
-            placeholder="kg"
+            step={0.01}
+            placeholder="0.00"
             value={weightText}
             onChange={(event) => setWeightText(event.target.value)}
             aria-label="体重キログラム"
@@ -245,7 +245,7 @@ export function TodayPanel({
           </Button>
         </div>
         {state.todayWeightKg != null ? (
-          <p className="mt-2 text-xs text-subtle">この日 {state.todayWeightKg.toFixed(1)} kg（20時計測）</p>
+          <p className="mt-2 text-xs text-subtle">この日 {state.todayWeightKg.toFixed(2)} kg（20時計測）</p>
         ) : (
           <p className="mt-2 text-xs text-subtle">まだ記録がありません</p>
         )}

@@ -90,7 +90,7 @@ export function TrendChart({
         <div className="flex items-center gap-2">
           <p className="text-xs text-muted">
             {latest ? `${Math.round(latest.kcal)} kcal` : "—"}
-            {latestWeight != null ? ` / ${latestWeight.toFixed(1)} kg` : ""}
+            {latestWeight != null ? ` / ${latestWeight.toFixed(2)} kg` : ""}
           </p>
           <Button type="button" variant="ghost" size="sm" onClick={onToday} disabled={isToday}>
             今日
