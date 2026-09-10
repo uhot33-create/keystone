@@ -211,7 +211,8 @@ export function TodayPanel({
   return (
     <div className="flex flex-col gap-5">
       <BusyOverlay show={Boolean(busy)} label={busy ?? "処理中…"} />
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-col items-center gap-1">
+      <div className="flex w-full items-center justify-between gap-2">
         <Button
           type="button"
           variant="ghost"
@@ -221,17 +222,7 @@ export function TodayPanel({
         >
           <ChevronLeft />
         </Button>
-        <button
-          type="button"
-          className="font-display text-lg font-semibold text-fg underline-offset-4 hover:underline"
-          onClick={() => {
-            setChartEnd(todayJst());
-            void selectDate(todayJst());
-          }}
-          aria-label="今日の記録へ"
-        >
-          {formatJaDayWeek(state.date)}
-        </button>
+        <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
         <Button
           type="button"
           variant="ghost"
@@ -241,6 +232,19 @@ export function TodayPanel({
         >
           <ChevronRight />
         </Button>
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={state.date === todayJst()}
+        onClick={() => {
+          setChartEnd(todayJst());
+          void selectDate(todayJst());
+        }}
+      >
+        今日
+      </Button>
       </div>
 
       <div className="flex flex-col items-center">
