@@ -17,7 +17,7 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const QTY_STEPS = [10, 25, 50, 100] as const;
+const QTY_STEPS = [15, 2, 4] as const;
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
@@ -386,7 +386,7 @@ export function TodayPanel({
           <span className="w-8 shrink-0 text-sm text-muted">{unit}</span>
         </div>
 
-        <div className="mt-2 grid grid-cols-4 gap-2">
+        <div className="mt-2 grid grid-cols-3 gap-2">
           {QTY_STEPS.map((step) => (
             <button
               key={step}
