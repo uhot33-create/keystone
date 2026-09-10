@@ -3,7 +3,8 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { isLifeStageId, shiftIsoDate, todayJst } from "./formula";
-import type { CalorieState, DogProfile, DayTotal, DayTrend, FoodKind, LogKind } from "./types";
+import { buildTrends, loadDayMaps, refreshDogStats } from "./summary";
+import type { CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -58,16 +59,6 @@ type LogRow = {
   unit: string | null;
 };
 
-type SumRow = {
-  log_date: string;
-  total: unknown;
-};
-
-type WeightRow = {
-  log_date: string;
-  weight_kg: unknown;
-};
-
 function mapDog(row: DogRow): DogProfile {
   return {
     id: row.id,
@@ -117,9 +108,9 @@ function measuredAt20(date: string): string {
 async function loadState(userId: string, date: string): Promise<CalorieState> {
   const sql = await getSql();
   const dog = await ensureDog(userId);
-  const trendStart = shiftIsoDate(date, -13);
+  const from = shiftIsoDate(date, -5 * 366);
 
-  const [foods, logs, sums, weights] = await Promise.all([
+  const [foods, logs, maps] = await Promise.all([
     sql<FoodRow>`
       select id, name, kind, kcal, amount, unit
       from dog_foods
@@ -132,40 +123,14 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${date}
       order by id asc
     `,
-    sql<SumRow>`
-      select log_date, coalesce(sum(kcal), 0) as total
-      from calorie_logs
-      where user_id = ${userId} and dog_id = ${dog.id}
-        and log_date >= ${trendStart} and log_date <= ${date}
-      group by log_date
-    `,
-    sql<WeightRow>`
-      select log_date, weight_kg
-      from dog_weight_logs
-      where user_id = ${userId} and dog_id = ${dog.id}
-        and log_date >= ${trendStart} and log_date <= ${date}
-    `,
+    loadDayMaps(sql, userId, dog.id, from, date),
   ]);
 
-  const sumByDate = new Map(sums.map((row) => [asDateKey(row.log_date) || String(row.log_date).slice(0, 10), num(row.total)]));
-  const weightByDate = new Map(
-    weights.map((row) => [asDateKey(row.log_date) || String(row.log_date).slice(0, 10), num(row.weight_kg, 2)]),
-  );
-
+  const trends = buildTrends(maps.kcal, maps.kg, date);
   const week: DayTotal[] = [];
   for (let offset = -6; offset <= 0; offset += 1) {
     const day = shiftIsoDate(date, offset);
-    week.push({ date: day, total: sumByDate.get(day) ?? 0 });
-  }
-
-  const trend: DayTrend[] = [];
-  for (let offset = -13; offset <= 0; offset += 1) {
-    const day = shiftIsoDate(date, offset);
-    trend.push({
-      date: day,
-      kcal: sumByDate.get(day) ?? 0,
-      weightKg: weightByDate.get(day) ?? null,
-    });
+    week.push({ date: day, total: maps.kcal.get(day) ?? 0 });
   }
 
   return {
@@ -190,8 +155,9 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       unit: row.unit,
     })),
     week,
-    trend,
-    todayWeightKg: weightByDate.get(date) ?? null,
+    trend: trends.day,
+    trends,
+    todayWeightKg: maps.kg.get(date) ?? null,
   };
 }
 
@@ -310,6 +276,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
         ${data.unit}
       )
     `;
+    await refreshDogStats(sql, context.userId, dog.id, data.date);
     return loadState(context.userId, data.date);
   });
 
@@ -322,6 +289,8 @@ export const deleteCalorieLog = createServerFn({ method: "POST" })
       delete from calorie_logs
       where id = ${data.id} and user_id = ${context.userId}
     `;
+    const dog = await ensureDog(context.userId);
+    await refreshDogStats(sql, context.userId, dog.id, data.date);
     return loadState(context.userId, data.date);
   });
 
@@ -362,5 +331,6 @@ export const saveWeightLog = createServerFn({ method: "POST" })
           where dog_id = ${dog.id} and log_date > ${data.date}
         )
     `;
+    await refreshDogStats(sql, context.userId, dog.id, data.date);
     return loadState(context.userId, data.date);
   });

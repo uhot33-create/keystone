@@ -29,8 +29,12 @@ npm run dev
 | `BETTER_AUTH_URL` | 公開 URL（末尾スラッシュなし） |
 | `VITE_AUTH_ENABLED` | `true` |
 | `BLOB_READ_WRITE_TOKEN` | Vercel Blob の読み書きトークン（お散歩メモの画像用） |
-| `RESEND_API_KEY` | パスワード再設定メール（[Resend](https://resend.com)） |
-| `RESET_EMAIL_FROM` | 任意。再設定メールの差出人（例: `暮らし帳 <noreply@example.com>`） |
+| `CRON_SECRET` | 任意。毎日0時（JST）のカロリー集計バッチ用。設定すると Vercel Cron が Bearer で認証する |
+
+## カロリー集計バッチ
+
+毎日 0:00 JST（UTC 15:00）に Vercel Cron が `/api/cron/calorie-summary` を呼び、週・月・年のカロリー合計と期末体重を Neon に保存します。Hobby は1日1回・前後最大59分です。`CRON_SECRET` を Vercel に入れると、その値で保護されます。
+
 
 ## Neon
 

@@ -22,6 +22,7 @@ import { Route as WalkLogsRouteImport } from './routes/walk.logs'
 import { Route as WalkNewRouteImport } from './routes/walk.new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob/upload'
+import { Route as ApiCronCalorieSummaryRouteImport } from './routes/api/cron/calorie-summary'
 import { Route as ApiWalkImageRouteImport } from './routes/api/walk/image'
 import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
 import { Route as WalkLogsIndexRouteImport } from './routes/walk.logs.index'
@@ -92,6 +93,11 @@ const ApiBlobUploadRoute = ApiBlobUploadRouteImport.update({
   path: '/api/blob/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronCalorieSummaryRoute = ApiCronCalorieSummaryRouteImport.update({
+  id: '/api/cron/calorie-summary',
+  path: '/api/cron/calorie-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWalkImageRoute = ApiWalkImageRouteImport.update({
   id: '/api/walk/image',
   path: '/api/walk/image',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
+  '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
@@ -144,6 +151,7 @@ export interface FileRoutesByTo {
   '/walk': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
+  '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
@@ -164,6 +172,7 @@ export interface FileRoutesById {
   '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
+  '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
+    | '/api/cron/calorie-summary'
     | '/api/walk/image'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/walk'
     | '/api/auth/$'
     | '/api/blob/upload'
+    | '/api/cron/calorie-summary'
     | '/api/walk/image'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
+    | '/api/cron/calorie-summary'
     | '/api/walk/image'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
@@ -238,6 +250,7 @@ export interface RootRouteChildren {
   WalkRoute: typeof WalkRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
+  ApiCronCalorieSummaryRoute: typeof ApiCronCalorieSummaryRoute
   ApiWalkImageRoute: typeof ApiWalkImageRoute
 }
 
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBlobUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/calorie-summary': {
+      id: '/api/cron/calorie-summary'
+      path: '/api/cron/calorie-summary'
+      fullPath: '/api/cron/calorie-summary'
+      preLoaderRoute: typeof ApiCronCalorieSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/walk/image': {
       id: '/api/walk/image'
       path: '/api/walk/image'
@@ -406,6 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   WalkRoute: WalkRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,
+  ApiCronCalorieSummaryRoute: ApiCronCalorieSummaryRoute,
   ApiWalkImageRoute: ApiWalkImageRoute,
 }
 export const routeTree = rootRouteImport

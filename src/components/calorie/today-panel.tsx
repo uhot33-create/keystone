@@ -11,7 +11,7 @@ import {
   todayJst,
   trimNum,
 } from "@/lib/calorie/formula";
-import type { CalorieState, DogFood, FoodKind } from "@/lib/calorie/types";
+import type { CalorieState, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ export function TodayPanel({
   );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [grain, setGrain] = useState<TrendGrain>("day");
 
   useEffect(() => {
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
@@ -397,10 +398,12 @@ export function TodayPanel({
       </div>
 
       <TrendChart
-        days={state.trend}
+        grain={grain}
+        days={state.trends?.[grain] ?? state.trend}
         activeDate={state.date}
         todayDate={todayJst()}
         targetKcal={target}
+        onGrain={setGrain}
         onSelect={(date) => void run(() => getCalorieState({ data: { date } }))}
         onToday={() => void run(() => getCalorieState({ data: { date: todayJst() } }))}
       />

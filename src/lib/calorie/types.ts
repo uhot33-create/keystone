@@ -35,8 +35,20 @@ export type DayTotal = {
   total: number;
 };
 
+export type TrendGrain = "day" | "week" | "month" | "year";
+
+export const TREND_GRAINS: { id: TrendGrain; label: string }[] = [
+  { id: "day", label: "日" },
+  { id: "week", label: "週" },
+  { id: "month", label: "月" },
+  { id: "year", label: "年" },
+];
+
 export type DayTrend = {
   date: string;
+  label: string;
+  start: string;
+  end: string;
   kcal: number;
   weightKg: number | null;
 };
@@ -48,5 +60,6 @@ export type CalorieState = {
   logs: CalorieLog[];
   week: DayTotal[];
   trend: DayTrend[];
+  trends: Record<TrendGrain, DayTrend[]>;
   todayWeightKg: number | null;
 };
