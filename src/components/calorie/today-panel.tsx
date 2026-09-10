@@ -19,6 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const QTY_STEPS = [15, 2, 4] as const;
+const STAPLES = [
+  { name: "NOWフレッシュ", qty: 15 },
+  { name: "ささみジャーキー", qty: 2 },
+  { name: "ささみジャーキー", qty: 4 },
+] as const;
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
@@ -320,21 +325,22 @@ export function TodayPanel({
         )}
       </form>
 
-      {state.foods.length > 0 ? (
+      {STAPLES.length > 0 ? (
         <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
           <p className="font-display text-lg font-semibold text-fg">定番</p>
-          <p className="mt-1 text-sm text-muted">いつもの量をワンタップで足します。</p>
+          <p className="mt-1 text-sm text-muted">ワンタップで足します。フードに同じ名前で登録してください。</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {state.foods.map((food) => {
-              const qty = food.usualQty > 0 ? food.usualQty : food.amount;
+            {STAPLES.map((item) => {
+              const food = state.foods.find((entry) => entry.name === item.name);
               return (
                 <button
-                  key={food.id}
+                  key={`${item.name}-${item.qty}`}
                   type="button"
-                  disabled={pending || locked}
+                  disabled={pending || locked || !food}
                   className="rounded-full border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg disabled:opacity-50"
                   onClick={() => {
-                    const kcal = kcalForQuantity(food.kcal, food.amount, qty);
+                    if (!food) return;
+                    const kcal = kcalForQuantity(food.kcal, food.amount, item.qty);
                     if (!(kcal > 0)) return;
                     void run(() =>
                       addCalorieLog({
@@ -344,14 +350,14 @@ export function TodayPanel({
                           kcal: Math.round(kcal),
                           kind: food.kind,
                           foodId: food.id,
-                          amount: qty,
+                          amount: item.qty,
                           unit: food.unit,
                         },
                       }),
                     );
                   }}
                 >
-                  + {food.name} {formatQuantity(qty, food.unit)}
+                  + {item.name} {item.qty}g
                 </button>
               );
             })}
@@ -438,13 +444,14 @@ export function TodayPanel({
 
         <div className="mt-2 flex items-center gap-2">
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
             min={0}
             step="any"
             placeholder="数量"
             value={qty}
             onChange={(event) => onQty(event.target.value)}
+            onFocus={(event) => event.currentTarget.select()}
             disabled={locked}
           />
           <span className="w-8 shrink-0 text-sm text-muted">{unit}</span>
