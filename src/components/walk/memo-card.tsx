@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { PawPrint } from "lucide-react";
 import { useState } from "react";
 import { displayAge, todayJst } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
@@ -41,49 +42,56 @@ export function MemoCard({
           memo.rainbowBridge ? "border-border bg-surface-2" : "border-border bg-surface",
         ].join(" ")}
       >
-        <Link
-          to="/walk/$id/edit"
-          params={{ id: memo.id }}
-          className="min-w-0 flex-1 px-4 py-3 outline-none transition-colors duration-200 ease-[var(--ease-out)] hover:bg-surface-2/80 focus-visible:ring-2 focus-visible:ring-ring/35"
-        >
+        <div className="min-w-0 flex-1 px-4 py-3">
           <div className="flex items-center gap-1.5">
-            <p className="min-w-0 truncate font-display text-base font-semibold text-fg">{memo.name}</p>
+            <Link
+              to="/walk/$id/edit"
+              params={{ id: memo.id }}
+              className="min-w-0 truncate font-display text-base font-semibold text-fg outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/35"
+            >
+              {memo.name}
+            </Link>
             {memo.rainbowBridge ? <RainbowIcon /> : null}
+            {!memo.rainbowBridge && onMetToday ? (
+              <button
+                type="button"
+                className="grid size-7 shrink-0 place-items-center rounded-full text-muted outline-none hover:bg-surface-2 disabled:text-primary"
+                aria-label={metToday ? "今日会った（記録済）" : "今日会った"}
+                disabled={pending || metToday}
+                onClick={() => onMetToday(memo.id)}
+              >
+                <PawPrint className="size-3.5" strokeWidth={2} fill={metToday ? "currentColor" : "none"} />
+              </button>
+            ) : null}
           </div>
-          {memo.ownerName ? (
+          <Link
+            to="/walk/$id/edit"
+            params={{ id: memo.id }}
+            className="mt-0.5 block outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+          >
+            {memo.ownerName ? (
+              <p className="text-xs text-muted">
+                飼い主 {memo.ownerName}
+                {mates.length > 0 ? `　ほか ${mates.join("・")}` : ""}
+              </p>
+            ) : null}
             <p className="mt-0.5 text-xs text-muted">
-              飼い主 {memo.ownerName}
-              {mates.length > 0 ? `　ほか ${mates.join("・")}` : ""}
+              犬種 {memo.breedName || "—"}　年齢 {age || "—"}
+              {memo.colorName ? `　色 ${memo.colorName}` : ""}
             </p>
-          ) : null}
-          <p className="mt-0.5 text-xs text-muted">
-            犬種 {memo.breedName || "—"}　年齢 {age || "—"}
-            {memo.colorName ? `　色 ${memo.colorName}` : ""}
-          </p>
-          <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
-        </Link>
-        <div className="flex w-20 shrink-0 flex-col border-l border-border">
-          {!memo.rainbowBridge && onMetToday ? (
-            <button
-              type="button"
-              className="min-h-11 px-2 py-2 text-center text-[11px] font-medium text-primary disabled:text-subtle"
-              disabled={pending || metToday}
-              onClick={() => onMetToday(memo.id)}
-            >
-              {metToday ? "記録済" : "今日会った"}
-            </button>
-          ) : null}
-          {imageSrc ? (
-            <button
-              type="button"
-              className="min-h-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-              aria-label={`${memo.name}の写真`}
-              onClick={() => setOpen(true)}
-            >
-              <img src={imageSrc} alt="" className="h-full w-full object-cover" />
-            </button>
-          ) : null}
+            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
+          </Link>
         </div>
+        {imageSrc ? (
+          <button
+            type="button"
+            className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            aria-label={`${memo.name}の写真`}
+            onClick={() => setOpen(true)}
+          >
+            <img src={imageSrc} alt="" className="h-full w-full object-cover" />
+          </button>
+        ) : null}
       </article>
       {open && imageSrc ? (
         <ImageLightbox src={imageSrc} alt={`${memo.name}の写真`} onClose={() => setOpen(false)} />
