@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { PawPrint } from "lucide-react";
 import { useState } from "react";
 import { displayAge, todayJst } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
@@ -62,28 +63,27 @@ export function MemoCard({
           </p>
           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
         </Link>
-        <div className="flex w-20 shrink-0 flex-col border-l border-border">
-          {!memo.rainbowBridge && onMetToday ? (
-            <button
-              type="button"
-              className="min-h-11 px-2 py-2 text-center text-[11px] font-medium text-primary disabled:text-subtle"
-              disabled={pending || metToday}
-              onClick={() => onMetToday(memo.id)}
-            >
-              {metToday ? "記録済" : "今日会った"}
-            </button>
-          ) : null}
-          {imageSrc ? (
-            <button
-              type="button"
-              className="min-h-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-              aria-label={`${memo.name}の写真`}
-              onClick={() => setOpen(true)}
-            >
-              <img src={imageSrc} alt="" className="h-full w-full object-cover" />
-            </button>
-          ) : null}
-        </div>
+        {!memo.rainbowBridge && onMetToday ? (
+          <button
+            type="button"
+            className="grid w-9 shrink-0 place-items-center self-stretch text-muted outline-none hover:bg-surface-2 disabled:text-primary"
+            aria-label={metToday ? "今日会った（記録済）" : "今日会った"}
+            disabled={pending || metToday}
+            onClick={() => onMetToday(memo.id)}
+          >
+            <PawPrint className="size-4" strokeWidth={2} fill={metToday ? "currentColor" : "none"} />
+          </button>
+        ) : null}
+        {imageSrc ? (
+          <button
+            type="button"
+            className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            aria-label={`${memo.name}の写真`}
+            onClick={() => setOpen(true)}
+          >
+            <img src={imageSrc} alt="" className="h-full w-full object-cover" />
+          </button>
+        ) : null}
       </article>
       {open && imageSrc ? (
         <ImageLightbox src={imageSrc} alt={`${memo.name}の写真`} onClose={() => setOpen(false)} />
