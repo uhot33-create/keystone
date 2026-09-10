@@ -88,6 +88,19 @@ export function shiftIsoDate(iso: string, days: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** 今日から14日より前の記録は変更不可。 */
+export const CALORIE_EDIT_DAYS = 14;
+
+export function isCalorieLocked(date: string, today = todayJst()): boolean {
+  return date <= shiftIsoDate(today, -CALORIE_EDIT_DAYS);
+}
+
+export function assertCalorieEditable(date: string, today = todayJst()) {
+  if (isCalorieLocked(date, today)) {
+    throw new Error("2週間以上前の記録は変更できません");
+  }
+}
+
 export function formatJaDate(iso: string): string {
   const [year, month, day] = iso.split("-").map(Number);
   return `${year}年${month}月${day}日`;

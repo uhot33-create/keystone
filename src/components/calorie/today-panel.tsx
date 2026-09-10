@@ -10,6 +10,7 @@ import {
   dailyEnergy,
   todayJst,
   trimNum,
+  isCalorieLocked,
 } from "@/lib/calorie/formula";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
@@ -170,6 +171,10 @@ export function TodayPanel({
 
   function onAdd(event: FormEvent) {
     event.preventDefault();
+    if (locked) {
+      setError("2週間以上前の記録は変更できません");
+      return;
+    }
     const kcal = addKcal > 0 ? addKcal : kcalTouched ? Number(kcalText) : selected && qtyNum > 0
       ? kcalForQuantity(selected.kcal, selected.amount, qtyNum)
       : Number(kcalText);
@@ -200,6 +205,10 @@ export function TodayPanel({
 
   function onSaveWeight(event: FormEvent) {
     event.preventDefault();
+    if (locked) {
+      setError("2週間以上前の記録は変更できません");
+      return;
+    }
     const weightKg = Math.round(Number(weightText) * 100) / 100;
     if (!(weightKg > 0)) {
       setError("体重を入力してください");
@@ -207,6 +216,8 @@ export function TodayPanel({
     }
     void run(() => saveWeightLog({ data: { date: state.date, weightKg } }));
   }
+
+  const locked = isCalorieLocked(state.date);
 
   return (
     <div className="flex flex-col gap-5">
@@ -245,6 +256,9 @@ export function TodayPanel({
       >
         今日
       </Button>
+      {locked ? (
+        <p className="text-xs text-muted">2週間以上前の記録は閲覧のみです</p>
+      ) : null}
       </div>
 
       <div className="flex flex-col items-center">
@@ -292,9 +306,10 @@ export function TodayPanel({
             value={weightText}
             onChange={(event) => setWeightText(event.target.value)}
             aria-label="体重キログラム"
+            disabled={locked}
           />
           <span className="w-8 shrink-0 text-sm text-muted">kg</span>
-          <Button type="submit" className="shrink-0" disabled={pending}>
+          <Button type="submit" className="shrink-0" disabled={pending || locked}>
             {state.todayWeightKg != null ? "修正" : "記録"}
           </Button>
         </div>
@@ -316,6 +331,7 @@ export function TodayPanel({
             type="button"
             className={`h-11 rounded-sm text-sm font-medium ${kind === "food" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
             onClick={() => switchKind("food")}
+            disabled={locked}
           >
             ごはん
           </button>
@@ -323,6 +339,7 @@ export function TodayPanel({
             type="button"
             className={`h-11 rounded-sm text-sm font-medium ${kind === "treat" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
             onClick={() => switchKind("treat")}
+            disabled={locked}
           >
             おやつ
           </button>
@@ -337,6 +354,7 @@ export function TodayPanel({
                   key={food.id}
                   type="button"
                   onClick={() => pickFood(food)}
+                  disabled={locked}
                   className={[
                     "shrink-0 rounded-full border px-3 py-2 text-xs font-medium",
                     active ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface text-fg",
@@ -362,6 +380,7 @@ export function TodayPanel({
             maxLength={40}
             placeholder={kindLabel(kind)}
             onChange={(event) => setName(event.target.value)}
+            disabled={locked}
           />
           <Input
             type="number"
@@ -374,6 +393,7 @@ export function TodayPanel({
               setKcalTouched(true);
               setKcalText(event.target.value);
             }}
+            disabled={locked}
           />
         </div>
 
@@ -386,6 +406,7 @@ export function TodayPanel({
             placeholder="数量"
             value={qty}
             onChange={(event) => onQty(event.target.value)}
+            disabled={locked}
           />
           <span className="w-8 shrink-0 text-sm text-muted">{unit}</span>
         </div>
@@ -397,13 +418,14 @@ export function TodayPanel({
               type="button"
               className="h-11 rounded-md bg-surface-2 text-sm font-medium text-fg"
               onClick={() => bumpQty(step)}
+              disabled={locked}
             >
               +{step}
             </button>
           ))}
         </div>
 
-        <Button type="submit" className="mt-3 w-full" disabled={pending}>
+        <Button type="submit" className="mt-3 w-full" disabled={pending || locked}>
           <Plus />
           足す
         </Button>
@@ -439,7 +461,7 @@ export function TodayPanel({
                   size="icon"
                   className="size-10 min-h-10 text-muted"
                   aria-label={`${log.label}を削除`}
-                  disabled={pending}
+                  disabled={pending || locked}
                   onClick={() => void run(() => deleteCalorieLog({ data: { date: state.date, id: log.id } }))}
                 >
                   <Trash2 />

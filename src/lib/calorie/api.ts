@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { isLifeStageId, shiftIsoDate, todayJst } from "./formula";
+import { assertCalorieEditable, isLifeStageId, shiftIsoDate, todayJst } from "./formula";
 import { buildTrends, loadDayMaps, refreshDogStats } from "./summary";
 import type { CalorieLog, CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
 
@@ -299,6 +299,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(addLogInput, input))
   .handler(async ({ context, data }) => {
+    assertCalorieEditable(data.date);
     const sql = await getSql();
     const dog = await ensureDog(context.userId);
     await sql`
@@ -324,6 +325,13 @@ export const deleteCalorieLog = createServerFn({ method: "POST" })
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const existing = await sql<{ log_date: string }>`
+      select log_date from calorie_logs
+      where id = ${data.id} and user_id = ${context.userId}
+      limit 1
+    `;
+    const logDate = asDateKey(existing[0]?.log_date) || data.date;
+    assertCalorieEditable(logDate);
     await sql`
       delete from calorie_logs
       where id = ${data.id} and user_id = ${context.userId}
@@ -342,6 +350,7 @@ export const saveWeightLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(saveWeightInput, input))
   .handler(async ({ context, data }) => {
+    assertCalorieEditable(data.date);
     const sql = await getSql();
     const dog = await ensureDog(context.userId);
     const measuredAt = measuredAt20(data.date);
