@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { displayAge } from "@/lib/walk/age";
+import { displayAge, todayJst } from "@/lib/walk/age";
 import { walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 import { ImageLightbox } from "@/components/walk/image-lightbox";
@@ -17,10 +17,21 @@ function RainbowIcon() {
   );
 }
 
-export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
+export function MemoCard({
+  memo,
+  mates,
+  pending,
+  onMetToday,
+}: {
+  memo: WalkMemo;
+  mates: string[];
+  pending?: boolean;
+  onMetToday?: (id: string) => void;
+}) {
   const age = displayAge(memo);
   const imageSrc = walkMemoImageSrc(memo);
   const [open, setOpen] = useState(false);
+  const metToday = memo.lastMetOn === todayJst();
 
   return (
     <>
@@ -51,16 +62,28 @@ export function MemoCard({ memo, mates }: { memo: WalkMemo; mates: string[] }) {
           </p>
           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
         </Link>
-        {imageSrc ? (
-          <button
-            type="button"
-            className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-            aria-label={`${memo.name}の写真`}
-            onClick={() => setOpen(true)}
-          >
-            <img src={imageSrc} alt="" className="h-full w-full object-cover" />
-          </button>
-        ) : null}
+        <div className="flex w-20 shrink-0 flex-col border-l border-border">
+          {!memo.rainbowBridge && onMetToday ? (
+            <button
+              type="button"
+              className="min-h-11 px-2 py-2 text-center text-[11px] font-medium text-primary disabled:text-subtle"
+              disabled={pending || metToday}
+              onClick={() => onMetToday(memo.id)}
+            >
+              {metToday ? "記録済" : "今日会った"}
+            </button>
+          ) : null}
+          {imageSrc ? (
+            <button
+              type="button"
+              className="min-h-0 flex-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+              aria-label={`${memo.name}の写真`}
+              onClick={() => setOpen(true)}
+            >
+              <img src={imageSrc} alt="" className="h-full w-full object-cover" />
+            </button>
+          ) : null}
+        </div>
       </article>
       {open && imageSrc ? (
         <ImageLightbox src={imageSrc} alt={`${memo.name}の写真`} onClose={() => setOpen(false)} />

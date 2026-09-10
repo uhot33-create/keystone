@@ -6,7 +6,7 @@ import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWalkState } from "@/lib/walk/api";
+import { getWalkState, touchWalkMemoMet } from "@/lib/walk/api";
 import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
@@ -25,6 +25,7 @@ function WalkIndex() {
   const [memos, setMemos] = useState<WalkMemo[] | null>(null);
   const [breeds, setBreeds] = useState<DogBreed[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +46,21 @@ function WalkIndex() {
   }, []);
 
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
+
+  async function onMetToday(id: string) {
+    setPendingId(id);
+    setError(null);
+    try {
+      const next = await touchWalkMemoMet({ data: { id } });
+      setMemos((list) =>
+        list ? list.map((memo) => (memo.id === next.id ? { ...memo, lastMetOn: next.lastMetOn } : memo)) : list,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新できませんでした");
+    } finally {
+      setPendingId(null);
+    }
+  }
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
@@ -96,7 +112,13 @@ function WalkIndex() {
       ) : (
         <div className="flex flex-col gap-2">
           {shown.map((memo) => (
-            <MemoCard key={memo.id} memo={memo} mates={memos ? householdMates(memos, memo) : []} />
+            <MemoCard
+              key={memo.id}
+              memo={memo}
+              mates={memos ? householdMates(memos, memo) : []}
+              pending={pendingId === memo.id}
+              onMetToday={onMetToday}
+            />
           ))}
         </div>
       )}

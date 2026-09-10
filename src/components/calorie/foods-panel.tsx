@@ -20,6 +20,7 @@ export function FoodsPanel({
   const [foodKind, setFoodKind] = useState<FoodKind>("food");
   const [foodKcal, setFoodKcal] = useState("");
   const [foodAmount, setFoodAmount] = useState("100");
+  const [foodUsual, setFoodUsual] = useState("100");
   const [foodUnit, setFoodUnit] = useState("g");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +29,7 @@ export function FoodsPanel({
     event.preventDefault();
     const kcal = Number(foodKcal);
     const amount = Number(foodAmount);
+    const usualQty = Number(foodUsual) || amount;
     if (!foodName.trim() || !(kcal > 0) || !(amount > 0)) {
       setError("名前とカロリー、分量を入力してください");
       return;
@@ -43,6 +45,7 @@ export function FoodsPanel({
             kind: foodKind,
             kcal,
             amount,
+            usualQty,
             unit: foodUnit as (typeof FOOD_UNITS)[number],
           },
         }),
@@ -76,6 +79,7 @@ export function FoodsPanel({
                 const next = event.target.value === "treat" ? "treat" : "food";
                 setFoodKind(next);
                 setFoodAmount(next === "treat" ? "1" : "100");
+                setFoodUsual(next === "treat" ? "1" : "100");
                 setFoodUnit(next === "treat" ? "個" : "g");
               }}
             >
@@ -108,6 +112,18 @@ export function FoodsPanel({
             />
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor="food-usual">いつもの量</Label>
+            <Input
+              id="food-usual"
+              type="number"
+              inputMode="decimal"
+              min={0.1}
+              step={0.1}
+              value={foodUsual}
+              onChange={(event) => setFoodUsual(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1.5">
             <Label htmlFor="food-unit">単位</Label>
             <Select id="food-unit" value={foodUnit} onChange={(event) => setFoodUnit(event.target.value)}>
               {FOOD_UNITS.map((unit) => (
@@ -135,6 +151,7 @@ export function FoodsPanel({
                   <p className="truncate text-sm text-fg">{food.name}</p>
                   <p className="text-xs text-subtle">
                     {food.kind === "treat" ? "おやつ" : "ごはん"} · {food.kcal}kcal / {formatQuantity(food.amount, food.unit)}
+                    {food.usualQty ? ` · いつもの ${formatQuantity(food.usualQty, food.unit)}` : ""}
                   </p>
                 </div>
                 <Button

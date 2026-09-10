@@ -17,6 +17,7 @@ export type DogFood = {
   kcal: number;
   amount: number;
   unit: string;
+  usualQty: number;
 };
 
 export type CalorieLog = {

@@ -46,6 +46,7 @@ type FoodRow = {
   kcal: unknown;
   amount: unknown;
   unit: string;
+  usual_qty: unknown;
 };
 
 type LogRow = {
@@ -113,7 +114,7 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
 
   const [foods, logs, maps] = await Promise.all([
     sql<FoodRow>`
-      select id, name, kind, kcal, amount, unit
+      select id, name, kind, kcal, amount, unit, usual_qty
       from dog_foods
       where user_id = ${userId} and dog_id = ${dog.id}
       order by kind asc, id asc
@@ -144,6 +145,7 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       kcal: num(row.kcal),
       amount: num(row.amount),
       unit: row.unit,
+      usualQty: num(row.usual_qty) || num(row.amount),
     })),
     logs: logs.map((row) => ({
       id: row.id,
@@ -181,6 +183,7 @@ const addFoodInput = z.object({
   kind: z.enum(["food", "treat"]),
   kcal: z.number().positive("カロリーを入力してください").max(10000),
   amount: z.number().positive("分量を入力してください").max(10000),
+  usualQty: z.number().positive("いつもの量を入力してください").max(10000),
   unit: z.enum(["g", "個", "杯", "袋", "本"]),
 });
 
@@ -269,7 +272,7 @@ export const addDogFood = createServerFn({ method: "POST" })
     const sql = await getSql();
     const dog = await ensureDog(context.userId);
     await sql`
-      insert into dog_foods (user_id, dog_id, name, kind, kcal, amount, unit)
+      insert into dog_foods (user_id, dog_id, name, kind, kcal, amount, usual_qty, unit)
       values (
         ${context.userId},
         ${dog.id},
@@ -277,6 +280,7 @@ export const addDogFood = createServerFn({ method: "POST" })
         ${data.kind},
         ${data.kcal},
         ${data.amount},
+        ${data.usualQty},
         ${data.unit}
       )
     `;

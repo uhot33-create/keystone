@@ -320,6 +320,45 @@ export function TodayPanel({
         )}
       </form>
 
+      {state.foods.length > 0 ? (
+        <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
+          <p className="font-display text-lg font-semibold text-fg">定番</p>
+          <p className="mt-1 text-sm text-muted">いつもの量をワンタップで足します。</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {state.foods.map((food) => {
+              const qty = food.usualQty > 0 ? food.usualQty : food.amount;
+              return (
+                <button
+                  key={food.id}
+                  type="button"
+                  disabled={pending || locked}
+                  className="rounded-full border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg disabled:opacity-50"
+                  onClick={() => {
+                    const kcal = kcalForQuantity(food.kcal, food.amount, qty);
+                    if (!(kcal > 0)) return;
+                    void run(() =>
+                      addCalorieLog({
+                        data: {
+                          date: state.date,
+                          label: food.name,
+                          kcal: Math.round(kcal),
+                          kind: food.kind,
+                          foodId: food.id,
+                          amount: qty,
+                          unit: food.unit,
+                        },
+                      }),
+                    );
+                  }}
+                >
+                  + {food.name} {formatQuantity(qty, food.unit)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+
       <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-lg font-semibold text-fg">カロリーを足す</p>
