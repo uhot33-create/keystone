@@ -1,25 +1,54 @@
 import { dayNum } from "@/lib/calorie/formula";
 import type { DayTrend } from "@/lib/calorie/types";
+import { Button } from "@/components/ui/button";
 
 function niceMax(value: number, step: number): number {
   if (!(value > 0)) return step;
   return Math.ceil(value / step) * step;
 }
 
+function yearMonth(iso: string): string {
+  const [year, month] = iso.split("-").map(Number);
+  return `${year}年${month}月`;
+}
+
+function axisLabel(iso: string, prev: string | null): string {
+  const day = dayNum(iso);
+  if (!prev || prev.slice(0, 7) !== iso.slice(0, 7)) {
+    return `${Number(iso.slice(5, 7))}/${day}`;
+  }
+  return day;
+}
+
+function rangeLabel(days: DayTrend[]): string {
+  const first = days[0]?.date;
+  const last = days[days.length - 1]?.date;
+  if (!first || !last) return "";
+  if (first.slice(0, 7) === last.slice(0, 7)) return yearMonth(first);
+  if (first.slice(0, 4) === last.slice(0, 4)) {
+    return `${yearMonth(first)}–${Number(last.slice(5, 7))}月`;
+  }
+  return `${yearMonth(first)}–${yearMonth(last)}`;
+}
+
 export function TrendChart({
   days,
   activeDate,
+  todayDate,
   targetKcal,
   onSelect,
+  onToday,
 }: {
   days: DayTrend[];
   activeDate: string;
+  todayDate: string;
   targetKcal: number;
   onSelect: (date: string) => void;
+  onToday: () => void;
 }) {
   const width = 320;
-  const height = 176;
-  const pad = { top: 16, right: 36, bottom: 28, left: 36 };
+  const height = 184;
+  const pad = { top: 16, right: 36, bottom: 36, left: 36 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -30,6 +59,7 @@ export function TrendChart({
   const span = Math.max(0.4, maxW - minW);
   const weightMin = Math.max(0, minW - span * 0.2);
   const weightMax = maxW + span * 0.2;
+  const isToday = activeDate === todayDate;
 
   function x(index: number) {
     if (days.length <= 1) return pad.left + innerW / 2;
@@ -53,11 +83,19 @@ export function TrendChart({
   return (
     <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
       <div className="flex items-end justify-between gap-2">
-        <p className="font-display text-lg font-semibold text-fg">推移（14日）</p>
-        <p className="text-xs text-muted">
-          {latest ? `${Math.round(latest.kcal)} kcal` : "—"}
-          {latestWeight != null ? ` / ${latestWeight.toFixed(1)} kg` : ""}
-        </p>
+        <div>
+          <p className="font-display text-lg font-semibold text-fg">推移（14日）</p>
+          <p className="mt-0.5 text-xs text-muted">{rangeLabel(days)}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted">
+            {latest ? `${Math.round(latest.kcal)} kcal` : "—"}
+            {latestWeight != null ? ` / ${latestWeight.toFixed(1)} kg` : ""}
+          </p>
+          <Button type="button" variant="ghost" size="sm" onClick={onToday} disabled={isToday}>
+            今日
+          </Button>
+        </div>
       </div>
       <div className="mt-2 flex items-center gap-4 text-[11px] text-muted">
         <span className="inline-flex items-center gap-1.5">
@@ -103,13 +141,12 @@ export function TrendChart({
             />
             <text
               x={x(index)}
-              y={height - 8}
+              y={height - 10}
               textAnchor="middle"
-              className="fill-current"
               fill={day.date === activeDate ? "var(--color-fg)" : "var(--color-subtle)"}
-              fontSize="9"
+              fontSize="8"
             >
-              {dayNum(day.date)}
+              {axisLabel(day.date, days[index - 1]?.date ?? null)}
             </text>
             <rect
               x={x(index) - innerW / days.length / 2}
@@ -120,7 +157,7 @@ export function TrendChart({
               className="cursor-pointer"
               onClick={() => onSelect(day.date)}
             >
-              <title>{`${day.date} ${Math.round(day.kcal)}kcal${day.weightKg != null ? ` ${day.weightKg}kg` : ""}`}</title>
+              <title>{`${yearMonth(day.date)}${dayNum(day.date)}日 ${Math.round(day.kcal)}kcal${day.weightKg != null ? ` ${day.weightKg}kg` : ""}`}</title>
             </rect>
           </g>
         ))}
@@ -137,7 +174,7 @@ export function TrendChart({
           kg
         </text>
       </svg>
-      <p className="mt-1 text-center text-xs text-subtle">点をタップするとその日の記録を開けます。破線は目標カロリーです。</p>
+      <p className="mt-1 text-center text-xs text-subtle">点をタップするとその日へ。「今日」で本日に戻ります。破線は目標カロリーです。</p>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import {
   shiftIsoDate,
   splitMealsAndTreats,
   dailyEnergy,
+  todayJst,
   trimNum,
 } from "@/lib/calorie/formula";
 import type { CalorieState, DogFood, FoodKind } from "@/lib/calorie/types";
@@ -173,7 +174,14 @@ export function TodayPanel({
         >
           <ChevronLeft />
         </Button>
-        <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
+        <button
+          type="button"
+          className="font-display text-lg font-semibold text-fg underline-offset-4 hover:underline"
+          onClick={() => void run(() => getCalorieState({ data: { date: todayJst() } }))}
+          aria-label="今日の記録へ"
+        >
+          {formatJaDayWeek(state.date)}
+        </button>
         <Button
           type="button"
           variant="ghost"
@@ -391,8 +399,10 @@ export function TodayPanel({
       <TrendChart
         days={state.trend}
         activeDate={state.date}
+        todayDate={todayJst()}
         targetKcal={target}
         onSelect={(date) => void run(() => getCalorieState({ data: { date } }))}
+        onToday={() => void run(() => getCalorieState({ data: { date: todayJst() } }))}
       />
 
       <p className="text-center text-xs text-subtle">
