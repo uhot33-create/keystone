@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { saveDogProfile } from "@/lib/calorie/api";
 import type { CalorieState } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -61,6 +62,7 @@ export function ProfilePanel({
 
   return (
     <form className="flex flex-col gap-5" onSubmit={onSave}>
+      <BusyOverlay show={pending} label="保存中…" />
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
         <p className="font-display text-lg font-semibold text-fg">プロフィール</p>
         <p className="mt-1 text-sm text-muted">愛犬の名前と体重を残します。</p>

@@ -4,6 +4,7 @@ import { CountPanel } from "@/components/smoking/count-panel";
 import { MasterPanel } from "@/components/smoking/master-panel";
 import { BadgePanel } from "@/components/smoking/badge-panel";
 import { Protected } from "@/components/protected";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSmokingState } from "@/lib/smoking/api";
 import type { SmokingState } from "@/lib/smoking/types";
@@ -69,6 +70,7 @@ function SmokingApp() {
 
       {!state ? (
         <div className="space-y-3">
+          <BusyOverlay show label="読み込み中…" />
           <Skeleton className="h-40 w-full rounded-xl" />
           <Skeleton className="h-32 w-full rounded-xl" />
         </div>

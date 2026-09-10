@@ -4,6 +4,7 @@ import { MemoCard } from "@/components/walk/memo-card";
 import { MemoToolbar } from "@/components/walk/memo-toolbar";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState } from "@/lib/walk/api";
 import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
@@ -47,6 +48,7 @@ function WalkIndex() {
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
+      <BusyOverlay show={memos === null} label="読み込み中…" />
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>

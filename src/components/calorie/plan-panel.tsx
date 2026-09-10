@@ -13,6 +13,7 @@ import {
 } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
@@ -71,6 +72,7 @@ export function PlanPanel({
 
   return (
     <div className="flex flex-col gap-6">
+      <BusyOverlay show={pending} label="保存中…" />
       <form className="rounded-xl border border-border bg-surface p-5 shadow-card" onSubmit={onSave}>
         <p className="font-display text-lg font-semibold text-fg">必要カロリー</p>
         <p className="mt-1 text-sm text-muted">理想体重から1日の目安を計算します。体重はプロフィールで変更できます。</p>

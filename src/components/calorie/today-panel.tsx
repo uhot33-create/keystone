@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { addCalorieLog, deleteCalorieLog, getCalorieState, saveWeightLog } from "@/lib/calorie/api";
+import { addCalorieLog, deleteCalorieLog, getCalorieDay, saveWeightLog } from "@/lib/calorie/api";
 import {
   formatJaDayWeek,
   formatQuantity,
@@ -11,12 +11,32 @@ import {
   todayJst,
   trimNum,
 } from "@/lib/calorie/formula";
-import type { CalorieState, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
+import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 const QTY_STEPS = [10, 25, 50, 100] as const;
+const CHART_WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
+
+function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
+  return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
+}
+
+function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, today: string): string {
+  let next = viewEnd;
+  if (grain === "day") next = shiftIsoDate(viewEnd, direction * 14);
+  else if (grain === "week") next = shiftIsoDate(viewEnd, direction * 84);
+  else if (grain === "month") {
+    const [year, month] = viewEnd.split("-").map(Number);
+    next = new Date(Date.UTC(year, month - 1 + direction * 12, 1)).toISOString().slice(0, 10);
+  } else {
+    next = `${Number(viewEnd.slice(0, 4)) + direction * 5}-12-31`;
+  }
+  if (next > today) return today;
+  return next;
+}
 
 function chipText(food: DogFood): string {
   if (food.unit === "g") return `${food.name} ${trimNum(food.kcal)}/${trimNum(food.amount)}g`;
@@ -48,8 +68,10 @@ export function TodayPanel({
     state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "",
   );
   const [pending, setPending] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [grain, setGrain] = useState<TrendGrain>("day");
+  const [chartEnd, setChartEnd] = useState(todayJst);
 
   useEffect(() => {
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
@@ -111,8 +133,9 @@ export function TodayPanel({
     setKcalTouched(false);
   }
 
-  async function run(action: () => Promise<CalorieState>) {
+  async function run(action: () => Promise<CalorieState>, label = "保存中…") {
     setPending(true);
+    setBusy(label);
     setError(null);
     try {
       onChange(await action());
@@ -120,6 +143,28 @@ export function TodayPanel({
       setError(err instanceof Error ? err.message : "保存できませんでした");
     } finally {
       setPending(false);
+      setBusy(null);
+    }
+  }
+
+  async function selectDate(date: string) {
+    if (date === state.date) return;
+    setPending(true);
+    setBusy("読み込み中…");
+    setError(null);
+    try {
+      const next = await getCalorieDay({ data: { date } });
+      onChange({
+        ...state,
+        date: next.date,
+        logs: next.logs,
+        todayWeightKg: next.todayWeightKg,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "読み込みに失敗しました");
+    } finally {
+      setPending(false);
+      setBusy(null);
     }
   }
 
@@ -165,20 +210,24 @@ export function TodayPanel({
 
   return (
     <div className="flex flex-col gap-5">
+      <BusyOverlay show={Boolean(busy)} label={busy ?? "処理中…"} />
       <div className="flex items-center justify-between gap-2">
         <Button
           type="button"
           variant="ghost"
           size="icon"
           aria-label="前日"
-          onClick={() => void run(() => getCalorieState({ data: { date: shiftIsoDate(state.date, -1) } }))}
+          onClick={() => void selectDate(shiftIsoDate(state.date, -1))}
         >
           <ChevronLeft />
         </Button>
         <button
           type="button"
           className="font-display text-lg font-semibold text-fg underline-offset-4 hover:underline"
-          onClick={() => void run(() => getCalorieState({ data: { date: todayJst() } }))}
+          onClick={() => {
+            setChartEnd(todayJst());
+            void selectDate(todayJst());
+          }}
           aria-label="今日の記録へ"
         >
           {formatJaDayWeek(state.date)}
@@ -188,7 +237,7 @@ export function TodayPanel({
           variant="ghost"
           size="icon"
           aria-label="翌日"
-          onClick={() => void run(() => getCalorieState({ data: { date: shiftIsoDate(state.date, 1) } }))}
+          onClick={() => void selectDate(shiftIsoDate(state.date, 1))}
         >
           <ChevronRight />
         </Button>
@@ -399,13 +448,19 @@ export function TodayPanel({
 
       <TrendChart
         grain={grain}
-        days={state.trends?.[grain] ?? state.trend}
+        days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}
         activeDate={state.date}
         todayDate={todayJst()}
         targetKcal={target}
+        canOlder={windowedTrend(state.trends?.[grain] ?? [], grain, chartEnd)[0] !== (state.trends?.[grain] ?? [])[0]}
+        canNewer={chartEnd < todayJst()}
         onGrain={setGrain}
-        onSelect={(date) => void run(() => getCalorieState({ data: { date } }))}
-        onToday={() => void run(() => getCalorieState({ data: { date: todayJst() } }))}
+        onSelect={(date) => void selectDate(date)}
+        onToday={() => {
+          setChartEnd(todayJst());
+          void selectDate(todayJst());
+        }}
+        onShift={(direction) => setChartEnd((prev) => shiftChartEnd(grain, prev, direction, todayJst()))}
       />
 
       <p className="text-center text-xs text-subtle">

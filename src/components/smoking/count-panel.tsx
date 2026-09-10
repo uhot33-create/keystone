@@ -3,6 +3,7 @@ import { getSmokingState, setRemaining, smokeOne } from "@/lib/smoking/api";
 import { formatCountdown, formatJaDateTime } from "@/lib/smoking/period";
 import type { SmokingState } from "@/lib/smoking/types";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -66,6 +67,7 @@ export function CountPanel({
 
   return (
     <div className="flex flex-col gap-6">
+      <BusyOverlay show={pending} label="処理中…" />
       <div className="rounded-xl border border-border bg-surface px-5 py-6 shadow-card">
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteWalkLog, getWalkLog, type WalkLogDetail } from "@/lib/walk-log/api";
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
@@ -49,6 +50,7 @@ function WalkLogDetail() {
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
+      <BusyOverlay show={pending || !log} label={pending ? "処理中…" : "読み込み中…"} />
       <div>
         <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
         <h1 className="mt-2 font-display text-3xl font-semibold text-fg">{log?.name ?? "散歩ログ"}</h1>

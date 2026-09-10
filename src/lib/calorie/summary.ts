@@ -83,7 +83,9 @@ export function describePeriod(grain: TrendGrain, asOf: string): {
   return { key: asOf, start: asOf, end: asOf, label: `${Number(asOf.slice(5, 7))}/${Number(asOf.slice(8, 10))}` };
 }
 
-function shiftPeriod(grain: TrendGrain, asOf: string, steps: number): string {
+export const WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
+
+export function shiftPeriod(grain: TrendGrain, asOf: string, steps: number): string {
   if (grain === "week") return shiftIsoDate(mondayOf(asOf), steps * 7);
   if (grain === "month") {
     const [year, month] = asOf.split("-").map(Number);
@@ -97,15 +99,19 @@ function shiftPeriod(grain: TrendGrain, asOf: string, steps: number): string {
   return shiftIsoDate(asOf, steps);
 }
 
-const COUNTS: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
-
-export function periodList(grain: TrendGrain, asOf: string) {
-  const count = COUNTS[grain];
+export function periodList(grain: TrendGrain, asOf: string, from?: string) {
+  const bound = from ?? shiftPeriod(grain, asOf, -(WINDOW[grain] - 1));
   const items = [];
-  for (let i = count - 1; i >= 0; i -= 1) {
-    items.push(describePeriod(grain, shiftPeriod(grain, asOf, -i)));
+  let cursor = asOf;
+  for (let i = 0; i < 4000; i += 1) {
+    const period = describePeriod(grain, cursor);
+    if (period.end < bound && period.start < bound) break;
+    items.push(period);
+    const prev = shiftPeriod(grain, period.start, -1);
+    if (prev >= period.start) break;
+    cursor = prev;
   }
-  return items;
+  return items.reverse();
 }
 
 export function weightOnEnd(
@@ -135,18 +141,23 @@ export function buildTrends(
   kcal: Map<string, number>,
   weights: Map<string, number>,
   asOf: string,
+  from?: string,
 ): Record<TrendGrain, DayTrend[]> {
   const grains: TrendGrain[] = ["day", "week", "month", "year"];
   const out = {} as Record<TrendGrain, DayTrend[]>;
   for (const grain of grains) {
-    out[grain] = periodList(grain, asOf).map((period) => ({
-      date: period.end > asOf ? asOf : period.end,
-      label: period.label,
-      start: period.start,
-      end: period.end,
-      kcal: kcalInRange(kcal, period.start, period.end > asOf ? asOf : period.end),
-      weightKg: weightOnEnd(weights, period.start, period.end > asOf ? asOf : period.end),
-    }));
+    out[grain] = periodList(grain, asOf, from).map((period) => {
+      const end = period.end > asOf ? asOf : period.end;
+      return {
+        date: end,
+        label: period.label,
+        start: period.start,
+        end: period.end,
+        kcal: grain === "day" ? (kcal.get(period.start) ?? 0) : kcalInRange(kcal, period.start, end),
+        weightKg:
+          grain === "day" ? (weights.get(period.start) ?? null) : weightOnEnd(weights, period.start, end),
+      };
+    });
   }
   return out;
 }
@@ -181,6 +192,17 @@ export async function loadDayMaps(sql: Sql, userId: string, dogId: number, from:
     if (key) kg.set(key, num(row.weight_kg, 2));
   }
   return { kcal, kg };
+}
+
+export function windowTrends(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
+  const visible = points.filter((point) => point.start <= viewEnd);
+  return visible.slice(-WINDOW[grain]);
+}
+
+export function shiftViewEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, today: string): string {
+  const next = shiftPeriod(grain, viewEnd, direction * WINDOW[grain]);
+  if (next > today) return today;
+  return next;
 }
 
 export async function persistTrends(
@@ -219,11 +241,27 @@ export async function persistTrends(
   }
 }
 
-export async function refreshDogStats(sql: Sql, userId: string, dogId: number, asOf = todayJst()) {
-  const from = shiftIsoDate(asOf, -5 * 366);
+export async function refreshDogStats(
+  sql: Sql,
+  userId: string,
+  dogId: number,
+  asOf = todayJst(),
+  full = false,
+) {
+  const from = full ? shiftIsoDate(asOf, -5 * 366) : yearStart(asOf);
   const { kcal, kg } = await loadDayMaps(sql, userId, dogId, from, asOf);
-  const trends = buildTrends(kcal, kg, asOf);
-  await persistTrends(sql, userId, dogId, trends);
+  const trends = buildTrends(kcal, kg, asOf, from);
+  if (full) {
+    await persistTrends(sql, userId, dogId, trends);
+    return trends;
+  }
+  const current = {
+    day: [] as DayTrend[],
+    week: trends.week.slice(-1),
+    month: trends.month.slice(-1),
+    year: trends.year.slice(-1),
+  } satisfies Record<TrendGrain, DayTrend[]>;
+  await persistTrends(sql, userId, dogId, current);
   return trends;
 }
 
@@ -231,7 +269,7 @@ export async function rebuildAllCalorieStats(sql: Sql) {
   const dogs = await sql<{ id: number; user_id: string }>`select id, user_id from dogs`;
   let count = 0;
   for (const dog of dogs) {
-    await refreshDogStats(sql, dog.user_id, dog.id);
+    await refreshDogStats(sql, dog.user_id, dog.id, todayJst(), true);
     count += 1;
   }
   return { dogs: count, asOf: todayJst() };

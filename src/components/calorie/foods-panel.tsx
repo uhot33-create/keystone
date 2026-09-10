@@ -4,6 +4,7 @@ import { addDogFood, deleteDogFood } from "@/lib/calorie/api";
 import { FOOD_UNITS, formatQuantity } from "@/lib/calorie/formula";
 import type { CalorieState, FoodKind } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -57,6 +58,7 @@ export function FoodsPanel({
 
   return (
     <div className="flex flex-col gap-5">
+      <BusyOverlay show={pending} label="処理中…" />
       <form className="rounded-xl border border-border bg-surface p-5 shadow-card" onSubmit={onAdd}>
         <p className="font-display text-lg font-semibold text-fg">フードを登録</p>
         <p className="mt-1 text-sm text-muted">カロリーと単位を登録すると、今日の記録で数量から換算できます。</p>

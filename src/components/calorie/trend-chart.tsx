@@ -1,3 +1,4 @@
+import { useRef, type PointerEvent } from "react";
 import { TREND_GRAINS, type DayTrend, type TrendGrain } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,16 @@ function grainTitle(grain: TrendGrain): string {
   if (grain === "month") return "推移（月）";
   if (grain === "year") return "推移（年）";
   return "推移（14日）";
+}
+
+function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined): string {
+  if (grain === "month") {
+    const month = String(Number(day.start.slice(5, 7)));
+    const year = day.start.slice(0, 4);
+    if (!prev || prev.start.slice(0, 4) !== year) return `${year.slice(2)}/${month}`;
+    return month;
+  }
+  return day.label;
 }
 
 function rangeLabel(grain: TrendGrain, days: DayTrend[]): string {
@@ -30,18 +41,24 @@ export function TrendChart({
   activeDate,
   todayDate,
   targetKcal,
+  canOlder = true,
+  canNewer = true,
   onGrain,
   onSelect,
   onToday,
+  onShift,
 }: {
   grain: TrendGrain;
   days: DayTrend[];
   activeDate: string;
   todayDate: string;
   targetKcal: number;
+  canOlder?: boolean;
+  canNewer?: boolean;
   onGrain: (grain: TrendGrain) => void;
   onSelect: (date: string) => void;
   onToday: () => void;
+  onShift: (direction: -1 | 1) => void;
 }) {
   const width = 320;
   const height = 184;
@@ -76,6 +93,22 @@ export function TrendChart({
     .filter((item): item is { index: number; kg: number } => item != null);
   const weightLine = weightPts.map((item) => `${x(item.index).toFixed(1)},${yWeight(item.kg).toFixed(1)}`).join(" ");
   const latest = days[days.length - 1];
+  const startX = useRef<number | null>(null);
+  const swiped = useRef(false);
+
+  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+    startX.current = event.clientX;
+    swiped.current = false;
+  }
+  function onPointerUp(event: PointerEvent<HTMLDivElement>) {
+    if (startX.current == null) return;
+    const dx = event.clientX - startX.current;
+    startX.current = null;
+    if (Math.abs(dx) < 48) return;
+    swiped.current = true;
+    if (dx > 0 && canOlder) onShift(-1);
+    else if (dx < 0 && canNewer) onShift(1);
+  }
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
@@ -116,6 +149,14 @@ export function TrendChart({
           期末の体重
         </span>
       </div>
+      <div
+        className="touch-pan-y"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => {
+          startX.current = null;
+        }}
+      >
       <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重の推移">
         {grain === "day" && targetKcal > 0 ? (
           <line
@@ -156,7 +197,7 @@ export function TrendChart({
                 fill={day.date === activeDate ? "var(--color-fg)" : "var(--color-subtle)"}
                 fontSize="8"
               >
-                {day.label}
+                {axisTick(grain, day, days[index - 1])}
               </text>
             ) : null}
             <rect
@@ -166,7 +207,10 @@ export function TrendChart({
               height={innerH}
               fill="transparent"
               className="cursor-pointer"
-              onClick={() => onSelect(day.date)}
+              onClick={() => {
+                if (swiped.current) return;
+                onSelect(day.date);
+              }}
             >
               <title>{`${day.label} ${Math.round(day.kcal)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}`}</title>
             </rect>
@@ -185,8 +229,9 @@ export function TrendChart({
           kg
         </text>
       </svg>
+      </div>
       <p className="mt-1 text-center text-xs text-subtle">
-        点をタップするとその期間の最終日へ。「今日」で本日に戻ります。
+        左右にスライドで期間を移動。点をタップするとその期間の最終日へ。
       </p>
     </div>
   );

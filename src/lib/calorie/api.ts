@@ -4,7 +4,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { isLifeStageId, shiftIsoDate, todayJst } from "./formula";
 import { buildTrends, loadDayMaps, refreshDogStats } from "./summary";
-import type { CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
+import type { CalorieLog, CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -108,7 +108,8 @@ function measuredAt20(date: string): string {
 async function loadState(userId: string, date: string): Promise<CalorieState> {
   const sql = await getSql();
   const dog = await ensureDog(userId);
-  const from = shiftIsoDate(date, -5 * 366);
+  const seriesEnd = todayJst();
+  const from = shiftIsoDate(seriesEnd, -5 * 366);
 
   const [foods, logs, maps] = await Promise.all([
     sql<FoodRow>`
@@ -123,10 +124,10 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${date}
       order by id asc
     `,
-    loadDayMaps(sql, userId, dog.id, from, date),
+    loadDayMaps(sql, userId, dog.id, from, seriesEnd),
   ]);
 
-  const trends = buildTrends(maps.kcal, maps.kg, date);
+  const trends = buildTrends(maps.kcal, maps.kg, seriesEnd, from);
   const week: DayTotal[] = [];
   for (let offset = -6; offset <= 0; offset += 1) {
     const day = shiftIsoDate(date, offset);
@@ -202,6 +203,44 @@ export const getCalorieState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(dateInput, input))
   .handler(async ({ context, data }) => loadState(context.userId, isoDate(data.date)));
+
+export const getCalorieDay = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(dateInput, input))
+  .handler(async ({ context, data }) => {
+    const date = isoDate(data.date);
+    const sql = await getSql();
+    const dog = await ensureDog(context.userId);
+    const [logs, weights] = await Promise.all([
+      sql<LogRow>`
+        select id, log_date, label, kcal, kind, food_id, amount, unit
+        from calorie_logs
+        where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
+        order by id asc
+      `,
+      sql<{ weight_kg: unknown }>`
+        select weight_kg
+        from dog_weight_logs
+        where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
+        limit 1
+      `,
+    ]);
+    const mapped: CalorieLog[] = logs.map((row) => ({
+      id: row.id,
+      date: asDateKey(row.log_date) || row.log_date,
+      label: row.label,
+      kcal: num(row.kcal),
+      kind: asLogKind(row.kind),
+      foodId: row.food_id,
+      amount: row.amount == null ? null : num(row.amount),
+      unit: row.unit,
+    }));
+    return {
+      date,
+      logs: mapped,
+      todayWeightKg: weights[0] ? num(weights[0].weight_kg, 2) : null,
+    };
+  });
 
 export const saveDogProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

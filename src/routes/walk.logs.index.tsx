@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteWalkLog, getWalkLogs, saveWalkLog, type WalkLog } from "@/lib/walk-log/api";
@@ -60,6 +61,7 @@ function WalkLogsPage() {
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
+      <BusyOverlay show={pending || logs === null} label={pending ? "処理中…" : "読み込み中…"} />
       <div>
         <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
         <h1 className="mt-2 font-display text-3xl font-semibold text-fg">散歩ログ</h1>

@@ -3,6 +3,7 @@ import { saveDailyLimit } from "@/lib/smoking/api";
 import { formatJaDateTime } from "@/lib/smoking/period";
 import type { SmokingState } from "@/lib/smoking/types";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -44,6 +45,7 @@ export function MasterPanel({
 
   return (
     <form className="rounded-xl border border-border bg-surface p-5 shadow-card" onSubmit={onSave}>
+      <BusyOverlay show={pending} label="保存中…" />
       <p className="font-display text-lg font-semibold text-fg">1日の上限</p>
       <p className="mt-1 text-sm text-muted">
         1日の上限本数です。毎日0時（日本時間）に、残りはここで決めた本数に戻ります。

@@ -7,6 +7,7 @@ import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFile
 import type { DogBreed, DogColor, SexValue, WalkMemo } from "@/lib/walk/types";
 import { DEFAULT_WALK_SEARCH, MAX_MEMO_IMAGES, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -289,6 +290,10 @@ export function MemoForm({
       onSubmit={onSubmit}
       onPaste={onPasteImage}
     >
+      <BusyOverlay
+        show={pending !== "idle"}
+        label={pending === "uploading" ? "送信中…" : pending === "saving" ? "保存中…" : "処理中…"}
+      />
       <div className="space-y-1.5">
         <Label htmlFor="memo-name">名前</Label>
         <Input

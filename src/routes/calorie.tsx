@@ -6,6 +6,7 @@ import { PlanPanel } from "@/components/calorie/plan-panel";
 import { ProfilePanel } from "@/components/calorie/profile-panel";
 import { TodayPanel } from "@/components/calorie/today-panel";
 import { Protected } from "@/components/protected";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCalorieState } from "@/lib/calorie/api";
 import { todayJst } from "@/lib/calorie/formula";
@@ -58,6 +59,7 @@ function CalorieApp() {
 
         {!state ? (
           <div className="space-y-3">
+            <BusyOverlay show label="読み込み中…" />
             <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-48 w-full rounded-xl" />
           </div>
