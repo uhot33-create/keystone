@@ -35,10 +35,18 @@ export type DayTotal = {
   total: number;
 };
 
+export type DayTrend = {
+  date: string;
+  kcal: number;
+  weightKg: number | null;
+};
+
 export type CalorieState = {
   date: string;
   dog: DogProfile;
   foods: DogFood[];
   logs: CalorieLog[];
   week: DayTotal[];
+  trend: DayTrend[];
+  todayWeightKg: number | null;
 };

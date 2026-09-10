@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { isLifeStageId, shiftIsoDate, todayJst } from "./formula";
-import type { CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
+import type { CalorieState, DogProfile, DayTotal, DayTrend, FoodKind, LogKind } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -63,6 +63,11 @@ type SumRow = {
   total: unknown;
 };
 
+type WeightRow = {
+  log_date: string;
+  weight_kg: unknown;
+};
+
 function mapDog(row: DogRow): DogProfile {
   return {
     id: row.id,
@@ -99,12 +104,22 @@ function isoDate(value: string): string {
   return value;
 }
 
+function asDateKey(value: unknown): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const text = String(value ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
+}
+
+function measuredAt20(date: string): string {
+  return `${date}T20:00:00+09:00`;
+}
+
 async function loadState(userId: string, date: string): Promise<CalorieState> {
   const sql = await getSql();
   const dog = await ensureDog(userId);
-  const start = shiftIsoDate(date, -6);
+  const trendStart = shiftIsoDate(date, -13);
 
-  const [foods, logs, sums] = await Promise.all([
+  const [foods, logs, sums, weights] = await Promise.all([
     sql<FoodRow>`
       select id, name, kind, kcal, amount, unit
       from dog_foods
@@ -121,16 +136,36 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       select log_date, coalesce(sum(kcal), 0) as total
       from calorie_logs
       where user_id = ${userId} and dog_id = ${dog.id}
-        and log_date >= ${start} and log_date <= ${date}
+        and log_date >= ${trendStart} and log_date <= ${date}
       group by log_date
+    `,
+    sql<WeightRow>`
+      select log_date, weight_kg
+      from dog_weight_logs
+      where user_id = ${userId} and dog_id = ${dog.id}
+        and log_date >= ${trendStart} and log_date <= ${date}
     `,
   ]);
 
-  const sumByDate = new Map(sums.map((row) => [row.log_date, num(row.total)]));
+  const sumByDate = new Map(sums.map((row) => [asDateKey(row.log_date) || String(row.log_date).slice(0, 10), num(row.total)]));
+  const weightByDate = new Map(
+    weights.map((row) => [asDateKey(row.log_date) || String(row.log_date).slice(0, 10), num(row.weight_kg, 2)]),
+  );
+
   const week: DayTotal[] = [];
   for (let offset = -6; offset <= 0; offset += 1) {
     const day = shiftIsoDate(date, offset);
     week.push({ date: day, total: sumByDate.get(day) ?? 0 });
+  }
+
+  const trend: DayTrend[] = [];
+  for (let offset = -13; offset <= 0; offset += 1) {
+    const day = shiftIsoDate(date, offset);
+    trend.push({
+      date: day,
+      kcal: sumByDate.get(day) ?? 0,
+      weightKg: weightByDate.get(day) ?? null,
+    });
   }
 
   return {
@@ -146,7 +181,7 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
     })),
     logs: logs.map((row) => ({
       id: row.id,
-      date: row.log_date,
+      date: asDateKey(row.log_date) || row.log_date,
       label: row.label,
       kcal: num(row.kcal),
       kind: asLogKind(row.kind),
@@ -155,6 +190,8 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       unit: row.unit,
     })),
     week,
+    trend,
+    todayWeightKg: weightByDate.get(date) ?? null,
   };
 }
 
@@ -284,6 +321,45 @@ export const deleteCalorieLog = createServerFn({ method: "POST" })
     await sql`
       delete from calorie_logs
       where id = ${data.id} and user_id = ${context.userId}
+    `;
+    return loadState(context.userId, data.date);
+  });
+
+const saveWeightInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  weightKg: z.number().positive("体重を入力してください").max(120),
+});
+
+export const saveWeightLog = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(saveWeightInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await ensureDog(context.userId);
+    const measuredAt = measuredAt20(data.date);
+    await sql`
+      insert into dog_weight_logs (user_id, dog_id, log_date, weight_kg, measured_at, updated_at)
+      values (
+        ${context.userId},
+        ${dog.id},
+        ${data.date},
+        ${data.weightKg},
+        ${measuredAt}::timestamptz,
+        now()
+      )
+      on conflict (dog_id, log_date) do update set
+        weight_kg = excluded.weight_kg,
+        measured_at = excluded.measured_at,
+        updated_at = now()
+    `;
+    await sql`
+      update dogs
+      set current_weight_kg = ${data.weightKg}, updated_at = now()
+      where id = ${dog.id} and user_id = ${context.userId}
+        and not exists (
+          select 1 from dog_weight_logs
+          where dog_id = ${dog.id} and log_date > ${data.date}
+        )
     `;
     return loadState(context.userId, data.date);
   });

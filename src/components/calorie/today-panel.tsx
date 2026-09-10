@@ -1,8 +1,7 @@
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
-import { addCalorieLog, deleteCalorieLog, getCalorieState } from "@/lib/calorie/api";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { addCalorieLog, deleteCalorieLog, getCalorieState, saveWeightLog } from "@/lib/calorie/api";
 import {
-  dayNum,
   formatJaDayWeek,
   formatQuantity,
   kcalForQuantity,
@@ -12,6 +11,7 @@ import {
   trimNum,
 } from "@/lib/calorie/formula";
 import type { CalorieState, DogFood, FoodKind } from "@/lib/calorie/types";
+import { TrendChart } from "@/components/calorie/trend-chart";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -43,8 +43,15 @@ export function TodayPanel({
   const [qty, setQty] = useState("");
   const [kcalText, setKcalText] = useState("");
   const [kcalTouched, setKcalTouched] = useState(false);
+  const [weightText, setWeightText] = useState(
+    state.todayWeightKg != null ? String(state.todayWeightKg) : "",
+  );
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setWeightText(state.todayWeightKg != null ? String(state.todayWeightKg) : "");
+  }, [state.date, state.todayWeightKg]);
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
   const { mealKcal, treatKcal } = splitMealsAndTreats(target, state.dog.treatRatio);
@@ -144,7 +151,15 @@ export function TodayPanel({
     });
   }
 
-  const maxWeek = Math.max(target, ...state.week.map((day) => day.total), 1);
+  function onSaveWeight(event: FormEvent) {
+    event.preventDefault();
+    const weightKg = Number(weightText);
+    if (!(weightKg > 0)) {
+      setError("体重を入力してください");
+      return;
+    }
+    void run(() => saveWeightLog({ data: { date: state.date, weightKg } }));
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -200,6 +215,33 @@ export function TodayPanel({
           <p className="mt-1 text-xs text-subtle">上限 {treatPct}%</p>
         </div>
       </div>
+
+      <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onSaveWeight}>
+        <p className="font-display text-lg font-semibold text-fg">体重（20時計測）</p>
+        <p className="mt-1 text-sm text-muted">毎日20時に測り、1日1回記録します。同じ日は上書きされます。</p>
+        <div className="mt-3 flex items-center gap-2">
+          <Input
+            type="number"
+            inputMode="decimal"
+            min={0.1}
+            max={120}
+            step={0.1}
+            placeholder="kg"
+            value={weightText}
+            onChange={(event) => setWeightText(event.target.value)}
+            aria-label="体重キログラム"
+          />
+          <span className="w-8 shrink-0 text-sm text-muted">kg</span>
+          <Button type="submit" className="shrink-0" disabled={pending}>
+            {state.todayWeightKg != null ? "修正" : "記録"}
+          </Button>
+        </div>
+        {state.todayWeightKg != null ? (
+          <p className="mt-2 text-xs text-subtle">この日 {state.todayWeightKg.toFixed(1)} kg（20時計測）</p>
+        ) : (
+          <p className="mt-2 text-xs text-subtle">まだ記録がありません</p>
+        )}
+      </form>
 
       <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
         <div className="flex items-center justify-between gap-2">
@@ -346,35 +388,12 @@ export function TodayPanel({
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
-        <p className="font-display text-lg font-semibold text-fg">直近7日</p>
-        <div className="mt-4 flex h-36 items-end justify-between gap-1.5">
-          {state.week.map((day) => {
-            const height = Math.max(6, Math.round((day.total / maxWeek) * 112));
-            const active = day.date === state.date;
-            const dayOver = target > 0 && day.total > target;
-            return (
-              <button
-                key={day.date}
-                type="button"
-                className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2"
-                onClick={() => void run(() => getCalorieState({ data: { date: day.date } }))}
-              >
-                <span
-                  className={[
-                    "w-full max-w-8 rounded-md",
-                    dayOver ? "bg-danger/80" : "bg-primary",
-                    active ? "outline outline-2 outline-offset-2 outline-primary" : "",
-                  ].join(" ")}
-                  style={{ height }}
-                />
-                <span className={`text-xs ${active ? "font-medium text-fg" : "text-subtle"}`}>{dayNum(day.date)}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="mt-3 text-center text-xs text-subtle">棒をタップするとその日の記録を開けます</p>
-      </div>
+      <TrendChart
+        days={state.trend}
+        activeDate={state.date}
+        targetKcal={target}
+        onSelect={(date) => void run(() => getCalorieState({ data: { date } }))}
+      />
 
       <p className="text-center text-xs text-subtle">
         目標カロリーは
