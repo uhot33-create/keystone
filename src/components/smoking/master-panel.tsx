@@ -44,11 +44,11 @@ export function MasterPanel({
   }
 
   return (
-    <form className="rounded-xl border border-border bg-surface p-5 shadow-card" onSubmit={onSave}>
+    <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onSave}>
       <BusyOverlay show={pending} label="保存中…" />
-      <p className="font-display text-lg font-semibold text-fg">1日の上限</p>
-      <p className="mt-1 text-sm text-muted">
-        1日の上限本数です。毎日0時（日本時間）に、残りはここで決めた本数に戻ります。
+      <p className="font-display text-base font-semibold text-fg">1日の上限</p>
+      <p className="mt-1 text-xs text-muted">
+        毎日0時（日本時間）に、残りはこの本数に戻ります。
       </p>
 
       <div className="mt-4 space-y-1.5">

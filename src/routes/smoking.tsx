@@ -41,13 +41,10 @@ function SmokingApp() {
   }, []);
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
+    <div className="stagger-in flex flex-1 flex-col gap-3">
       <div>
-        <p className="font-sans text-xs font-medium tracking-widest text-subtle">02</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">喫煙管理</h1>
-        <p className="mt-3 max-w-prose text-sm text-muted">
-          1日の上限を決めて、吸った分だけ減らします。毎日0時（日本時間）に上限へ戻ります。
-        </p>
+        <h1 className="font-display text-2xl font-semibold text-fg">喫煙管理</h1>
+        <p className="mt-1 text-xs text-muted">毎日0時（日本時間）に上限へ戻ります。</p>
       </div>
 
       <div className="grid grid-cols-3 rounded-md bg-surface-2 p-1">
@@ -75,7 +72,7 @@ function SmokingApp() {
           <Skeleton className="h-32 w-full rounded-xl" />
         </div>
       ) : tab === "count" ? (
-        <CountPanel state={state} onChange={setState} onOpenMaster={() => setTab("master")} />
+        <CountPanel state={state} onChange={setState} />
       ) : tab === "master" ? (
         <MasterPanel state={state} onChange={setState} />
       ) : (

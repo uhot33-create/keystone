@@ -6,9 +6,9 @@ export function BadgePanel({ state }: { state: SmokingState }) {
   const b = state.badges;
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
-        <p className="font-display text-lg font-semibold text-fg">今日</p>
+    <div className="flex flex-col gap-3">
+      <div className="rounded-xl border border-border bg-surface p-3 shadow-card">
+        <p className="font-display text-base font-semibold text-fg">今日</p>
         <p className={`mt-2 font-display text-xl font-semibold ${state.exceeded ? "text-danger" : "text-fg"}`}>
           {state.exceeded ? "限度を超えました" : "限度内です"}
         </p>
@@ -19,9 +19,9 @@ export function BadgePanel({ state }: { state: SmokingState }) {
         </p>
       </div>
 
-      <section className="rounded-xl border border-border bg-surface p-5 shadow-card">
+      <section className="rounded-xl border border-border bg-surface p-3 shadow-card">
         <p className="text-xs font-medium tracking-widest text-subtle">貯める</p>
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <Seal
             title="とっても素敵"
             size="lg"
@@ -44,9 +44,9 @@ export function BadgePanel({ state }: { state: SmokingState }) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5 shadow-card">
+      <section className="rounded-xl border border-border bg-surface p-3 shadow-card">
         <p className="text-xs font-medium tracking-widest text-subtle">日数</p>
-        <div className="mt-4 grid grid-cols-4 gap-2">
+        <div className="mt-2 grid grid-cols-4 gap-2">
           <Seal title="スタート" earned={b.startEarned} hint="初めてのナイス" />
           <Seal title="一週間" earned={b.weekEarned} hint="7日連続" progress={Math.min(b.streak, 7)} total={7} />
           <Seal title="ひと月" earned={b.monthEarned} hint="30日連続" progress={Math.min(b.streak, 30)} total={30} />
@@ -54,18 +54,18 @@ export function BadgePanel({ state }: { state: SmokingState }) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5 shadow-card">
+      <section className="rounded-xl border border-border bg-surface p-3 shadow-card">
         <p className="text-xs font-medium tracking-widest text-subtle">本数</p>
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-3 gap-2">
           <Seal title="少なめ" earned={b.lightCount > 0} count={b.lightCount} hint="半分以下で終えた" />
           <Seal title="ゼロの日" earned={b.zeroCount > 0} count={b.zeroCount} hint="1本も吸わない" />
           <Seal title="静かな週" earned={b.quietWeekCount > 0} count={b.quietWeekCount} hint="ゼロが7日" progress={b.zeroStreak % 7} total={7} />
         </div>
       </section>
 
-      <section className="rounded-xl border border-border bg-surface p-5 shadow-card">
+      <section className="rounded-xl border border-border bg-surface p-3 shadow-card">
         <p className="text-xs font-medium tracking-widest text-subtle">特別</p>
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <Seal title="立て直し" earned={b.recoverCount > 0} count={b.recoverCount} hint="超えた翌日に限度内" />
           <Seal title="上限ダウン" earned={b.limitDownCount > 0} count={b.limitDownCount} hint="上限本数を下げた" />
         </div>
