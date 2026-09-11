@@ -1,5 +1,5 @@
 import type { Sql } from "@/lib/db";
-import { shiftIsoDate, todayJst } from "./formula";
+import { shiftIsoDate, todayJst, truncKcal } from "./formula";
 import type { DayTrend, TrendGrain } from "./types";
 function asDateKey(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
@@ -134,7 +134,7 @@ export function kcalInRange(kcal: Map<string, number>, start: string, end: strin
     total += kcal.get(cursor) ?? 0;
     if (cursor === end) break;
   }
-  return Math.round(total * 10) / 10;
+  return truncKcal(total);
 }
 
 export function buildTrends(
@@ -184,7 +184,7 @@ export async function loadDayMaps(sql: Sql, userId: string, dogId: number, from:
   const kcal = new Map<string, number>();
   for (const row of sums) {
     const key = asDateKey(row.log_date);
-    if (key) kcal.set(key, num(row.total));
+    if (key) kcal.set(key, truncKcal(num(row.total)));
   }
   const kg = new Map<string, number>();
   for (const row of weights) {

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, getCalorieDay, saveWeightLog } from "@/lib/calorie/api";
 import {
   formatJaDayWeek,
+  formatKcal,
   formatQuantity,
   kcalForQuantity,
   shiftIsoDate,
@@ -10,6 +11,7 @@ import {
   dailyEnergy,
   todayJst,
   trimNum,
+  truncKcal,
   isCalorieLocked,
 } from "@/lib/calorie/formula";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
@@ -85,10 +87,10 @@ export function TodayPanel({
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
   const { mealKcal, treatKcal } = splitMealsAndTreats(target, state.dog.treatRatio);
-  const mealEaten = Math.round(
+  const mealEaten = truncKcal(
     state.logs.filter((log) => log.kind !== "treat").reduce((sum, log) => sum + log.kcal, 0),
   );
-  const treatEaten = Math.round(
+  const treatEaten = truncKcal(
     state.logs.filter((log) => log.kind === "treat").reduce((sum, log) => sum + log.kcal, 0),
   );
   const total = mealEaten + treatEaten;
@@ -108,7 +110,7 @@ export function TodayPanel({
 
   const computed = selected && qtyNum > 0 ? kcalForQuantity(selected.kcal, selected.amount, qtyNum) : 0;
   const shownKcal = kcalTouched ? Number(kcalText) : computed;
-  const addKcal = Math.round((shownKcal > 0 ? shownKcal : 0) * 10) / 10;
+  const addKcal = truncKcal(shownKcal > 0 ? shownKcal : 0);
 
   function pickFood(food: DogFood) {
     setFoodId(food.id);
@@ -194,7 +196,7 @@ export function TodayPanel({
         data: {
           date: state.date,
           label,
-          kcal: Math.round(kcal),
+          kcal: truncKcal(kcal),
           kind,
           foodId: selected?.id ?? null,
           amount,
@@ -275,10 +277,14 @@ export function TodayPanel({
           aria-hidden="true"
         >
           <div className="grid size-[9.5rem] place-items-center rounded-full bg-bg text-center">
-            <p className="font-display text-5xl font-semibold tabular-nums leading-none text-fg">{total}</p>
+            <p className="font-display text-5xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
             <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
             <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
-              {target > 0 ? (over ? `${total - target} kcal オーバー` : `あと ${remaining} kcal`) : "目標未設定"}
+              {target > 0
+                ? over
+                  ? `${formatKcal(total - target)} kcal オーバー`
+                  : `あと ${formatKcal(remaining ?? 0)} kcal`
+                : "目標未設定"}
             </p>
           </div>
         </div>
@@ -287,12 +293,12 @@ export function TodayPanel({
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
           <p className="text-xs text-muted">ごはん</p>
-          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{mealEaten} kcal</p>
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(mealEaten)} kcal</p>
           <p className="mt-1 text-xs text-subtle">目標 {mealKcal || "—"}</p>
         </div>
         <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
           <p className="text-xs text-muted">おやつ</p>
-          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{treatEaten} kcal</p>
+          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(treatEaten)} kcal</p>
           <p className="mt-1 text-xs text-subtle">上限 {treatPct}%</p>
         </div>
       </div>
@@ -347,7 +353,7 @@ export function TodayPanel({
                         data: {
                           date: state.date,
                           label: food.name,
-                          kcal: Math.round(kcal),
+                          kcal: truncKcal(kcal),
                           kind: food.kind,
                           foodId: food.id,
                           amount: item.qty,
@@ -500,7 +506,7 @@ export function TodayPanel({
                     <p className="text-xs text-subtle">{formatQuantity(log.amount, log.unit)}</p>
                   ) : null}
                 </div>
-                <span className="tabular-nums text-sm text-fg">{Math.round(log.kcal)} kcal</span>
+                <span className="tabular-nums text-sm text-fg">{formatKcal(log.kcal)} kcal</span>
                 <Button
                   type="button"
                   variant="ghost"

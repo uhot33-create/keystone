@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { assertCalorieEditable, isLifeStageId, shiftIsoDate, todayJst } from "./formula";
+import { assertCalorieEditable, isLifeStageId, shiftIsoDate, todayJst, truncKcal } from "./formula";
 import { buildTrends, loadDayMaps, refreshDogStats } from "./summary";
 import type { CalorieLog, CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
 
@@ -151,7 +151,7 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
       id: row.id,
       date: asDateKey(row.log_date) || row.log_date,
       label: row.label,
-      kcal: num(row.kcal),
+      kcal: truncKcal(num(row.kcal)),
       kind: asLogKind(row.kind),
       foodId: row.food_id,
       amount: row.amount == null ? null : num(row.amount),
@@ -232,7 +232,7 @@ export const getCalorieDay = createServerFn({ method: "GET" })
       id: row.id,
       date: asDateKey(row.log_date) || row.log_date,
       label: row.label,
-      kcal: num(row.kcal),
+      kcal: truncKcal(num(row.kcal)),
       kind: asLogKind(row.kind),
       foodId: row.food_id,
       amount: row.amount == null ? null : num(row.amount),
@@ -306,6 +306,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
     assertCalorieEditable(data.date);
     const sql = await getSql();
     const dog = await ensureDog(context.userId);
+    const kcal = truncKcal(data.kcal);
     await sql`
       insert into calorie_logs (user_id, dog_id, log_date, label, kcal, kind, food_id, amount, unit)
       values (
@@ -313,7 +314,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
         ${dog.id},
         ${data.date},
         ${data.label},
-        ${data.kcal},
+        ${kcal},
         ${data.kind},
         ${data.foodId},
         ${data.amount},

@@ -49,7 +49,18 @@ export function splitMealsAndTreats(targetKcal: number, treatRatio: number) {
 
 export function kcalForQuantity(kcal: number, baseAmount: number, quantity: number): number {
   if (!(kcal > 0) || !(baseAmount > 0) || !(quantity > 0)) return 0;
-  return Math.round((kcal / baseAmount) * quantity * 10) / 10;
+  return truncKcal((kcal / baseAmount) * quantity);
+}
+
+/** 摂取カロリーは小数第1位まで。第2位以下は切り捨て。 */
+export function truncKcal(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return value < 0 ? -Math.trunc(-value * 10) / 10 : Math.trunc(value * 10) / 10;
+}
+
+export function formatKcal(value: number): string {
+  const n = truncKcal(value);
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
 export function quantityForBudget(kcalPerServing: number, servingAmount: number, budgetKcal: number): number {

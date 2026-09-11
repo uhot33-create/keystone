@@ -1,4 +1,5 @@
 import { useRef, type PointerEvent } from "react";
+import { formatKcal } from "@/lib/calorie/formula";
 import { TREND_GRAINS, type DayTrend, type TrendGrain } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 
@@ -119,7 +120,7 @@ export function TrendChart({
         </div>
         <div className="flex items-center gap-2">
           <p className="text-right text-xs text-muted">
-            {latest ? `${Math.round(latest.kcal)} kcal` : "—"}
+            {latest ? `${formatKcal(latest.kcal)} kcal` : "—"}
             {latest?.weightKg != null ? ` / ${latest.weightKg.toFixed(2)} kg` : ""}
           </p>
           <Button type="button" variant="ghost" size="sm" onClick={onToday} disabled={isToday}>
@@ -212,7 +213,7 @@ export function TrendChart({
                 onSelect(day.date);
               }}
             >
-              <title>{`${day.label} ${Math.round(day.kcal)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}`}</title>
+              <title>{`${day.label} ${formatKcal(day.kcal)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}`}</title>
             </rect>
           </g>
         ))}
