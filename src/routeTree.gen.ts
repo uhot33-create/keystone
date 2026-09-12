@@ -16,7 +16,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PasswordRouteImport } from './routes/password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SmokingRouteImport } from './routes/smoking'
+import { Route as VetRouteImport } from './routes/vet'
 import { Route as WalkRouteImport } from './routes/walk'
+import { Route as VetIndexRouteImport } from './routes/vet.index'
+import { Route as VetNewRouteImport } from './routes/vet.new'
 import { Route as WalkIndexRouteImport } from './routes/walk.index'
 import { Route as WalkLogsRouteImport } from './routes/walk.logs'
 import { Route as WalkNewRouteImport } from './routes/walk.new'
@@ -24,6 +27,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob/upload'
 import { Route as ApiCronCalorieSummaryRouteImport } from './routes/api/cron/calorie-summary'
 import { Route as ApiWalkImageRouteImport } from './routes/api/walk/image'
+import { Route as VetIdEditRouteImport } from './routes/vet.$id.edit'
 import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
 import { Route as WalkLogsIndexRouteImport } from './routes/walk.logs.index'
 import { Route as WalkLogsIdRouteImport } from './routes/walk.logs.$id'
@@ -63,10 +67,25 @@ const SmokingRoute = SmokingRouteImport.update({
   path: '/smoking',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VetRoute = VetRouteImport.update({
+  id: '/vet',
+  path: '/vet',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WalkRoute = WalkRouteImport.update({
   id: '/walk',
   path: '/walk',
   getParentRoute: () => rootRouteImport,
+} as any)
+const VetIndexRoute = VetIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => VetRoute,
+} as any)
+const VetNewRoute = VetNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => VetRoute,
 } as any)
 const WalkIndexRoute = WalkIndexRouteImport.update({
   id: '/',
@@ -103,6 +122,11 @@ const ApiWalkImageRoute = ApiWalkImageRouteImport.update({
   path: '/api/walk/image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VetIdEditRoute = VetIdEditRouteImport.update({
+  id: '/$id/edit',
+  path: '/$id/edit',
+  getParentRoute: () => VetRoute,
+} as any)
 const WalkIdEditRoute = WalkIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
@@ -127,14 +151,18 @@ export interface FileRoutesByFullPath {
   '/password': typeof PasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
+  '/vet': typeof VetRouteWithChildren
   '/walk': typeof WalkRouteWithChildren
+  '/vet/new': typeof VetNewRoute
   '/walk/logs': typeof WalkLogsRouteWithChildren
   '/walk/new': typeof WalkNewRoute
+  '/vet/': typeof VetIndexRoute
   '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/walk/image': typeof ApiWalkImageRoute
+  '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
   '/walk/logs/': typeof WalkLogsIndexRoute
@@ -147,12 +175,15 @@ export interface FileRoutesByTo {
   '/password': typeof PasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
+  '/vet/new': typeof VetNewRoute
   '/walk/new': typeof WalkNewRoute
+  '/vet': typeof VetIndexRoute
   '/walk': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/walk/image': typeof ApiWalkImageRoute
+  '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
   '/walk/logs': typeof WalkLogsIndexRoute
@@ -166,14 +197,18 @@ export interface FileRoutesById {
   '/password': typeof PasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
+  '/vet': typeof VetRouteWithChildren
   '/walk': typeof WalkRouteWithChildren
+  '/vet/new': typeof VetNewRoute
   '/walk/logs': typeof WalkLogsRouteWithChildren
   '/walk/new': typeof WalkNewRoute
+  '/vet/': typeof VetIndexRoute
   '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/walk/image': typeof ApiWalkImageRoute
+  '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
   '/walk/logs/': typeof WalkLogsIndexRoute
@@ -188,14 +223,18 @@ export interface FileRouteTypes {
     | '/password'
     | '/reset-password'
     | '/smoking'
+    | '/vet'
     | '/walk'
+    | '/vet/new'
     | '/walk/logs'
     | '/walk/new'
+    | '/vet/'
     | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
     | '/api/walk/image'
+    | '/vet/$id/edit'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
     | '/walk/logs/'
@@ -208,12 +247,15 @@ export interface FileRouteTypes {
     | '/password'
     | '/reset-password'
     | '/smoking'
+    | '/vet/new'
     | '/walk/new'
+    | '/vet'
     | '/walk'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
     | '/api/walk/image'
+    | '/vet/$id/edit'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
     | '/walk/logs'
@@ -226,14 +268,18 @@ export interface FileRouteTypes {
     | '/password'
     | '/reset-password'
     | '/smoking'
+    | '/vet'
     | '/walk'
+    | '/vet/new'
     | '/walk/logs'
     | '/walk/new'
+    | '/vet/'
     | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
     | '/api/walk/image'
+    | '/vet/$id/edit'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
     | '/walk/logs/'
@@ -247,6 +293,7 @@ export interface RootRouteChildren {
   PasswordRoute: typeof PasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SmokingRoute: typeof SmokingRoute
+  VetRoute: typeof VetRouteWithChildren
   WalkRoute: typeof WalkRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
@@ -305,12 +352,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SmokingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vet': {
+      id: '/vet'
+      path: '/vet'
+      fullPath: '/vet'
+      preLoaderRoute: typeof VetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/walk': {
       id: '/walk'
       path: '/walk'
       fullPath: '/walk'
       preLoaderRoute: typeof WalkRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/vet/': {
+      id: '/vet/'
+      path: '/'
+      fullPath: '/vet/'
+      preLoaderRoute: typeof VetIndexRouteImport
+      parentRoute: typeof VetRoute
+    }
+    '/vet/new': {
+      id: '/vet/new'
+      path: '/new'
+      fullPath: '/vet/new'
+      preLoaderRoute: typeof VetNewRouteImport
+      parentRoute: typeof VetRoute
     }
     '/walk/': {
       id: '/walk/'
@@ -361,6 +429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWalkImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/vet/$id/edit': {
+      id: '/vet/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/vet/$id/edit'
+      preLoaderRoute: typeof VetIdEditRouteImport
+      parentRoute: typeof VetRoute
+    }
     '/walk/$id/edit': {
       id: '/walk/$id/edit'
       path: '/$id/edit'
@@ -384,6 +459,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface VetRouteChildren {
+  VetNewRoute: typeof VetNewRoute
+  VetIndexRoute: typeof VetIndexRoute
+  VetIdEditRoute: typeof VetIdEditRoute
+}
+
+const VetRouteChildren: VetRouteChildren = {
+  VetNewRoute: VetNewRoute,
+  VetIndexRoute: VetIndexRoute,
+  VetIdEditRoute: VetIdEditRoute,
+}
+
+const VetRouteWithChildren = VetRoute._addFileChildren(VetRouteChildren)
 
 interface WalkLogsRouteChildren {
   WalkLogsIdRoute: typeof WalkLogsIdRoute
@@ -423,6 +512,7 @@ const rootRouteChildren: RootRouteChildren = {
   PasswordRoute: PasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SmokingRoute: SmokingRoute,
+  VetRoute: VetRouteWithChildren,
   WalkRoute: WalkRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,

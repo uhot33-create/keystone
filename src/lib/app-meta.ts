@@ -20,4 +20,10 @@ export const MENUS = [
     title: "お散歩メモ",
     description: "出会った子のカードを残す",
   },
+  {
+    to: "/vet",
+    index: "04",
+    title: "通院履歴",
+    description: "病院での記録と次の予約を残す",
+  },
 ] as const;
