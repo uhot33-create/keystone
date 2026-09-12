@@ -133,7 +133,18 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="visit-next">次回予約</Label>
-          <Input id="visit-next" type="date" value={nextVisitOn} onChange={(e) => setNextVisitOn(e.target.value)} />
+          <div className="flex gap-2">
+            <Input id="visit-next" type="date" value={nextVisitOn} onChange={(e) => setNextVisitOn(e.target.value)} />
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0"
+              disabled={!nextVisitOn}
+              onClick={() => setNextVisitOn("")}
+            >
+              クリア
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="visit-cost">費用（円）</Label>
