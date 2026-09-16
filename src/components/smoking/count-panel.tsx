@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getSmokingState, setRemaining, smokeOne } from "@/lib/smoking/api";
 import { formatCountdown, formatJaDateTime } from "@/lib/smoking/period";
+import { saburoStage } from "@/lib/smoking/saburo";
 import type { SmokingState } from "@/lib/smoking/types";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -58,29 +59,17 @@ export function CountPanel({
     void run(() => setRemaining({ data: { remaining: value } })).then(() => setEditing(false));
   }
 
-  const ratio = state.dailyLimit > 0 ? state.remaining / state.dailyLimit : 0;
-  const ringPct = Math.min(100, Math.max(0, ratio * 100));
   const empty = state.remaining <= 0;
   const untilReset = Date.parse(state.resetsAt) - now;
+  const saburo = saburoStage(state);
 
   return (
     <div className="flex flex-col gap-3">
       <BusyOverlay show={pending} label="処理中…" />
       <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
         <div className="flex items-center gap-4">
-          <div
-            className="grid size-24 shrink-0 place-items-center rounded-full"
-            style={{
-              background: `conic-gradient(var(--color-primary) ${ringPct}%, var(--color-surface-2) 0)`,
-            }}
-            aria-hidden="true"
-          >
-            <div className="grid size-[4.75rem] place-items-center rounded-full bg-surface text-center">
-              <p className="font-display text-3xl font-semibold tabular-nums leading-none text-fg">
-                {state.remaining}
-              </p>
-              <p className="mt-1 text-[10px] tracking-widest text-subtle">残り</p>
-            </div>
+          <div className="size-28 shrink-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
+            <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-muted">上限 {state.dailyLimit} 本 / 1日</p>
