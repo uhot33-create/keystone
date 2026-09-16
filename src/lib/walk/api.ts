@@ -592,7 +592,10 @@ async function makeThumbBuffer(url: string): Promise<Buffer | null> {
 
 export const ensureWalkThumbs = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => {
+  .validator((input: unknown) =>
+    parse(z.object({ skip: z.boolean().optional() }), input ?? {}),
+  )
+  .handler(async ({ context, data }) => {
     const sql = await getSql();
     const memos = await listMemos(context.userId);
     let remaining = 0;
@@ -613,17 +616,22 @@ export const ensureWalkThumbs = createServerFn({ method: "POST" })
 
     const image = foundMemo.images[foundIndex];
     if (!image) return { remaining: 0, memo: foundMemo };
-    const thumbBuf = await makeThumbBuffer(image.url);
     let thumbUrl = image.thumbUrl;
     let thumbPathname = image.thumbPathname;
     let thumbPublic = Boolean(image.thumbPublic);
     let thumbData = image.thumbData ?? null;
-    if (thumbBuf && thumbBuf.length > 0) {
-      thumbData = thumbBuf.toString("base64");
-      thumbPublic = true;
-    } else {
+    if (data.skip) {
       thumbData = "skipped-placeholder-thumb";
       thumbPublic = true;
+    } else {
+      const thumbBuf = await makeThumbBuffer(image.url);
+      if (thumbBuf && thumbBuf.length > 0) {
+        thumbData = thumbBuf.toString("base64");
+        thumbPublic = true;
+      } else {
+        thumbData = "skipped-placeholder-thumb";
+        thumbPublic = true;
+      }
     }
     const images = foundMemo.images.map((item, index) =>
       index === foundIndex ? { ...item, thumbUrl, thumbPathname, thumbPublic, thumbData } : item,
