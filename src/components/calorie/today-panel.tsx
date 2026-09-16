@@ -14,6 +14,7 @@ import {
   truncKcal,
   isCalorieLocked,
 } from "@/lib/calorie/formula";
+import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -96,8 +97,7 @@ export function TodayPanel({
   const total = mealEaten + treatEaten;
   const remaining = target > 0 ? target - total : null;
   const over = target > 0 && total > target;
-  const ringPct = target > 0 ? Math.min(100, Math.max(0, (total / target) * 100)) : 0;
-  const ringColor = over ? "var(--color-danger)" : "var(--color-primary)";
+  const saburo = calorieSaburoStage(total, target);
   const treatPct = Math.round(state.dog.treatRatio * 100);
 
   const foods = useMemo(
@@ -268,25 +268,20 @@ export function TodayPanel({
       ) : null}
       </div>
 
-      <div className="flex flex-col items-center">
-        <div
-          className="grid size-52 place-items-center rounded-full"
-          style={{
-            background: `conic-gradient(${ringColor} ${ringPct}%, var(--color-border) 0)`,
-          }}
-          aria-hidden="true"
-        >
-          <div className="grid size-[9.5rem] place-items-center rounded-full bg-bg text-center">
-            <p className="font-display text-5xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
-            <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
-            <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
-              {target > 0
-                ? over
-                  ? `${formatKcal(total - target)} kcal オーバー`
-                  : `あと ${formatKcal(remaining ?? 0)} kcal`
-                : "目標未設定"}
-            </p>
-          </div>
+      <div className="flex flex-col items-center gap-3">
+        <div className="size-44 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
+          <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
+        </div>
+        <div className="text-center">
+          <p className="font-display text-4xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
+          <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
+          <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
+            {target > 0
+              ? over
+                ? `${formatKcal(total - target)} kcal オーバー`
+                : `あと ${formatKcal(remaining ?? 0)} kcal`
+              : "目標未設定"}
+          </p>
         </div>
       </div>
 
