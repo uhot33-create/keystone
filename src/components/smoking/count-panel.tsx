@@ -87,9 +87,9 @@ export function CountPanel({
             <p className={`mt-0.5 font-display text-lg font-semibold ${empty ? "text-danger" : "text-fg"}`}>
               {empty ? "残りはありません" : `あと ${state.remaining} 本`}
             </p>
-            <p className="mt-1 text-xs text-muted">
-              {formatJaDateTime(state.resetsAt)}
-              <span className="ml-1 text-subtle">（{formatCountdown(untilReset)}）</span>
+            <p className="mt-1 text-xs text-muted">前回吸った日時</p>
+            <p className="mt-0.5 text-sm text-fg">
+              {state.lastSmokedAt ? formatJaDateTime(state.lastSmokedAt) : "まだ減算していません"}
             </p>
           </div>
         </div>
@@ -114,9 +114,10 @@ export function CountPanel({
 
         <div className="mt-4 flex items-start justify-between gap-3 border-t border-border pt-3">
           <div className="min-w-0">
-            <p className="text-xs text-muted">前回吸った日時</p>
+            <p className="text-xs text-muted">リセット</p>
             <p className="mt-0.5 text-sm text-fg">
-              {state.lastSmokedAt ? formatJaDateTime(state.lastSmokedAt) : "まだ減算していません"}
+              {formatJaDateTime(state.resetsAt)}
+              <span className="ml-1 text-subtle">（{formatCountdown(untilReset)}）</span>
             </p>
           </div>
           {!editing ? (
