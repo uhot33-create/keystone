@@ -8,7 +8,7 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState, touchWalkMemoMet } from "@/lib/walk/api";
 import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
-import { backfillWalkThumbs, memosNeedingThumbs } from "@/lib/walk/thumbs";
+import { backfillWalkThumbs, thumbStats } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/walk/")({
@@ -27,7 +27,7 @@ function WalkIndex() {
   const [breeds, setBreeds] = useState<DogBreed[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [thumbLeft, setThumbLeft] = useState(0);
+  const [thumbLeft, setThumbLeft] = useState<number | null>(null);
   const thumbStarted = useRef(false);
 
   useEffect(() => {
@@ -50,27 +50,23 @@ function WalkIndex() {
 
   useEffect(() => {
     if (!memos || thumbStarted.current) return;
-    const left = memosNeedingThumbs(memos).length;
-    if (left === 0) return;
+    const pending = thumbStats(memos).pending;
+    if (pending === 0) {
+      setThumbLeft(0);
+      return;
+    }
     thumbStarted.current = true;
-    setThumbLeft(left);
-    let cancelled = false;
+    setThumbLeft(pending);
     void backfillWalkThumbs(
       (next) => {
-        if (!cancelled) {
-          setMemos((list) => list?.map((memo) => (memo.id === next.id ? next : memo)) ?? list);
-        }
+        setMemos((list) => list?.map((memo) => (memo.id === next.id ? next : memo)) ?? list);
       },
-      (remaining) => {
-        if (!cancelled) setThumbLeft(remaining);
-      },
+      (remaining) => setThumbLeft(remaining),
     );
-    return () => {
-      cancelled = true;
-    };
   }, [memos]);
 
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
+  const thumbs = memos ? thumbStats(memos) : null;
 
   async function onMetToday(id: string) {
     setPendingId(id);
@@ -118,7 +114,12 @@ function WalkIndex() {
           {error}
         </p>
       ) : null}
-      {thumbLeft > 0 ? (
+      {thumbs && thumbs.photos > 0 && thumbLeft === 0 ? (
+        <p className="text-xs text-subtle">
+          一覧用の写真は用意済みです（{thumbs.ready}枚
+          {thumbs.skipped > 0 ? `／従来表示 ${thumbs.skipped}枚` : ""}）
+        </p>
+      ) : thumbLeft != null && thumbLeft > 0 ? (
         <p className="text-xs text-subtle">写真を軽くしています（残り {thumbLeft}）</p>
       ) : null}
 
