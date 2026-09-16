@@ -153,6 +153,14 @@ export async function makeListThumb(file: File): Promise<File> {
   return toJpeg(file, 0.72, 128);
 }
 
+export function walkMemoHasPhoto(memo: {
+  imageUrl?: string | null;
+  images?: { url?: string | null }[];
+}): boolean {
+  if (memo.images?.some((image) => Boolean(image.url))) return true;
+  return Boolean(memo.imageUrl);
+}
+
 export function walkMemoImageSrc(
   memo: {
     id: string;
@@ -179,7 +187,7 @@ export function walkMemoImageSrc(
   if (kind === "thumb") {
     if (slot?.thumbData && slot.thumbData.length > 100) return `data:image/jpeg;base64,${slot.thumbData}`;
     if (slot?.thumbPublic && slot.thumbUrl && slot.thumbUrl !== slot.url) return slot.thumbUrl;
-    return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}&t=1`;
+    return null;
   }
   return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}`;
 }

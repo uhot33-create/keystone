@@ -10,9 +10,8 @@ export function thumbStats(memos: WalkMemo[]) {
     for (const image of memo.images) {
       if (!image.url) continue;
       photos += 1;
-      if (!image.thumbData) pending += 1;
-      else if (image.thumbData.length > 100) ready += 1;
-      else skipped += 1;
+      if (image.thumbData && image.thumbData.length > 100) ready += 1;
+      else pending += 1;
     }
   }
   return { photos, ready, skipped, pending };
@@ -20,7 +19,7 @@ export function thumbStats(memos: WalkMemo[]) {
 
 export function memosNeedingThumbs(memos: WalkMemo[]): WalkMemo[] {
   return memos.filter((memo) =>
-    memo.images.some((image) => Boolean(image.url) && !image.thumbData),
+    memo.images.some((image) => Boolean(image.url) && !(image.thumbData && image.thumbData.length > 100)),
   );
 }
 

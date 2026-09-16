@@ -114,13 +114,12 @@ function WalkIndex() {
           {error}
         </p>
       ) : null}
-      {thumbs && thumbs.photos > 0 && thumbLeft === 0 ? (
-        <p className="text-xs text-subtle">
-          一覧用の写真は用意済みです（{thumbs.ready}枚
-          {thumbs.skipped > 0 ? `／従来表示 ${thumbs.skipped}枚` : ""}）
-        </p>
+      {thumbs && thumbs.photos > 0 && thumbLeft === 0 && thumbs.pending === 0 ? (
+        <p className="text-xs text-subtle">一覧用の写真は用意済みです（{thumbs.ready}枚）</p>
       ) : thumbLeft != null && thumbLeft > 0 ? (
         <p className="text-xs text-subtle">写真を軽くしています（残り {thumbLeft}）</p>
+      ) : thumbs && thumbs.pending > 0 ? (
+        <p className="text-xs text-subtle">写真を作成中です（{thumbs.pending}枚）</p>
       ) : null}
 
       {!memos ? (

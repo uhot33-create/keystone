@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { PawPrint } from "lucide-react";
 import { useState } from "react";
 import { displayAge, todayJst } from "@/lib/walk/age";
-import { walkMemoImageSrc } from "@/lib/walk/image";
+import { walkMemoHasPhoto, walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 import { ImageLightbox } from "@/components/walk/image-lightbox";
 
@@ -30,6 +30,7 @@ export function MemoCard({
   onMetToday?: (id: string) => void;
 }) {
   const age = displayAge(memo);
+  const hasPhoto = walkMemoHasPhoto(memo);
   const imageSrc = walkMemoImageSrc(memo);
   const thumbSrc = walkMemoImageSrc(memo, undefined, "thumb");
   const [open, setOpen] = useState(false);
@@ -83,12 +84,14 @@ export function MemoCard({
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
           </Link>
         </div>
-        {imageSrc ? (
+        {hasPhoto ? (
           <button
             type="button"
-            className="w-16 shrink-0 self-stretch bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-            aria-label={`${memo.name}の写真`}
-            onClick={() => setOpen(true)}
+            className="flex w-16 shrink-0 flex-col items-center justify-center self-stretch bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            aria-label={thumbSrc ? `${memo.name}の写真` : `${memo.name}の写真を作成中`}
+            onClick={() => {
+              if (imageSrc) setOpen(true);
+            }}
           >
             {thumbSrc ? (
               <img
@@ -100,7 +103,9 @@ export function MemoCard({
                 decoding="async"
                 className="h-full w-full object-cover"
               />
-            ) : null}
+            ) : (
+              <span className="px-1 text-center text-[10px] leading-tight text-subtle">作成中</span>
+            )}
           </button>
         ) : null}
       </article>
