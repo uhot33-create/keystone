@@ -553,6 +553,81 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     }
   });
 
+async function makeThumbBuffer(url: string): Promise<Buffer | null> {
+  try {
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+    const { get } = await import("@vercel/blob");
+    const result = await get(url, {
+      access: "private",
+      ...(token ? { token } : {}),
+    });
+    if (!result?.stream) return null;
+    const raw = Buffer.from(await new Response(result.stream).arrayBuffer());
+    const sharp = (await import("sharp")).default;
+    return await sharp(raw)
+      .rotate()
+      .resize(128, 128, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 72 })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+export const ensureWalkThumbs = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    const memos = await listMemos(context.userId);
+    let remaining = 0;
+    let foundMemo: WalkMemo | null = null;
+    let foundIndex = 0;
+    for (const memo of memos) {
+      for (let index = 0; index < memo.images.length; index += 1) {
+        const image = memo.images[index];
+        if (!image?.url || image.thumbUrl) continue;
+        remaining += 1;
+        if (!foundMemo) {
+          foundMemo = memo;
+          foundIndex = index;
+        }
+      }
+    }
+    if (!foundMemo) return { remaining: 0, memo: null as WalkMemo | null };
+
+    const image = foundMemo.images[foundIndex];
+    if (!image) return { remaining: 0, memo: foundMemo };
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+    const thumbBuf = await makeThumbBuffer(image.url);
+    let thumbUrl = image.url;
+    let thumbPathname = image.pathname;
+    if (thumbBuf && thumbBuf.length > 0) {
+      try {
+        const { put } = await import("@vercel/blob");
+        const thumb = await put(`walk/${context.userId}/${crypto.randomUUID()}.thumb.jpg`, thumbBuf, {
+          access: "private",
+          contentType: "image/jpeg",
+          ...(token ? { token } : {}),
+        });
+        thumbUrl = thumb.url;
+        thumbPathname = thumb.pathname;
+      } catch {
+        thumbUrl = image.url;
+        thumbPathname = image.pathname;
+      }
+    }
+    const images = foundMemo.images.map((item, index) =>
+      index === foundIndex ? { ...item, thumbUrl, thumbPathname } : item,
+    );
+    await sql`
+      update memos
+      set images = ${JSON.stringify(images)}::jsonb, updated_at = now()
+      where id = ${foundMemo.id} and user_id = ${context.userId}
+    `;
+    const memo = await getOwned(context.userId, foundMemo.id);
+    return { remaining: Math.max(0, remaining - 1), memo };
+  });
+
 export const attachWalkThumb = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>

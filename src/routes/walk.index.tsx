@@ -27,7 +27,7 @@ function WalkIndex() {
   const [breeds, setBreeds] = useState<DogBreed[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [thumbBusy, setThumbBusy] = useState(false);
+  const [thumbLeft, setThumbLeft] = useState(0);
   const thumbStarted = useRef(false);
 
   useEffect(() => {
@@ -49,15 +49,22 @@ function WalkIndex() {
   }, []);
 
   useEffect(() => {
-    if (!memos || thumbStarted.current || memosNeedingThumbs(memos).length === 0) return;
+    if (!memos || thumbStarted.current) return;
+    const left = memosNeedingThumbs(memos).length;
+    if (left === 0) return;
     thumbStarted.current = true;
+    setThumbLeft(left);
     let cancelled = false;
-    setThumbBusy(true);
-    void backfillWalkThumbs(memos, (next) => {
-      setMemos((list) => list?.map((memo) => (memo.id === next.id ? next : memo)) ?? list);
-    }).finally(() => {
-      if (!cancelled) setThumbBusy(false);
-    });
+    void backfillWalkThumbs(
+      (next) => {
+        if (!cancelled) {
+          setMemos((list) => list?.map((memo) => (memo.id === next.id ? next : memo)) ?? list);
+        }
+      },
+      (remaining) => {
+        if (!cancelled) setThumbLeft(remaining);
+      },
+    );
     return () => {
       cancelled = true;
     };
@@ -83,7 +90,6 @@ function WalkIndex() {
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
       <BusyOverlay show={memos === null} label="読み込み中…" />
-      <BusyOverlay show={thumbBusy} label="一覧用の写真を準備しています…" />
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
@@ -111,6 +117,9 @@ function WalkIndex() {
         <p className="text-sm text-danger" role="alert">
           {error}
         </p>
+      ) : null}
+      {thumbLeft > 0 ? (
+        <p className="text-xs text-subtle">写真を軽くしています（残り {thumbLeft}）</p>
       ) : null}
 
       {!memos ? (
