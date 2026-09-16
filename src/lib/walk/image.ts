@@ -157,7 +157,12 @@ export function walkMemoImageSrc(
   memo: {
     id: string;
     imageUrl?: string | null;
-    images?: { url: string; thumbUrl?: string | null; thumbPublic?: boolean }[];
+    images?: {
+      url: string;
+      thumbUrl?: string | null;
+      thumbPublic?: boolean;
+      thumbData?: string | null;
+    }[];
     coverIndex?: number;
   },
   index?: number,
@@ -166,14 +171,15 @@ export function walkMemoImageSrc(
   const images = memo.images?.length
     ? memo.images
     : memo.imageUrl
-      ? [{ url: memo.imageUrl, thumbUrl: null as string | null, thumbPublic: false }]
+      ? [{ url: memo.imageUrl, thumbUrl: null as string | null, thumbPublic: false, thumbData: null as string | null }]
       : [];
   if (images.length === 0) return null;
   const i = Math.min(Math.max(0, index ?? memo.coverIndex ?? 0), images.length - 1);
   const slot = images[i];
   if (kind === "thumb") {
+    if (slot?.thumbData && slot.thumbData.length > 100) return `data:image/jpeg;base64,${slot.thumbData}`;
     if (slot?.thumbPublic && slot.thumbUrl && slot.thumbUrl !== slot.url) return slot.thumbUrl;
-    return null;
+    return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}&t=1`;
   }
   return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}`;
 }

@@ -84,20 +84,31 @@ function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: stri
   const fromJson = Array.isArray(raw)
     ? raw.flatMap((item) => {
         if (!item || typeof item !== "object") return [];
-        const rec = item as { url?: unknown; pathname?: unknown; thumbUrl?: unknown; thumbPathname?: unknown; thumbPublic?: unknown };
+        const rec = item as {
+          url?: unknown;
+          pathname?: unknown;
+          thumbUrl?: unknown;
+          thumbPathname?: unknown;
+          thumbPublic?: unknown;
+          thumbData?: unknown;
+        };
         const url = typeof rec.url === "string" ? rec.url : "";
         if (!url) return [];
+        const thumbData = typeof rec.thumbData === "string" && rec.thumbData.length > 16 && rec.thumbData.length < 80_000
+          ? rec.thumbData
+          : null;
         return [{
           url,
           pathname: typeof rec.pathname === "string" ? rec.pathname : null,
           thumbUrl: typeof rec.thumbUrl === "string" ? rec.thumbUrl : null,
           thumbPathname: typeof rec.thumbPathname === "string" ? rec.thumbPathname : null,
           thumbPublic: rec.thumbPublic === true,
+          thumbData,
         }];
       })
     : [];
   if (fromJson.length > 0) return fromJson.slice(0, MAX_MEMO_IMAGES);
-  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath, thumbUrl: null, thumbPathname: null, thumbPublic: false }];
+  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath, thumbUrl: null, thumbPathname: null, thumbPublic: false, thumbData: null }];
   return [];
 }
 
@@ -340,6 +351,7 @@ const memoInput = z.object({
         thumbUrl: z.string().nullable(),
         thumbPathname: z.string().nullable(),
         thumbPublic: z.boolean().optional(),
+        thumbData: z.string().max(80_000).nullable().optional(),
       }),
     )
     .max(MAX_MEMO_IMAGES, "画像は3枚までです"),
@@ -549,6 +561,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
         thumbUrl: thumb.url,
         thumbPathname: thumb.pathname,
         thumbPublic: true,
+        thumbData: data.thumbBase64,
       };
     } catch (err) {
       const detail = err instanceof Error ? err.message : "";
@@ -588,7 +601,7 @@ export const ensureWalkThumbs = createServerFn({ method: "POST" })
     for (const memo of memos) {
       for (let index = 0; index < memo.images.length; index += 1) {
         const image = memo.images[index];
-        if (!image?.url || image.thumbPublic) continue;
+        if (!image?.url || image.thumbData) continue;
         remaining += 1;
         if (!foundMemo) {
           foundMemo = memo;
@@ -600,30 +613,20 @@ export const ensureWalkThumbs = createServerFn({ method: "POST" })
 
     const image = foundMemo.images[foundIndex];
     if (!image) return { remaining: 0, memo: foundMemo };
-    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
     const thumbBuf = await makeThumbBuffer(image.url);
-    let thumbUrl: string | null = null;
-    let thumbPathname: string | null = null;
-    let thumbPublic = false;
+    let thumbUrl = image.thumbUrl;
+    let thumbPathname = image.thumbPathname;
+    let thumbPublic = Boolean(image.thumbPublic);
+    let thumbData = image.thumbData ?? null;
     if (thumbBuf && thumbBuf.length > 0) {
-      try {
-        const { put } = await import("@vercel/blob");
-        const thumb = await put(`walk/${context.userId}/${crypto.randomUUID()}.thumb.jpg`, thumbBuf, {
-          access: "public",
-          contentType: "image/jpeg",
-          ...(token ? { token } : {}),
-        });
-        thumbUrl = thumb.url;
-        thumbPathname = thumb.pathname;
-        thumbPublic = true;
-      } catch {
-        thumbPublic = true;
-      }
+      thumbData = thumbBuf.toString("base64");
+      thumbPublic = true;
     } else {
+      thumbData = "skipped-placeholder-thumb";
       thumbPublic = true;
     }
     const images = foundMemo.images.map((item, index) =>
-      index === foundIndex ? { ...item, thumbUrl, thumbPathname, thumbPublic } : item,
+      index === foundIndex ? { ...item, thumbUrl, thumbPathname, thumbPublic, thumbData } : item,
     );
     await sql`
       update memos
@@ -667,7 +670,7 @@ export const attachWalkThumb = createServerFn({ method: "POST" })
     });
     const images = current.images.map((item, index) =>
       index === data.index
-        ? { ...item, thumbUrl: thumb.url, thumbPathname: thumb.pathname, thumbPublic: true }
+        ? { ...item, thumbUrl: thumb.url, thumbPathname: thumb.pathname, thumbPublic: true, thumbData: data.thumbBase64 }
         : item,
     );
     await sql`

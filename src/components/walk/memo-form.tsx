@@ -36,10 +36,11 @@ type ImageSlot = {
   thumbUrl: string | null;
   thumbPathname: string | null;
   thumbPublic?: boolean;
+  thumbData?: string | null;
 };
 
 function emptySlot(): ImageSlot {
-  return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null, thumbPublic: false };
+  return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null, thumbPublic: false, thumbData: null };
 }
 
 function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
@@ -56,6 +57,7 @@ function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
     thumbUrl: image.thumbUrl ?? null,
     thumbPathname: image.thumbPathname ?? null,
     thumbPublic: image.thumbPublic === true,
+    thumbData: image.thumbData ?? null,
   }));
   while (slots.length < MAX_MEMO_IMAGES) slots.push(emptySlot());
   return slots.slice(0, MAX_MEMO_IMAGES);
@@ -131,6 +133,7 @@ export function MemoForm({
         thumbUrl: null,
         thumbPathname: null,
         thumbPublic: false,
+        thumbData: null,
       };
       return next;
     });
@@ -246,6 +249,7 @@ export function MemoForm({
             thumbUrl: uploaded.thumbUrl,
             thumbPathname: uploaded.thumbPathname,
             thumbPublic: true,
+            thumbData: uploaded.thumbData ?? null,
           });
           sourceIndexes.push(index);
         } else if (slot.url) {
@@ -255,6 +259,7 @@ export function MemoForm({
             thumbUrl: slot.thumbUrl,
             thumbPathname: slot.thumbPathname,
             thumbPublic: slot.thumbPublic,
+            thumbData: slot.thumbData ?? null,
           });
           sourceIndexes.push(index);
         }

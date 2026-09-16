@@ -3,7 +3,7 @@ import type { WalkMemo } from "./types";
 
 export function memosNeedingThumbs(memos: WalkMemo[]): WalkMemo[] {
   return memos.filter((memo) =>
-    memo.images.some((image) => Boolean(image.url) && !image.thumbPublic),
+    memo.images.some((image) => Boolean(image.url) && !image.thumbData),
   );
 }
 
