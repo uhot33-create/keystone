@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql } from "@/lib/db";
+import { getSql, type Sql } from "@/lib/db";
 import { todayJst } from "@/lib/walk/age";
 import { isVisitKind, type VetVisit, type VisitKind } from "./types";
 
@@ -69,6 +69,23 @@ const visitInput = z.object({
   costYen: z.number().int().min(0).max(10_000_000).nullable(),
   note: z.string().trim().max(1000).nullable(),
 });
+
+async function clearFulfilledNextVisits(sql: Sql, userId: string) {
+  await sql`
+    update vet_visits as planned
+    set next_visit_on = null, updated_at = now()
+    from vet_visits as done
+    where planned.user_id = ${userId}
+      and done.user_id = ${userId}
+      and planned.id <> done.id
+      and planned.next_visit_on is not null
+      and planned.next_visit_on = done.visit_on
+      and planned.clinic_name is not null
+      and done.clinic_name is not null
+      and btrim(planned.clinic_name) <> ''
+      and btrim(planned.clinic_name) = btrim(done.clinic_name)
+  `;
+}
 
 export const listVetVisits = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -146,6 +163,7 @@ export const saveVetVisit = createServerFn({ method: "POST" })
         )
       `;
     }
+    await clearFulfilledNextVisits(sql, context.userId);
     return { id };
   });
 
