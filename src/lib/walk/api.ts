@@ -553,6 +553,52 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     }
   });
 
+export const attachWalkThumb = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        id: z.string().min(1),
+        index: z.number().int().min(0).max(MAX_MEMO_IMAGES - 1),
+        thumbBase64: z
+          .string()
+          .min(16, "サムネイルを作れませんでした")
+          .max(120_000, "サムネイルが大きすぎます"),
+      }),
+      input,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const current = await getOwned(context.userId, data.id);
+    if (!current) throw new Error("カードが見つかりません");
+    const image = current.images[data.index];
+    if (!image) throw new Error("画像がありません");
+    if (image.thumbUrl) return current;
+    const thumbBuf = Buffer.from(data.thumbBase64, "base64");
+    if (!thumbBuf.length) throw new Error("サムネイルを作れませんでした");
+    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
+    const { put } = await import("@vercel/blob");
+    const thumb = await put(`walk/${context.userId}/${crypto.randomUUID()}.thumb.jpg`, thumbBuf, {
+      access: "private",
+      contentType: "image/jpeg",
+      ...(token ? { token } : {}),
+    });
+    const images = current.images.map((item, index) =>
+      index === data.index
+        ? { ...item, thumbUrl: thumb.url, thumbPathname: thumb.pathname }
+        : item,
+    );
+    await sql`
+      update memos
+      set images = ${JSON.stringify(images)}::jsonb, updated_at = now()
+      where id = ${current.id} and user_id = ${context.userId}
+    `;
+    const memo = await getOwned(context.userId, current.id);
+    if (!memo) throw new Error("保存できませんでした");
+    return memo;
+  });
+
 export const deleteWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))

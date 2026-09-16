@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MemoCard } from "@/components/walk/memo-card";
 import { MemoToolbar } from "@/components/walk/memo-toolbar";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
@@ -8,6 +8,7 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState, touchWalkMemoMet } from "@/lib/walk/api";
 import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
+import { backfillWalkThumbs, memosNeedingThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/walk/")({
@@ -26,6 +27,8 @@ function WalkIndex() {
   const [breeds, setBreeds] = useState<DogBreed[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [thumbBusy, setThumbBusy] = useState(false);
+  const thumbStarted = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +47,21 @@ function WalkIndex() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!memos || thumbStarted.current || memosNeedingThumbs(memos).length === 0) return;
+    thumbStarted.current = true;
+    let cancelled = false;
+    setThumbBusy(true);
+    void backfillWalkThumbs(memos, (next) => {
+      setMemos((list) => list?.map((memo) => (memo.id === next.id ? next : memo)) ?? list);
+    }).finally(() => {
+      if (!cancelled) setThumbBusy(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memos]);
 
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
 
@@ -65,6 +83,7 @@ function WalkIndex() {
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
       <BusyOverlay show={memos === null} label="読み込み中…" />
+      <BusyOverlay show={thumbBusy} label="一覧用の写真を準備しています…" />
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
