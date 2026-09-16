@@ -84,14 +84,19 @@ function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: stri
   const fromJson = Array.isArray(raw)
     ? raw.flatMap((item) => {
         if (!item || typeof item !== "object") return [];
-        const rec = item as { url?: unknown; pathname?: unknown };
+        const rec = item as { url?: unknown; pathname?: unknown; thumbUrl?: unknown; thumbPathname?: unknown };
         const url = typeof rec.url === "string" ? rec.url : "";
         if (!url) return [];
-        return [{ url, pathname: typeof rec.pathname === "string" ? rec.pathname : null }];
+        return [{
+          url,
+          pathname: typeof rec.pathname === "string" ? rec.pathname : null,
+          thumbUrl: typeof rec.thumbUrl === "string" ? rec.thumbUrl : null,
+          thumbPathname: typeof rec.thumbPathname === "string" ? rec.thumbPathname : null,
+        }];
       })
     : [];
   if (fromJson.length > 0) return fromJson.slice(0, MAX_MEMO_IMAGES);
-  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath }];
+  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath, thumbUrl: null, thumbPathname: null }];
   return [];
 }
 
@@ -289,6 +294,11 @@ async function removeBlob(url: string | null | undefined) {
   }
 }
 
+async function removeImageBlobs(image: MemoImage) {
+  await removeBlob(image.url);
+  await removeBlob(image.thumbUrl);
+}
+
 const optionalDate = z
   .union([z.string(), z.null()])
   .transform((value) => (value && value.length > 0 ? value : null))
@@ -326,6 +336,8 @@ const memoInput = z.object({
       z.object({
         url: z.string().min(1),
         pathname: z.string().nullable(),
+        thumbUrl: z.string().nullable(),
+        thumbPathname: z.string().nullable(),
       }),
     )
     .max(MAX_MEMO_IMAGES, "画像は3枚までです"),
@@ -452,9 +464,9 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
     if (!current) throw new Error("カードが見つかりません");
     const [breeds, colors] = await Promise.all([listBreeds(), listColors()]);
     const next = await normalize(data, breeds, colors);
-    const keep = new Set(next.images.map((item) => item.url));
+    const keep = new Set(next.images.flatMap((item) => [item.url, item.thumbUrl].filter(Boolean)));
     for (const image of current.images) {
-      if (!keep.has(image.url)) await removeBlob(image.url);
+      if (!keep.has(image.url)) await removeImageBlobs(image);
     }
     const cover = next.images[next.coverIndex] ?? null;
 
@@ -499,6 +511,10 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
           .string()
           .min(32, "画像を読み込めませんでした")
           .max(MAX_B64, "画像が大きすぎます"),
+        thumbBase64: z
+          .string()
+          .min(16, "サムネイルを作れませんでした")
+          .max(120_000, "サムネイルが大きすぎます"),
       }),
       input,
     ),
@@ -507,15 +523,30 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
     const buf = Buffer.from(data.base64, "base64");
     if (!buf.length) throw new Error("画像を読み込めませんでした");
+    const thumbBuf = Buffer.from(data.thumbBase64, "base64");
+    if (!thumbBuf.length) throw new Error("サムネイルを作れませんでした");
     const ext = data.type === "image/png" ? "png" : data.type === "image/webp" ? "webp" : "jpg";
     try {
       const { put } = await import("@vercel/blob");
-      const blob = await put(`walk/${context.userId}/${crypto.randomUUID()}.${ext}`, buf, {
-        access: "private",
-        contentType: data.type,
-        ...(token ? { token } : {}),
-      });
-      return { url: blob.url, pathname: blob.pathname };
+      const id = crypto.randomUUID();
+      const [blob, thumb] = await Promise.all([
+        put(`walk/${context.userId}/${id}.${ext}`, buf, {
+          access: "private",
+          contentType: data.type,
+          ...(token ? { token } : {}),
+        }),
+        put(`walk/${context.userId}/${id}.thumb.jpg`, thumbBuf, {
+          access: "private",
+          contentType: "image/jpeg",
+          ...(token ? { token } : {}),
+        }),
+      ]);
+      return {
+        url: blob.url,
+        pathname: blob.pathname,
+        thumbUrl: thumb.url,
+        thumbPathname: thumb.pathname,
+      };
     } catch (err) {
       const detail = err instanceof Error ? err.message : "";
       throw new Error(detail ? `画像を保存できませんでした（${detail}）` : "画像を保存できませんでした");
@@ -530,7 +561,7 @@ export const deleteWalkMemo = createServerFn({ method: "POST" })
     const current = await getOwned(context.userId, data.id);
     if (!current) throw new Error("カードが見つかりません");
     for (const image of current.images) {
-      await removeBlob(image.url);
+      await removeImageBlobs(image);
     }
     await sql`delete from memos where id = ${data.id} and user_id = ${context.userId}`;
     return { ok: true as const };

@@ -44,19 +44,28 @@ export const Route = createFileRoute("/api/walk/image")({
         const list = Array.isArray(parsed)
           ? parsed.flatMap((item) => {
               if (!item || typeof item !== "object") return [];
-              const rec = item as { url?: unknown; pathname?: unknown };
+              const rec = item as { url?: unknown; pathname?: unknown; thumbUrl?: unknown; thumbPathname?: unknown };
               const href = typeof rec.url === "string" ? rec.url : "";
               if (!href) return [];
-              return [{ url: href, pathname: typeof rec.pathname === "string" ? rec.pathname : null }];
+              return [{
+                url: href,
+                pathname: typeof rec.pathname === "string" ? rec.pathname : null,
+                thumbUrl: typeof rec.thumbUrl === "string" ? rec.thumbUrl : null,
+                thumbPathname: typeof rec.thumbPathname === "string" ? rec.thumbPathname : null,
+              }];
             })
           : [];
         const fallback = row.image_url
-          ? [{ url: row.image_url, pathname: row.image_pathname }]
+          ? [{ url: row.image_url, pathname: row.image_pathname, thumbUrl: null as string | null, thumbPathname: null as string | null }]
           : [];
         const images = list.length > 0 ? list : fallback;
         const parsedIndex = indexRaw == null || indexRaw === "" ? Number(row.cover_index) || 0 : Number(indexRaw);
         const i = Number.isFinite(parsedIndex) ? Math.min(Math.max(0, Math.round(parsedIndex)), Math.max(0, images.length - 1)) : 0;
-        const target = images[i]?.url || images[i]?.pathname || row.image_url || row.image_pathname;
+        const wantThumb = url.searchParams.get("t") === "1";
+        const slot = images[i];
+        const target = wantThumb
+          ? slot?.thumbUrl || slot?.thumbPathname || slot?.url || slot?.pathname || row.image_url || row.image_pathname
+          : slot?.url || slot?.pathname || row.image_url || row.image_pathname;
         if (!target) {
           return new Response("画像がありません", { status: 404 });
         }
@@ -74,7 +83,7 @@ export const Route = createFileRoute("/api/walk/image")({
           return new Response(result.stream, {
             headers: {
               "Content-Type": type,
-              "Cache-Control": "private, max-age=3600",
+              "Cache-Control": wantThumb ? "private, max-age=86400" : "private, max-age=3600",
             },
           });
         } catch {

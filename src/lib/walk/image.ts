@@ -149,9 +149,19 @@ function namedPaste(file: File): File {
   return new File([file], `paste.${subtype}`, { type: file.type, lastModified: Date.now() });
 }
 
+export async function makeListThumb(file: File): Promise<File> {
+  return toJpeg(file, 0.72, 128);
+}
+
 export function walkMemoImageSrc(
-  memo: { id: string; imageUrl?: string | null; images?: { url: string }[]; coverIndex?: number },
+  memo: {
+    id: string;
+    imageUrl?: string | null;
+    images?: { url: string; thumbUrl?: string | null }[];
+    coverIndex?: number;
+  },
   index?: number,
+  kind: "full" | "thumb" = "full",
 ): string | null {
   const count = memo.images?.length
     ? memo.images.length
@@ -160,7 +170,8 @@ export function walkMemoImageSrc(
       : 0;
   if (count === 0) return null;
   const i = Math.min(Math.max(0, index ?? memo.coverIndex ?? 0), count - 1);
-  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}`;
+  const thumb = kind === "thumb" ? "&t=1" : "";
+  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}${thumb}`;
 }
 
 export const IMAGE_HINT =

@@ -31,6 +31,7 @@ export function MemoCard({
 }) {
   const age = displayAge(memo);
   const imageSrc = walkMemoImageSrc(memo);
+  const thumbSrc = walkMemoImageSrc(memo, undefined, "thumb");
   const [open, setOpen] = useState(false);
   const metToday = memo.lastMetOn === todayJst();
 
@@ -82,14 +83,22 @@ export function MemoCard({
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
           </Link>
         </div>
-        {imageSrc ? (
+        {thumbSrc ? (
           <button
             type="button"
             className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
             aria-label={`${memo.name}の写真`}
             onClick={() => setOpen(true)}
           >
-            <img src={imageSrc} alt="" className="h-full w-full object-cover" />
+            <img
+              src={thumbSrc}
+              alt=""
+              width={64}
+              height={80}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
           </button>
         ) : null}
       </article>

@@ -3,7 +3,7 @@ import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
-import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
+import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, makeListThumb, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
 import type { DogBreed, DogColor, SexValue, WalkMemo } from "@/lib/walk/types";
 import { DEFAULT_WALK_SEARCH, MAX_MEMO_IMAGES, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
@@ -33,23 +33,27 @@ type ImageSlot = {
   file: File | null;
   url: string | null;
   pathname: string | null;
+  thumbUrl: string | null;
+  thumbPathname: string | null;
 };
 
 function emptySlot(): ImageSlot {
-  return { preview: null, file: null, url: null, pathname: null };
+  return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null };
 }
 
 function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
   const images = memo?.images?.length
     ? memo.images
     : memo?.imageUrl
-      ? [{ url: memo.imageUrl, pathname: memo.imagePathname }]
+      ? [{ url: memo.imageUrl, pathname: memo.imagePathname, thumbUrl: null, thumbPathname: null }]
       : [];
   const slots: ImageSlot[] = images.map((image, index) => ({
     preview: memo ? walkMemoImageSrc(memo, index) : null,
     file: null,
     url: image.url,
     pathname: image.pathname,
+    thumbUrl: image.thumbUrl ?? null,
+    thumbPathname: image.thumbPathname ?? null,
   }));
   while (slots.length < MAX_MEMO_IMAGES) slots.push(emptySlot());
   return slots.slice(0, MAX_MEMO_IMAGES);
@@ -122,6 +126,8 @@ export function MemoForm({
         file: prepared,
         url: null,
         pathname: null,
+        thumbUrl: null,
+        thumbPathname: null,
       };
       return next;
     });
@@ -218,21 +224,33 @@ export function MemoForm({
       if (!blobConfigured && slots.some((slot) => slot.file)) {
         throw new Error("画像の保存には Vercel Blob の設定が必要です");
       }
-      const images: { url: string; pathname: string | null }[] = [];
+      const images: { url: string; pathname: string | null; thumbUrl: string | null; thumbPathname: string | null }[] = [];
       const sourceIndexes: number[] = [];
       for (const [index, slot] of slots.entries()) {
         if (slot.file) {
           setPending("uploading");
+          const thumb = await makeListThumb(slot.file);
           const uploaded = await uploadWalkImage({
             data: {
               type: imageContentType(slot.file),
               base64: await fileToBase64(slot.file),
+              thumbBase64: await fileToBase64(thumb),
             },
           });
-          images.push({ url: uploaded.url, pathname: uploaded.pathname });
+          images.push({
+            url: uploaded.url,
+            pathname: uploaded.pathname,
+            thumbUrl: uploaded.thumbUrl,
+            thumbPathname: uploaded.thumbPathname,
+          });
           sourceIndexes.push(index);
         } else if (slot.url) {
-          images.push({ url: slot.url, pathname: slot.pathname });
+          images.push({
+            url: slot.url,
+            pathname: slot.pathname,
+            thumbUrl: slot.thumbUrl,
+            thumbPathname: slot.thumbPathname,
+          });
           sourceIndexes.push(index);
         }
       }

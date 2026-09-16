@@ -36,6 +36,8 @@ export const MAX_MEMO_IMAGES = 3;
 export type MemoImage = {
   url: string;
   pathname: string | null;
+  thumbUrl: string | null;
+  thumbPathname: string | null;
 };
 
 export type WalkMemo = {
