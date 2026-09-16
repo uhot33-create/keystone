@@ -71,16 +71,21 @@ function mapDog(row: DogRow): DogProfile {
   };
 }
 
-async function ensureDog(userId: string): Promise<DogProfile> {
+async function listDogs(userId: string): Promise<DogProfile[]> {
   const sql = await getSql();
-  const existing = await sql<DogRow>`
+  const rows = await sql<DogRow>`
     select id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio
     from dogs
     where user_id = ${userId}
-    limit 1
+    order by id asc
   `;
-  if (existing[0]) return mapDog(existing[0]);
+  return rows.map(mapDog);
+}
 
+async function ensureDogs(userId: string): Promise<DogProfile[]> {
+  const existing = await listDogs(userId);
+  if (existing.length > 0) return existing;
+  const sql = await getSql();
   const created = await sql<DogRow>`
     insert into dogs (user_id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio)
     values (${userId}, ${"うちの子"}, 0, 0, ${"adult_neutered"}, 0.10)
@@ -88,7 +93,21 @@ async function ensureDog(userId: string): Promise<DogProfile> {
   `;
   const row = created[0];
   if (!row) throw new Error("愛犬プロフィールを作成できませんでした");
-  return mapDog(row);
+  return [mapDog(row)];
+}
+
+function pickDog(dogs: DogProfile[], dogId?: number): DogProfile {
+  const selected = dogId ? dogs.find((item) => item.id === dogId) : undefined;
+  const dog = selected ?? dogs[0];
+  if (!dog) throw new Error("愛犬が見つかりません");
+  return dog;
+}
+
+async function requireDog(userId: string, dogId: number): Promise<DogProfile> {
+  const dogs = await ensureDogs(userId);
+  const dog = dogs.find((item) => item.id === dogId);
+  if (!dog) throw new Error("愛犬が見つかりません");
+  return dog;
 }
 
 function isoDate(value: string): string {
@@ -106,9 +125,10 @@ function measuredAt20(date: string): string {
   return `${date}T20:00:00+09:00`;
 }
 
-async function loadState(userId: string, date: string): Promise<CalorieState> {
+async function loadState(userId: string, date: string, dogId?: number): Promise<CalorieState> {
   const sql = await getSql();
-  const dog = await ensureDog(userId);
+  const dogs = await ensureDogs(userId);
+  const dog = pickDog(dogs, dogId);
   const seriesEnd = todayJst();
   const from = shiftIsoDate(seriesEnd, -5 * 366);
 
@@ -138,6 +158,7 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
   return {
     date,
     dog,
+    dogs,
     foods: foods.map((row) => ({
       id: row.id,
       name: row.name,
@@ -166,10 +187,12 @@ async function loadState(userId: string, date: string): Promise<CalorieState> {
 
 const dateInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive().optional(),
 });
 
 const saveDogInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
   name: z.string().trim().min(1, "名前を入力してください").max(20),
   currentWeightKg: z.number().positive("現在の体重を入力してください").max(120),
   idealWeightKg: z.number().positive("理想体重を入力してください").max(120),
@@ -179,6 +202,7 @@ const saveDogInput = z.object({
 
 const addFoodInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
   name: z.string().trim().min(1, "名前を入力してください").max(30),
   kind: z.enum(["food", "treat"]),
   kcal: z.number().positive("カロリーを入力してください").max(10000),
@@ -189,6 +213,7 @@ const addFoodInput = z.object({
 
 const addLogInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
   label: z.string().trim().min(1).max(40),
   kcal: z.number().positive("カロリーを入力してください").max(20000),
   kind: z.enum(["food", "treat", "other"]),
@@ -199,13 +224,14 @@ const addLogInput = z.object({
 
 const idDateInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
   id: z.number().int().positive(),
 });
 
 export const getCalorieState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(dateInput, input))
-  .handler(async ({ context, data }) => loadState(context.userId, isoDate(data.date)));
+  .handler(async ({ context, data }) => loadState(context.userId, isoDate(data.date), data.dogId));
 
 export const getCalorieDay = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -213,7 +239,7 @@ export const getCalorieDay = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const date = isoDate(data.date);
     const sql = await getSql();
-    const dog = await ensureDog(context.userId);
+    const dog = data.dogId ? await requireDog(context.userId, data.dogId) : pickDog(await ensureDogs(context.userId));
     const [logs, weights] = await Promise.all([
       sql<LogRow>`
         select id, log_date, label, kcal, kind, food_id, amount, unit
@@ -250,7 +276,7 @@ export const saveDogProfile = createServerFn({ method: "POST" })
   .validator((input: unknown) => parse(saveDogInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const dog = await ensureDog(context.userId);
+    const dog = await requireDog(context.userId, data.dogId);
     await sql`
       update dogs
       set
@@ -262,7 +288,54 @@ export const saveDogProfile = createServerFn({ method: "POST" })
         updated_at = now()
       where id = ${dog.id} and user_id = ${context.userId}
     `;
-    return loadState(context.userId, data.date);
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+export const addDog = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+        name: z.string().trim().min(1, "名前を入力してください").max(20),
+      }),
+      input,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    const dogs = await ensureDogs(context.userId);
+    if (dogs.length >= 10) throw new Error("登録できるのは10頭までです");
+    const sql = await getSql();
+    const created = await sql<DogRow>`
+      insert into dogs (user_id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio)
+      values (${context.userId}, ${data.name}, 0, 0, ${"adult_neutered"}, 0.10)
+      returning id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio
+    `;
+    const row = created[0];
+    if (!row) throw new Error("愛犬プロフィールを作成できませんでした");
+    return loadState(context.userId, data.date, row.id);
+  });
+
+export const deleteDog = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+        dogId: z.number().int().positive(),
+      }),
+      input,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    const dogs = await ensureDogs(context.userId);
+    if (dogs.length <= 1) throw new Error("最後の1頭は削除できません");
+    const dog = dogs.find((item) => item.id === data.dogId);
+    if (!dog) throw new Error("愛犬が見つかりません");
+    const sql = await getSql();
+    await sql`delete from dogs where id = ${dog.id} and user_id = ${context.userId}`;
+    const next = dogs.find((item) => item.id !== dog.id);
+    return loadState(context.userId, data.date, next?.id);
   });
 
 export const addDogFood = createServerFn({ method: "POST" })
@@ -270,7 +343,7 @@ export const addDogFood = createServerFn({ method: "POST" })
   .validator((input: unknown) => parse(addFoodInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    const dog = await ensureDog(context.userId);
+    const dog = await requireDog(context.userId, data.dogId);
     await sql`
       insert into dog_foods (user_id, dog_id, name, kind, kcal, amount, usual_qty, unit)
       values (
@@ -284,7 +357,7 @@ export const addDogFood = createServerFn({ method: "POST" })
         ${data.unit}
       )
     `;
-    return loadState(context.userId, data.date);
+    return loadState(context.userId, data.date, dog.id);
   });
 
 export const deleteDogFood = createServerFn({ method: "POST" })
@@ -292,11 +365,12 @@ export const deleteDogFood = createServerFn({ method: "POST" })
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
     await sql`
       delete from dog_foods
-      where id = ${data.id} and user_id = ${context.userId}
+      where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
     `;
-    return loadState(context.userId, data.date);
+    return loadState(context.userId, data.date, dog.id);
   });
 
 export const addCalorieLog = createServerFn({ method: "POST" })
@@ -305,7 +379,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     assertCalorieEditable(data.date);
     const sql = await getSql();
-    const dog = await ensureDog(context.userId);
+    const dog = await requireDog(context.userId, data.dogId);
     const kcal = truncKcal(data.kcal);
     await sql`
       insert into calorie_logs (user_id, dog_id, log_date, label, kcal, kind, food_id, amount, unit)
@@ -322,7 +396,7 @@ export const addCalorieLog = createServerFn({ method: "POST" })
       )
     `;
     await refreshDogStats(sql, context.userId, dog.id, data.date);
-    return loadState(context.userId, data.date);
+    return loadState(context.userId, data.date, dog.id);
   });
 
 export const deleteCalorieLog = createServerFn({ method: "POST" })
@@ -330,24 +404,25 @@ export const deleteCalorieLog = createServerFn({ method: "POST" })
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
     const existing = await sql<{ log_date: string }>`
       select log_date from calorie_logs
-      where id = ${data.id} and user_id = ${context.userId}
+      where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
       limit 1
     `;
     const logDate = asDateKey(existing[0]?.log_date) || data.date;
     assertCalorieEditable(logDate);
     await sql`
       delete from calorie_logs
-      where id = ${data.id} and user_id = ${context.userId}
+      where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
     `;
-    const dog = await ensureDog(context.userId);
     await refreshDogStats(sql, context.userId, dog.id, data.date);
-    return loadState(context.userId, data.date);
+    return loadState(context.userId, data.date, dog.id);
   });
 
 const saveWeightInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
   weightKg: z.number().positive("体重を入力してください").max(120),
 });
 
@@ -357,7 +432,7 @@ export const saveWeightLog = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     assertCalorieEditable(data.date);
     const sql = await getSql();
-    const dog = await ensureDog(context.userId);
+    const dog = await requireDog(context.userId, data.dogId);
     const measuredAt = measuredAt20(data.date);
     const weightKg = num(data.weightKg, 2);
     await sql`
@@ -385,5 +460,5 @@ export const saveWeightLog = createServerFn({ method: "POST" })
         )
     `;
     await refreshDogStats(sql, context.userId, dog.id, data.date);
-    return loadState(context.userId, data.date);
+    return loadState(context.userId, data.date, dog.id);
   });

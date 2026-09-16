@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { DogSwitcher, rememberDogId, storedDogId } from "@/components/calorie/dog-switcher";
 import { FoodsPanel } from "@/components/calorie/foods-panel";
 import { PlanPanel } from "@/components/calorie/plan-panel";
 import { ProfilePanel } from "@/components/calorie/profile-panel";
@@ -28,12 +29,15 @@ function CalorieApp() {
   const [tab, setTab] = useState<Tab>("today");
   const [state, setState] = useState<CalorieState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getCalorieState({ data: { date: todayJst() } })
+    getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
       .then((next) => {
-        if (!cancelled) setState(next);
+        if (cancelled) return;
+        rememberDogId(next.dog.id);
+        setState(next);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
@@ -43,12 +47,22 @@ function CalorieApp() {
     };
   }, []);
 
+  function onChange(next: CalorieState) {
+    rememberDogId(next.dog.id);
+    setState(next);
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="stagger-in flex flex-1 flex-col gap-6 pb-24">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-fg">わんカロリー</h1>
-          <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h1 className="font-display text-3xl font-semibold text-fg">わんカロリー</h1>
+            <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
+          </div>
+          {state ? (
+            <DogSwitcher state={state} onChange={onChange} onBusy={setBusy} onError={setError} />
+          ) : null}
         </div>
 
         {error ? (
@@ -63,19 +77,24 @@ function CalorieApp() {
             <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-48 w-full rounded-xl" />
           </div>
-        ) : tab === "today" ? (
-          <TodayPanel
-            state={state}
-            onChange={setState}
-            onOpenPlan={() => setTab("plan")}
-            onOpenFoods={() => setTab("foods")}
-          />
-        ) : tab === "plan" ? (
-          <PlanPanel state={state} onChange={setState} />
-        ) : tab === "foods" ? (
-          <FoodsPanel state={state} onChange={setState} />
         ) : (
-          <ProfilePanel state={state} onChange={setState} />
+          <>
+            <BusyOverlay show={Boolean(busy)} label={busy ?? "処理中…"} />
+            {tab === "today" ? (
+              <TodayPanel
+                state={state}
+                onChange={onChange}
+                onOpenPlan={() => setTab("plan")}
+                onOpenFoods={() => setTab("foods")}
+              />
+            ) : tab === "plan" ? (
+              <PlanPanel state={state} onChange={onChange} />
+            ) : tab === "foods" ? (
+              <FoodsPanel state={state} onChange={onChange} />
+            ) : (
+              <ProfilePanel state={state} onChange={onChange} />
+            )}
+          </>
         )}
       </div>
 

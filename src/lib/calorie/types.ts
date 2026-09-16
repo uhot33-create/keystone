@@ -57,6 +57,7 @@ export type DayTrend = {
 export type CalorieState = {
   date: string;
   dog: DogProfile;
+  dogs: DogProfile[];
   foods: DogFood[];
   logs: CalorieLog[];
   week: DayTotal[];

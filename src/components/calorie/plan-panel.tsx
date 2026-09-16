@@ -54,6 +54,7 @@ export function PlanPanel({
         await saveDogProfile({
           data: {
             date: state.date,
+            dogId: dog.id,
             name: dog.name,
             currentWeightKg: dog.currentWeightKg,
             idealWeightKg: dog.idealWeightKg,

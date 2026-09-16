@@ -161,7 +161,7 @@ export function TodayPanel({
     setBusy("読み込み中…");
     setError(null);
     try {
-      const next = await getCalorieDay({ data: { date } });
+      const next = await getCalorieDay({ data: { date, dogId: state.dog.id } });
       onChange({
         ...state,
         date: next.date,
@@ -195,6 +195,7 @@ export function TodayPanel({
       addCalorieLog({
         data: {
           date: state.date,
+          dogId: state.dog.id,
           label,
           kcal: truncKcal(kcal),
           kind,
@@ -221,7 +222,7 @@ export function TodayPanel({
       setError("体重を入力してください");
       return;
     }
-    void run(() => saveWeightLog({ data: { date: state.date, weightKg } }));
+    void run(() => saveWeightLog({ data: { date: state.date, dogId: state.dog.id, weightKg } }));
   }
 
   const locked = isCalorieLocked(state.date);
@@ -347,6 +348,7 @@ export function TodayPanel({
                       addCalorieLog({
                         data: {
                           date: state.date,
+                          dogId: state.dog.id,
                           label: food.name,
                           kcal: truncKcal(kcal),
                           kind: food.kind,
@@ -509,7 +511,7 @@ export function TodayPanel({
                   className="size-10 min-h-10 text-muted"
                   aria-label={`${log.label}を削除`}
                   disabled={pending || locked}
-                  onClick={() => void run(() => deleteCalorieLog({ data: { date: state.date, id: log.id } }))}
+                  onClick={() => void run(() => deleteCalorieLog({ data: { date: state.date, dogId: state.dog.id, id: log.id } }))}
                 >
                   <Trash2 />
                 </Button>

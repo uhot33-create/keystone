@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { saveDogProfile } from "@/lib/calorie/api";
+import { addDog, deleteDog, saveDogProfile } from "@/lib/calorie/api";
 import type { CalorieState } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -44,6 +44,7 @@ export function ProfilePanel({
         await saveDogProfile({
           data: {
             date: state.date,
+            dogId: dog.id,
             name: name.trim() || "うちの子",
             currentWeightKg: currentKg,
             idealWeightKg: idealKg,
@@ -101,6 +102,56 @@ export function ProfilePanel({
         <Button type="submit" className="mt-4 w-full" disabled={pending}>
           保存
         </Button>
+      </div>
+      <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
+        <p className="font-display text-lg font-semibold text-fg">多頭飼い</p>
+        <p className="mt-1 text-sm text-muted">子ごとに記録・フード・体重を分けて残せます。</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full"
+          disabled={pending || state.dogs.length >= 10}
+          onClick={() => {
+            const nextName = `うちの子${state.dogs.length + 1}`;
+            setPending(true);
+            setError(null);
+            setMessage(null);
+            void addDog({ data: { date: state.date, name: nextName } })
+              .then((next) => {
+                onChange(next);
+                setMessage(`${next.dog.name} を追加しました。名前を保存してください。`);
+              })
+              .catch((err: unknown) => setError(err instanceof Error ? err.message : "追加できませんでした"))
+              .finally(() => setPending(false));
+          }}
+        >
+          子を追加
+        </Button>
+        {state.dogs.length > 1 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-2 w-full text-danger"
+            disabled={pending}
+            onClick={() => {
+              if (!window.confirm(`${dog.name} の記録・フードも削除します。よろしいですか？`)) return;
+              setPending(true);
+              setError(null);
+              setMessage(null);
+              void deleteDog({ data: { date: state.date, dogId: dog.id } })
+                .then((next) => {
+                  onChange(next);
+                  setMessage("削除しました");
+                })
+                .catch((err: unknown) => setError(err instanceof Error ? err.message : "削除できませんでした"))
+                .finally(() => setPending(false));
+            }}
+          >
+            この子を削除
+          </Button>
+        ) : (
+          <p className="mt-3 text-xs text-subtle">最後の1頭は削除できません。</p>
+        )}
       </div>
       {message ? <p className="text-sm text-accent">{message}</p> : null}
       {error ? (

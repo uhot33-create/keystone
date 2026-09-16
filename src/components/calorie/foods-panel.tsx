@@ -41,6 +41,7 @@ export function FoodsPanel({
         await addDogFood({
           data: {
             date: state.date,
+            dogId: state.dog.id,
             name: foodName.trim(),
             kind: foodKind,
             kcal,
@@ -162,7 +163,7 @@ export function FoodsPanel({
                   aria-label={`${food.name}を削除`}
                   disabled={pending}
                   onClick={() =>
-                    void deleteDogFood({ data: { date: state.date, id: food.id } })
+                    void deleteDogFood({ data: { date: state.date, dogId: state.dog.id, id: food.id } })
                       .then(onChange)
                       .catch((err: unknown) => setError(err instanceof Error ? err.message : "削除できませんでした"))
                   }
