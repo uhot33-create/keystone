@@ -83,22 +83,24 @@ export function MemoCard({
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
           </Link>
         </div>
-        {thumbSrc ? (
+        {imageSrc ? (
           <button
             type="button"
-            className="w-16 shrink-0 self-stretch outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            className="w-16 shrink-0 self-stretch bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
             aria-label={`${memo.name}の写真`}
             onClick={() => setOpen(true)}
           >
-            <img
-              src={thumbSrc}
-              alt=""
-              width={64}
-              height={80}
-              loading="lazy"
-              decoding="async"
-              className="h-full w-full object-cover"
-            />
+            {thumbSrc ? (
+              <img
+                src={thumbSrc}
+                alt=""
+                width={64}
+                height={80}
+                loading="lazy"
+                decoding="async"
+                className="h-full w-full object-cover"
+              />
+            ) : null}
           </button>
         ) : null}
       </article>

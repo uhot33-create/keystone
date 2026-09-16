@@ -84,7 +84,7 @@ function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: stri
   const fromJson = Array.isArray(raw)
     ? raw.flatMap((item) => {
         if (!item || typeof item !== "object") return [];
-        const rec = item as { url?: unknown; pathname?: unknown; thumbUrl?: unknown; thumbPathname?: unknown };
+        const rec = item as { url?: unknown; pathname?: unknown; thumbUrl?: unknown; thumbPathname?: unknown; thumbPublic?: unknown };
         const url = typeof rec.url === "string" ? rec.url : "";
         if (!url) return [];
         return [{
@@ -92,11 +92,12 @@ function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: stri
           pathname: typeof rec.pathname === "string" ? rec.pathname : null,
           thumbUrl: typeof rec.thumbUrl === "string" ? rec.thumbUrl : null,
           thumbPathname: typeof rec.thumbPathname === "string" ? rec.thumbPathname : null,
+          thumbPublic: rec.thumbPublic === true,
         }];
       })
     : [];
   if (fromJson.length > 0) return fromJson.slice(0, MAX_MEMO_IMAGES);
-  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath, thumbUrl: null, thumbPathname: null }];
+  if (fallbackUrl) return [{ url: fallbackUrl, pathname: fallbackPath, thumbUrl: null, thumbPathname: null, thumbPublic: false }];
   return [];
 }
 
@@ -338,6 +339,7 @@ const memoInput = z.object({
         pathname: z.string().nullable(),
         thumbUrl: z.string().nullable(),
         thumbPathname: z.string().nullable(),
+        thumbPublic: z.boolean().optional(),
       }),
     )
     .max(MAX_MEMO_IMAGES, "画像は3枚までです"),
@@ -536,7 +538,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
           ...(token ? { token } : {}),
         }),
         put(`walk/${context.userId}/${id}.thumb.jpg`, thumbBuf, {
-          access: "private",
+          access: "public",
           contentType: "image/jpeg",
           ...(token ? { token } : {}),
         }),
@@ -546,6 +548,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
         pathname: blob.pathname,
         thumbUrl: thumb.url,
         thumbPathname: thumb.pathname,
+        thumbPublic: true,
       };
     } catch (err) {
       const detail = err instanceof Error ? err.message : "";
@@ -585,7 +588,7 @@ export const ensureWalkThumbs = createServerFn({ method: "POST" })
     for (const memo of memos) {
       for (let index = 0; index < memo.images.length; index += 1) {
         const image = memo.images[index];
-        if (!image?.url || image.thumbUrl) continue;
+        if (!image?.url || image.thumbPublic) continue;
         remaining += 1;
         if (!foundMemo) {
           foundMemo = memo;
@@ -599,25 +602,28 @@ export const ensureWalkThumbs = createServerFn({ method: "POST" })
     if (!image) return { remaining: 0, memo: foundMemo };
     const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
     const thumbBuf = await makeThumbBuffer(image.url);
-    let thumbUrl = image.url;
-    let thumbPathname = image.pathname;
+    let thumbUrl: string | null = null;
+    let thumbPathname: string | null = null;
+    let thumbPublic = false;
     if (thumbBuf && thumbBuf.length > 0) {
       try {
         const { put } = await import("@vercel/blob");
         const thumb = await put(`walk/${context.userId}/${crypto.randomUUID()}.thumb.jpg`, thumbBuf, {
-          access: "private",
+          access: "public",
           contentType: "image/jpeg",
           ...(token ? { token } : {}),
         });
         thumbUrl = thumb.url;
         thumbPathname = thumb.pathname;
+        thumbPublic = true;
       } catch {
-        thumbUrl = image.url;
-        thumbPathname = image.pathname;
+        thumbPublic = true;
       }
+    } else {
+      thumbPublic = true;
     }
     const images = foundMemo.images.map((item, index) =>
-      index === foundIndex ? { ...item, thumbUrl, thumbPathname } : item,
+      index === foundIndex ? { ...item, thumbUrl, thumbPathname, thumbPublic } : item,
     );
     await sql`
       update memos
@@ -649,19 +655,19 @@ export const attachWalkThumb = createServerFn({ method: "POST" })
     if (!current) throw new Error("カードが見つかりません");
     const image = current.images[data.index];
     if (!image) throw new Error("画像がありません");
-    if (image.thumbUrl) return current;
+    if (image.thumbPublic && image.thumbUrl) return current;
     const thumbBuf = Buffer.from(data.thumbBase64, "base64");
     if (!thumbBuf.length) throw new Error("サムネイルを作れませんでした");
     const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
     const { put } = await import("@vercel/blob");
     const thumb = await put(`walk/${context.userId}/${crypto.randomUUID()}.thumb.jpg`, thumbBuf, {
-      access: "private",
+      access: "public",
       contentType: "image/jpeg",
       ...(token ? { token } : {}),
     });
     const images = current.images.map((item, index) =>
       index === data.index
-        ? { ...item, thumbUrl: thumb.url, thumbPathname: thumb.pathname }
+        ? { ...item, thumbUrl: thumb.url, thumbPathname: thumb.pathname, thumbPublic: true }
         : item,
     );
     await sql`

@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, makeListThumb, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
-import type { DogBreed, DogColor, SexValue, WalkMemo } from "@/lib/walk/types";
+import type { DogBreed, DogColor, MemoImage, SexValue, WalkMemo } from "@/lib/walk/types";
 import { DEFAULT_WALK_SEARCH, MAX_MEMO_IMAGES, SEX_OPTIONS } from "@/lib/walk/types";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -35,10 +35,11 @@ type ImageSlot = {
   pathname: string | null;
   thumbUrl: string | null;
   thumbPathname: string | null;
+  thumbPublic?: boolean;
 };
 
 function emptySlot(): ImageSlot {
-  return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null };
+  return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null, thumbPublic: false };
 }
 
 function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
@@ -54,6 +55,7 @@ function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
     pathname: image.pathname,
     thumbUrl: image.thumbUrl ?? null,
     thumbPathname: image.thumbPathname ?? null,
+    thumbPublic: image.thumbPublic === true,
   }));
   while (slots.length < MAX_MEMO_IMAGES) slots.push(emptySlot());
   return slots.slice(0, MAX_MEMO_IMAGES);
@@ -128,6 +130,7 @@ export function MemoForm({
         pathname: null,
         thumbUrl: null,
         thumbPathname: null,
+        thumbPublic: false,
       };
       return next;
     });
@@ -224,7 +227,7 @@ export function MemoForm({
       if (!blobConfigured && slots.some((slot) => slot.file)) {
         throw new Error("画像の保存には Vercel Blob の設定が必要です");
       }
-      const images: { url: string; pathname: string | null; thumbUrl: string | null; thumbPathname: string | null }[] = [];
+      const images: MemoImage[] = [];
       const sourceIndexes: number[] = [];
       for (const [index, slot] of slots.entries()) {
         if (slot.file) {
@@ -242,6 +245,7 @@ export function MemoForm({
             pathname: uploaded.pathname,
             thumbUrl: uploaded.thumbUrl,
             thumbPathname: uploaded.thumbPathname,
+            thumbPublic: true,
           });
           sourceIndexes.push(index);
         } else if (slot.url) {
@@ -250,6 +254,7 @@ export function MemoForm({
             pathname: slot.pathname,
             thumbUrl: slot.thumbUrl,
             thumbPathname: slot.thumbPathname,
+            thumbPublic: slot.thumbPublic,
           });
           sourceIndexes.push(index);
         }

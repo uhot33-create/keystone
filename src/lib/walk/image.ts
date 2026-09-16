@@ -157,21 +157,25 @@ export function walkMemoImageSrc(
   memo: {
     id: string;
     imageUrl?: string | null;
-    images?: { url: string; thumbUrl?: string | null }[];
+    images?: { url: string; thumbUrl?: string | null; thumbPublic?: boolean }[];
     coverIndex?: number;
   },
   index?: number,
   kind: "full" | "thumb" = "full",
 ): string | null {
-  const count = memo.images?.length
-    ? memo.images.length
+  const images = memo.images?.length
+    ? memo.images
     : memo.imageUrl
-      ? 1
-      : 0;
-  if (count === 0) return null;
-  const i = Math.min(Math.max(0, index ?? memo.coverIndex ?? 0), count - 1);
-  const thumb = kind === "thumb" ? "&t=1" : "";
-  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}${thumb}`;
+      ? [{ url: memo.imageUrl, thumbUrl: null as string | null, thumbPublic: false }]
+      : [];
+  if (images.length === 0) return null;
+  const i = Math.min(Math.max(0, index ?? memo.coverIndex ?? 0), images.length - 1);
+  const slot = images[i];
+  if (kind === "thumb") {
+    if (slot?.thumbPublic && slot.thumbUrl && slot.thumbUrl !== slot.url) return slot.thumbUrl;
+    return null;
+  }
+  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}`;
 }
 
 export const IMAGE_HINT =

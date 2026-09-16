@@ -38,6 +38,7 @@ export type MemoImage = {
   pathname: string | null;
   thumbUrl: string | null;
   thumbPathname: string | null;
+  thumbPublic?: boolean;
 };
 
 export type WalkMemo = {
