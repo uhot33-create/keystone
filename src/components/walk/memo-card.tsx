@@ -60,7 +60,10 @@ export function MemoCard({
                 className="grid size-7 shrink-0 place-items-center rounded-full text-muted outline-none hover:bg-surface-2 disabled:text-primary"
                 aria-label={metToday ? "今日会った（記録済）" : "今日会った"}
                 disabled={pending || metToday}
-                onClick={() => onMetToday(memo.id)}
+                onClick={() => {
+                  if (!window.confirm(`${memo.name} の最後に会った日を今日にしますか？`)) return;
+                  onMetToday(memo.id);
+                }}
               >
                 <PawPrint className="size-3.5" strokeWidth={2} fill={metToday ? "currentColor" : "none"} />
               </button>
