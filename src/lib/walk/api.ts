@@ -118,8 +118,10 @@ function asCoverIndex(value: unknown, count: number): number {
   return Math.min(Math.max(0, n), count - 1);
 }
 
-function mapMemo(row: MemoRow): WalkMemo {
-  const images = asImages(row.images, row.image_url, row.image_pathname);
+function mapMemo(row: MemoRow, includeThumbData = true): WalkMemo {
+  const images = asImages(row.images, row.image_url, row.image_pathname).map((image) =>
+    includeThumbData ? image : { ...image, thumbData: null },
+  );
   const coverIndex = asCoverIndex(row.cover_index, images.length);
   const cover = images[coverIndex] ?? null;
   return {
@@ -228,7 +230,7 @@ async function listColors(): Promise<DogColor[]> {
   }));
 }
 
-async function listMemos(userId: string): Promise<WalkMemo[]> {
+async function listMemos(userId: string, includeThumbData = true): Promise<WalkMemo[]> {
   const sql = await getSql();
   const rows = await sql<MemoRow>`
     select
@@ -259,7 +261,7 @@ async function listMemos(userId: string): Promise<WalkMemo[]> {
     where m.user_id = ${userId}
     order by m.name asc
   `;
-  return rows.map(mapMemo);
+  return rows.map((row) => mapMemo(row, includeThumbData));
 }
 
 async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
@@ -396,7 +398,7 @@ export const getWalkState = createServerFn({ method: "GET" })
     const [breeds, colors, memos] = await Promise.all([
       listBreeds(),
       listColors(),
-      listMemos(context.userId),
+      listMemos(context.userId, false),
     ]);
     return {
       breeds,
@@ -404,6 +406,28 @@ export const getWalkState = createServerFn({ method: "GET" })
       memos,
       blobConfigured: Boolean(process.env.BLOB_READ_WRITE_TOKEN?.trim() || process.env.VERCEL),
     };
+  });
+
+export const getWalkThumbs = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const memos = await listMemos(context.userId, true);
+    return memos.flatMap((memo) => {
+      const cover = memo.images[memo.coverIndex] ?? memo.images[0];
+      if (!cover) return [];
+      const thumbData = cover.thumbData && cover.thumbData.length > 100 ? cover.thumbData : null;
+      const thumbUrl =
+        cover.thumbPublic && cover.thumbUrl && cover.thumbUrl !== cover.url ? cover.thumbUrl : null;
+      if (!thumbData && !thumbUrl) return [];
+      return [
+        {
+          id: memo.id,
+          thumbData,
+          thumbUrl,
+          thumbPublic: Boolean(thumbUrl),
+        },
+      ];
+    });
   });
 
 export const getWalkMemo = createServerFn({ method: "GET" })
@@ -567,128 +591,6 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
       const detail = err instanceof Error ? err.message : "";
       throw new Error(detail ? `画像を保存できませんでした（${detail}）` : "画像を保存できませんでした");
     }
-  });
-
-async function makeThumbBuffer(url: string): Promise<Buffer | null> {
-  try {
-    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-    const { get } = await import("@vercel/blob");
-    const result = await get(url, {
-      access: "private",
-      ...(token ? { token } : {}),
-    });
-    if (!result?.stream) return null;
-    const raw = Buffer.from(await new Response(result.stream).arrayBuffer());
-    const sharp = (await import("sharp")).default;
-    return await sharp(raw)
-      .rotate()
-      .resize(128, 128, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 72 })
-      .toBuffer();
-  } catch {
-    return null;
-  }
-}
-
-export const ensureWalkThumbs = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: unknown) =>
-    parse(z.object({ skip: z.boolean().optional() }), input ?? {}),
-  )
-  .handler(async ({ context, data }) => {
-    const sql = await getSql();
-    const memos = await listMemos(context.userId);
-    let remaining = 0;
-    let foundMemo: WalkMemo | null = null;
-    let foundIndex = 0;
-    for (const memo of memos) {
-      for (let index = 0; index < memo.images.length; index += 1) {
-        const image = memo.images[index];
-        if (!image?.url || image.thumbData) continue;
-        remaining += 1;
-        if (!foundMemo) {
-          foundMemo = memo;
-          foundIndex = index;
-        }
-      }
-    }
-    if (!foundMemo) return { remaining: 0, memo: null as WalkMemo | null };
-
-    const image = foundMemo.images[foundIndex];
-    if (!image) return { remaining: 0, memo: foundMemo };
-    let thumbUrl = image.thumbUrl;
-    let thumbPathname = image.thumbPathname;
-    let thumbPublic = Boolean(image.thumbPublic);
-    let thumbData = image.thumbData ?? null;
-    if (data.skip) {
-      thumbData = "skipped-placeholder-thumb";
-      thumbPublic = true;
-    } else {
-      const thumbBuf = await makeThumbBuffer(image.url);
-      if (thumbBuf && thumbBuf.length > 0) {
-        thumbData = thumbBuf.toString("base64");
-        thumbPublic = true;
-      } else {
-        thumbData = "skipped-placeholder-thumb";
-        thumbPublic = true;
-      }
-    }
-    const images = foundMemo.images.map((item, index) =>
-      index === foundIndex ? { ...item, thumbUrl, thumbPathname, thumbPublic, thumbData } : item,
-    );
-    await sql`
-      update memos
-      set images = ${JSON.stringify(images)}::jsonb, updated_at = now()
-      where id = ${foundMemo.id} and user_id = ${context.userId}
-    `;
-    const memo = await getOwned(context.userId, foundMemo.id);
-    return { remaining: Math.max(0, remaining - 1), memo };
-  });
-
-export const attachWalkThumb = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: unknown) =>
-    parse(
-      z.object({
-        id: z.string().min(1),
-        index: z.number().int().min(0).max(MAX_MEMO_IMAGES - 1),
-        thumbBase64: z
-          .string()
-          .min(16, "サムネイルを作れませんでした")
-          .max(120_000, "サムネイルが大きすぎます"),
-      }),
-      input,
-    ),
-  )
-  .handler(async ({ context, data }) => {
-    const sql = await getSql();
-    const current = await getOwned(context.userId, data.id);
-    if (!current) throw new Error("カードが見つかりません");
-    const image = current.images[data.index];
-    if (!image) throw new Error("画像がありません");
-    if (image.thumbPublic && image.thumbUrl) return current;
-    const thumbBuf = Buffer.from(data.thumbBase64, "base64");
-    if (!thumbBuf.length) throw new Error("サムネイルを作れませんでした");
-    const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-    const { put } = await import("@vercel/blob");
-    const thumb = await put(`walk/${context.userId}/${crypto.randomUUID()}.thumb.jpg`, thumbBuf, {
-      access: "public",
-      contentType: "image/jpeg",
-      ...(token ? { token } : {}),
-    });
-    const images = current.images.map((item, index) =>
-      index === data.index
-        ? { ...item, thumbUrl: thumb.url, thumbPathname: thumb.pathname, thumbPublic: true, thumbData: data.thumbBase64 }
-        : item,
-    );
-    await sql`
-      update memos
-      set images = ${JSON.stringify(images)}::jsonb, updated_at = now()
-      where id = ${current.id} and user_id = ${context.userId}
-    `;
-    const memo = await getOwned(context.userId, current.id);
-    if (!memo) throw new Error("保存できませんでした");
-    return memo;
   });
 
 export const deleteWalkMemo = createServerFn({ method: "POST" })

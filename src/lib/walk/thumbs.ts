@@ -1,47 +1,32 @@
-import { ensureWalkThumbs } from "./api";
 import type { WalkMemo } from "./types";
 
-export function thumbStats(memos: WalkMemo[]) {
-  let photos = 0;
-  let ready = 0;
-  let skipped = 0;
-  let pending = 0;
-  for (const memo of memos) {
-    for (const image of memo.images) {
-      if (!image.url) continue;
-      photos += 1;
-      if (image.thumbData && image.thumbData.length > 100) ready += 1;
-      else pending += 1;
-    }
-  }
-  return { photos, ready, skipped, pending };
-}
+export type WalkThumbPayload = {
+  id: string;
+  thumbData: string | null;
+  thumbUrl: string | null;
+  thumbPublic: boolean;
+};
 
-export function memosNeedingThumbs(memos: WalkMemo[]): WalkMemo[] {
-  return memos.filter((memo) =>
-    memo.images.some((image) => Boolean(image.url) && !(image.thumbData && image.thumbData.length > 100)),
-  );
-}
-
-export async function backfillWalkThumbs(
-  onMemo: (memo: WalkMemo) => void,
-  onRemaining: (remaining: number) => void,
-): Promise<void> {
-  let errors = 0;
-  for (;;) {
-    try {
-      const skip = errors >= 2;
-      const next = await ensureWalkThumbs({ data: { skip } });
-      errors = 0;
-      if (next.memo) onMemo(next.memo);
-      onRemaining(next.remaining);
-      if (next.remaining <= 0) return;
-    } catch {
-      errors += 1;
-      if (errors >= 8) {
-        onRemaining(0);
-        return;
-      }
-    }
-  }
+export function applyWalkThumbs(memos: WalkMemo[], thumbs: WalkThumbPayload[]): WalkMemo[] {
+  if (thumbs.length === 0) return memos;
+  const byId = new Map(thumbs.map((item) => [item.id, item]));
+  return memos.map((memo) => {
+    const thumb = byId.get(memo.id);
+    if (!thumb) return memo;
+    if (memo.images.length === 0) return memo;
+    const cover = Math.min(memo.coverIndex, memo.images.length - 1);
+    return {
+      ...memo,
+      images: memo.images.map((image, index) =>
+        index === cover
+          ? {
+              ...image,
+              thumbData: thumb.thumbData ?? image.thumbData,
+              thumbUrl: thumb.thumbUrl ?? image.thumbUrl,
+              thumbPublic: thumb.thumbPublic || image.thumbPublic,
+            }
+          : image,
+      ),
+    };
+  });
 }

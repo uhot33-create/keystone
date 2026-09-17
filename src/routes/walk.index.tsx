@@ -6,9 +6,9 @@ import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWalkState, touchWalkMemoMet } from "@/lib/walk/api";
+import { getWalkState, getWalkThumbs, touchWalkMemoMet } from "@/lib/walk/api";
 import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
-import { backfillWalkThumbs, thumbStats } from "@/lib/walk/thumbs";
+import { applyWalkThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/walk/")({
@@ -27,8 +27,7 @@ function WalkIndex() {
   const [breeds, setBreeds] = useState<DogBreed[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [thumbLeft, setThumbLeft] = useState<number | null>(null);
-  const thumbStarted = useRef(false);
+  const thumbsFetchStarted = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,24 +48,18 @@ function WalkIndex() {
   }, []);
 
   useEffect(() => {
-    if (!memos || thumbStarted.current) return;
-    const pending = thumbStats(memos).pending;
-    if (pending === 0) {
-      setThumbLeft(0);
-      return;
-    }
-    thumbStarted.current = true;
-    setThumbLeft(pending);
-    void backfillWalkThumbs(
-      (next) => {
-        setMemos((list) => list?.map((memo) => (memo.id === next.id ? next : memo)) ?? list);
-      },
-      (remaining) => setThumbLeft(remaining),
-    );
+    if (!memos || thumbsFetchStarted.current) return;
+    thumbsFetchStarted.current = true;
+    getWalkThumbs()
+      .then((thumbs) => {
+        setMemos((list) => (list ? applyWalkThumbs(list, thumbs) : list));
+      })
+      .catch(() => {
+        /* 文字は出したまま */
+      });
   }, [memos]);
 
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
-  const thumbs = memos ? thumbStats(memos) : null;
 
   async function onMetToday(id: string) {
     setPendingId(id);
@@ -113,13 +106,6 @@ function WalkIndex() {
         <p className="text-sm text-danger" role="alert">
           {error}
         </p>
-      ) : null}
-      {thumbs && thumbs.photos > 0 && thumbLeft === 0 && thumbs.pending === 0 ? (
-        <p className="text-xs text-subtle">一覧用の写真は用意済みです（{thumbs.ready}枚）</p>
-      ) : thumbLeft != null && thumbLeft > 0 ? (
-        <p className="text-xs text-subtle">写真を軽くしています（残り {thumbLeft}）</p>
-      ) : thumbs && thumbs.pending > 0 ? (
-        <p className="text-xs text-subtle">写真を作成中です（{thumbs.pending}枚）</p>
       ) : null}
 
       {!memos ? (
