@@ -327,51 +327,46 @@ export function TodayPanel({
         )}
       </form>
 
-      {STAPLES.length > 0 ? (
-        <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
-          <p className="font-display text-lg font-semibold text-fg">定番</p>
-          <p className="mt-1 text-sm text-muted">ワンタップで足します。フードに同じ名前で登録してください。</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {STAPLES.map((item) => {
-              const food = state.foods.find((entry) => entry.name === item.name);
-              return (
-                <button
-                  key={`${item.name}-${item.qty}`}
-                  type="button"
-                  disabled={pending || locked || !food}
-                  className="rounded-full border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg disabled:opacity-50"
-                  onClick={() => {
-                    if (!food) return;
-                    const kcal = kcalForQuantity(food.kcal, food.amount, item.qty);
-                    if (!(kcal > 0)) return;
-                    void run(() =>
-                      addCalorieLog({
-                        data: {
-                          date: state.date,
-                          dogId: state.dog.id,
-                          label: food.name,
-                          kcal: truncKcal(kcal),
-                          kind: food.kind,
-                          foodId: food.id,
-                          amount: item.qty,
-                          unit: food.unit,
-                        },
-                      }),
-                    );
-                  }}
-                >
-                  + {item.name} {item.qty}g
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-
       <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-lg font-semibold text-fg">カロリーを足す</p>
           <p className="text-xs text-muted">名前は省略できます</p>
+        </div>
+
+        <p className="mt-3 text-xs font-medium text-subtle">定番</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {STAPLES.map((item) => {
+            const food = state.foods.find((entry) => entry.name === item.name);
+            return (
+              <button
+                key={`${item.name}-${item.qty}`}
+                type="button"
+                disabled={pending || locked || !food}
+                className="rounded-full border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg disabled:opacity-50"
+                onClick={() => {
+                  if (!food) return;
+                  const kcal = kcalForQuantity(food.kcal, food.amount, item.qty);
+                  if (!(kcal > 0)) return;
+                  void run(() =>
+                    addCalorieLog({
+                      data: {
+                        date: state.date,
+                        dogId: state.dog.id,
+                        label: food.name,
+                        kcal: truncKcal(kcal),
+                        kind: food.kind,
+                        foodId: food.id,
+                        amount: item.qty,
+                        unit: food.unit,
+                      },
+                    }),
+                  );
+                }}
+              >
+                + {item.name} {item.qty}g
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-3 grid grid-cols-2 rounded-md bg-surface-2 p-1">
