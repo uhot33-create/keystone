@@ -50,6 +50,36 @@
   --color-ring: #c45c78;
 }
 
+:root[data-theme="midori"] {
+  --color-bg: #eef5e8;
+  --color-surface: #f7fbf4;
+  --color-surface-2: #dde8d4;
+  --color-fg: #243028;
+  --color-muted: #4a6450;
+  --color-subtle: #7a9280;
+  --color-primary: #4a7a48;
+  --color-primary-fg: #f4faf2;
+  --color-accent: #7a9a4a;
+  --color-border: #c8d8c0;
+  --color-danger: #8b3a32;
+  --color-ring: #4a7a48;
+}
+
+:root[data-theme="tsuyu"] {
+  --color-bg: #eef0f7;
+  --color-surface: #f7f8fc;
+  --color-surface-2: #dfe3ee;
+  --color-fg: #2a2c3a;
+  --color-muted: #54586c;
+  --color-subtle: #8488a0;
+  --color-primary: #5a6a9a;
+  --color-primary-fg: #f4f6fb;
+  --color-accent: #7a8ab8;
+  --color-border: #c8ccd8;
+  --color-danger: #8b3a48;
+  --color-ring: #5a6a9a;
+}
+
 :root[data-theme="summer"] {
   --color-bg: #eef6f8;
   --color-surface: #f7fcfd;
@@ -78,6 +108,21 @@
   --color-border: #e0cbb0;
   --color-danger: #8b3a32;
   --color-ring: #a04828;
+}
+
+:root[data-theme="tsukimi"] {
+  --color-bg: #f4efe4;
+  --color-surface: #fbf7ee;
+  --color-surface-2: #e8dcc8;
+  --color-fg: #2e281c;
+  --color-muted: #6a5c44;
+  --color-subtle: #9a8a70;
+  --color-primary: #8a6a3a;
+  --color-primary-fg: #fbf6ea;
+  --color-accent: #c4a050;
+  --color-border: #dcccb0;
+  --color-danger: #8b3a32;
+  --color-ring: #8a6a3a;
 }
 
 :root[data-theme="winter"] {

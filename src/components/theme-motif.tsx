@@ -32,8 +32,11 @@ export function ThemeMotif({ compact = false }: { compact?: boolean }) {
 
 const MOTIFS: Partial<Record<ThemeId, () => JSX.Element>> = {
   spring: SpringMotif,
+  midori: MidoriMotif,
+  tsuyu: TsuyuMotif,
   summer: SummerMotif,
   autumn: AutumnMotif,
+  tsukimi: TsukimiMotif,
   winter: WinterMotif,
 };
 
@@ -43,6 +46,26 @@ function SpringMotif() {
     <g fill="none">
       <Sakura cx={250} cy={168} r={118} petal="#e8a0b4" center="#f4dce4" />
       <Strawberry x={86} y={214} />
+    </g>
+  );
+}
+
+/** 若葉 + 青梅 */
+function MidoriMotif() {
+  return (
+    <g fill="none">
+      <YoungLeaves cx={250} cy={150} />
+      <Aoume x={58} y={188} />
+    </g>
+  );
+}
+
+/** 紫陽花 + 梅 */
+function TsuyuMotif() {
+  return (
+    <g fill="none">
+      <Hydrangea cx={262} cy={148} />
+      <Ume x={54} y={196} />
     </g>
   );
 }
@@ -63,6 +86,17 @@ function AutumnMotif() {
     <g fill="none">
       <Chrysanthemum cx={268} cy={150} />
       <Persimmon x={70} y={188} />
+    </g>
+  );
+}
+
+/** ススキ + 団子 */
+function TsukimiMotif() {
+  return (
+    <g fill="none">
+      <Moon cx={268} cy={128} />
+      <Susuki x={40} y={40} />
+      <Dango x={70} y={210} />
     </g>
   );
 }
@@ -245,3 +279,107 @@ function Yuzu({ x, y }: { x: number; y: number }) {
     </g>
   );
 }
+
+function YoungLeaves({ cx, cy }: { cx: number; cy: number }) {
+  return (
+    <g>
+      <ellipse cx={cx - 36} cy={cy + 8} rx={42} ry={70} fill="#7a9a4a" transform={`rotate(-28 ${cx - 36} ${cy + 8})`} />
+      <ellipse cx={cx + 28} cy={cy - 6} rx={38} ry={64} fill="#4a7a48" transform={`rotate(22 ${cx + 28} ${cy - 6})`} />
+      <ellipse cx={cx + 4} cy={cy + 24} rx={32} ry={52} fill="#8aaa58" transform={`rotate(-6 ${cx + 4} ${cy + 24})`} />
+      <path d={`M${cx} ${cy + 70} C${cx - 8} ${cy + 20} ${cx - 18} ${cy - 40} ${cx - 28} ${cy - 70}`} stroke="#3a5a38" strokeWidth="6" fill="none" />
+    </g>
+  );
+}
+
+function Aoume({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <ellipse cx="88" cy="100" rx="70" ry="64" fill="#6a9a58" />
+      <ellipse cx="88" cy="94" rx="62" ry="56" fill="#7aaa68" />
+      <ellipse cx="70" cy="82" rx="18" ry="12" fill="#c8dcb0" opacity="0.55" />
+      <ellipse cx="88" cy="40" rx="10" ry="8" fill="#4a7a48" />
+      <rect x="83" y="18" width="10" height="22" rx="3" fill="#5a4a28" />
+    </g>
+  );
+}
+
+function Hydrangea({ cx, cy }: { cx: number; cy: number }) {
+  const florets = [
+    [0, -38, "#7a8ab8"],
+    [34, -18, "#5a6a9a"],
+    [34, 18, "#8aa0c8"],
+    [0, 38, "#5a6a9a"],
+    [-34, 18, "#7a8ab8"],
+    [-34, -18, "#9ab0d0"],
+    [0, 0, "#c8b0d0"],
+  ] as const;
+  return (
+    <g>
+      {florets.map(([dx, dy, fill]) => (
+        <g key={`${dx}-${dy}`}>
+          {[0, 90, 180, 270].map((deg) => {
+            const rad = ((deg - 90) * Math.PI) / 180;
+            const px = cx + dx + Math.cos(rad) * 14;
+            const py = cy + dy + Math.sin(rad) * 14;
+            return <ellipse key={deg} cx={px} cy={py} rx={16} ry={22} fill={fill} transform={`rotate(${deg} ${px} ${py})`} />;
+          })}
+          <circle cx={cx + dx} cy={cy + dy} r={7} fill="#f4efe8" />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+function Ume({ x, y }: { x: number; y: number }) {
+  const cx = 88;
+  const cy = 96;
+  const petals = [0, 72, 144, 216, 288].map((deg) => {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    const px = cx + Math.cos(rad) * 16;
+    const py = cy + Math.sin(rad) * 16;
+    return <ellipse key={deg} cx={px} cy={py} rx={28} ry={36} fill="#d48aa0" transform={`rotate(${deg} ${px} ${py})`} />;
+  });
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      {petals}
+      <circle cx={cx} cy={cy} r={16} fill="#f4e6c8" />
+      <circle cx={cx} cy={cy} r={7} fill="#c45c78" />
+    </g>
+  );
+}
+
+function Moon({ cx, cy }: { cx: number; cy: number }) {
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={86} fill="#e8d090" />
+      <circle cx={cx} cy={cy} r={78} fill="#f2e2a8" />
+      <circle cx={cx - 18} cy={cy - 8} r={14} fill="#e0c878" opacity="0.55" />
+      <circle cx={cx + 22} cy={cy + 18} r={10} fill="#e0c878" opacity="0.45" />
+    </g>
+  );
+}
+
+function Susuki({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`} fill="none" stroke="#8a6a3a" strokeWidth="5" strokeLinecap="round">
+      <path d="M40 280 C48 180 40 90 70 20" />
+      <path d="M88 280 C80 170 110 80 150 8" />
+      <path d="M130 280 C140 190 128 100 176 36" />
+      <ellipse cx="78" cy="36" rx="18" ry="40" fill="#c4a050" stroke="none" transform="rotate(-18 78 36)" />
+      <ellipse cx="156" cy="24" rx="16" ry="36" fill="#d4b468" stroke="none" transform="rotate(12 156 24)" />
+      <ellipse cx="182" cy="52" rx="14" ry="32" fill="#c4a050" stroke="none" transform="rotate(22 182 52)" />
+    </g>
+  );
+}
+
+function Dango({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x="84" y="8" width="8" height="150" rx="4" fill="#5a4a28" />
+      <circle cx="88" cy="40" r="26" fill="#e8d0d0" />
+      <circle cx="88" cy="90" r="26" fill="#f4efe0" />
+      <circle cx="88" cy="140" r="26" fill="#d8c07a" />
+    </g>
+  );
+}
+
