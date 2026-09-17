@@ -235,12 +235,18 @@ export function MemoForm({
       for (const [index, slot] of slots.entries()) {
         if (slot.file) {
           setPending("uploading");
-          const thumb = await makeListThumb(slot.file);
+          let thumbBase64: string | undefined;
+          try {
+            const thumb = await makeListThumb(slot.file);
+            thumbBase64 = await fileToBase64(thumb);
+          } catch {
+            thumbBase64 = undefined;
+          }
           const uploaded = await uploadWalkImage({
             data: {
               type: imageContentType(slot.file),
               base64: await fileToBase64(slot.file),
-              thumbBase64: await fileToBase64(thumb),
+              ...(thumbBase64 ? { thumbBase64 } : {}),
             },
           });
           images.push({
@@ -248,7 +254,7 @@ export function MemoForm({
             pathname: uploaded.pathname,
             thumbUrl: uploaded.thumbUrl,
             thumbPathname: uploaded.thumbPathname,
-            thumbPublic: true,
+            thumbPublic: Boolean(uploaded.thumbPublic),
             thumbData: uploaded.thumbData ?? null,
           });
           sourceIndexes.push(index);

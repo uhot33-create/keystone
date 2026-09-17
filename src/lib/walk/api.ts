@@ -598,10 +598,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
           .string()
           .min(32, "画像を読み込めませんでした")
           .max(MAX_B64, "画像が大きすぎます"),
-        thumbBase64: z
-          .string()
-          .min(16, "サムネイルを作れませんでした")
-          .max(120_000, "サムネイルが大きすぎます"),
+        thumbBase64: z.string().max(120_000).optional(),
       }),
       input,
     ),
@@ -610,31 +607,51 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
     const buf = Buffer.from(data.base64, "base64");
     if (!buf.length) throw new Error("画像を読み込めませんでした");
-    const thumbBuf = Buffer.from(data.thumbBase64, "base64");
-    if (!thumbBuf.length) throw new Error("サムネイルを作れませんでした");
+    let thumbBuf = data.thumbBase64 ? Buffer.from(data.thumbBase64, "base64") : null;
+    if (!thumbBuf?.length) {
+      try {
+        const sharp = (await import("sharp")).default;
+        thumbBuf = await sharp(buf)
+          .rotate()
+          .resize(128, 128, { fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 72 })
+          .toBuffer();
+      } catch {
+        thumbBuf = null;
+      }
+    }
     const ext = data.type === "image/png" ? "png" : data.type === "image/webp" ? "webp" : "jpg";
     try {
       const { put } = await import("@vercel/blob");
       const id = crypto.randomUUID();
-      const [blob, thumb] = await Promise.all([
-        put(`walk/${context.userId}/${id}.${ext}`, buf, {
-          access: "private",
-          contentType: data.type,
-          ...(token ? { token } : {}),
-        }),
-        put(`walk/${context.userId}/${id}.thumb.jpg`, thumbBuf, {
-          access: "public",
-          contentType: "image/jpeg",
-          ...(token ? { token } : {}),
-        }),
-      ]);
+      const blob = await put(`walk/${context.userId}/${id}.${ext}`, buf, {
+        access: "private",
+        contentType: data.type,
+        ...(token ? { token } : {}),
+      });
+      let thumbUrl: string | null = null;
+      let thumbPathname: string | null = null;
+      if (thumbBuf?.length) {
+        try {
+          const thumb = await put(`walk/${context.userId}/${id}.thumb.jpg`, thumbBuf, {
+            access: "private",
+            contentType: "image/jpeg",
+            ...(token ? { token } : {}),
+          });
+          thumbUrl = thumb.url;
+          thumbPathname = thumb.pathname;
+        } catch {
+          /* 本画像は保存できている */
+        }
+      }
+      const thumbData = thumbBuf?.length ? thumbBuf.toString("base64").slice(0, 80_000) : null;
       return {
         url: blob.url,
         pathname: blob.pathname,
-        thumbUrl: thumb.url,
-        thumbPathname: thumb.pathname,
-        thumbPublic: true,
-        thumbData: data.thumbBase64,
+        thumbUrl,
+        thumbPathname,
+        thumbPublic: false,
+        thumbData,
       };
     } catch (err) {
       const detail = err instanceof Error ? err.message : "";
