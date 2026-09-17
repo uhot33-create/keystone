@@ -83,7 +83,7 @@ export const Route = createFileRoute("/api/walk/image")({
           return new Response(result.stream, {
             headers: {
               "Content-Type": type,
-              "Cache-Control": wantThumb ? "private, max-age=86400" : "private, max-age=3600",
+              "Cache-Control": "private, no-cache, must-revalidate",
             },
           });
         } catch {

@@ -165,8 +165,10 @@ export function walkMemoImageSrc(
   memo: {
     id: string;
     imageUrl?: string | null;
+    updatedAt?: string | null;
     images?: {
       url: string;
+      pathname?: string | null;
       thumbUrl?: string | null;
       thumbPublic?: boolean;
       thumbData?: string | null;
@@ -189,7 +191,10 @@ export function walkMemoImageSrc(
     if (slot?.thumbPublic && slot.thumbUrl && slot.thumbUrl !== slot.url) return slot.thumbUrl;
     return null;
   }
-  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}`;
+  const version = encodeURIComponent(
+    (slot?.pathname || slot?.url || memo.updatedAt || String(i)).split("/").pop()?.slice(-40) || String(i),
+  );
+  return `/api/walk/image?id=${encodeURIComponent(memo.id)}&i=${i}&v=${version}`;
 }
 
 export const IMAGE_HINT =
