@@ -177,12 +177,15 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
 
 async function listBreeds(): Promise<DogBreed[]> {
   const sql = await getSql();
-  for (const breed of BREED_SEED) {
-    await sql`
-      insert into dog_breeds (id, name, sort_order)
-      values (${breed.id}, ${breed.name}, ${breed.sort})
-      on conflict (name) do nothing
-    `;
+  const count = await sql<{ n: number }>`select count(*)::int as n from dog_breeds`;
+  if ((count[0]?.n ?? 0) === 0) {
+    for (const breed of BREED_SEED) {
+      await sql`
+        insert into dog_breeds (id, name, sort_order)
+        values (${breed.id}, ${breed.name}, ${breed.sort})
+        on conflict (name) do nothing
+      `;
+    }
   }
   const rows = await sql<BreedRow>`
     select id, name, sort_order
@@ -232,35 +235,68 @@ async function listColors(): Promise<DogColor[]> {
 
 async function listMemos(userId: string, includeThumbData = true): Promise<WalkMemo[]> {
   const sql = await getSql();
-  const rows = await sql<MemoRow>`
-    select
-      m.id,
-      m.name,
-      m.owner_name,
-      m.breed_id,
-      b.name as breed_name,
-      m.sex,
-      m.color_id,
-      c.name as color_name,
-      m.color,
-      m.birthday,
-      m.age_years,
-      m.note,
-      m.last_met_on,
-      m.rainbow_bridge,
-      m.rainbow_bridge_on,
-      m.images,
-      m.cover_index,
-      m.image_url,
-      m.image_pathname,
-      m.created_at,
-      m.updated_at
-    from memos m
-    left join dog_breeds b on b.id = m.breed_id
-    left join dog_colors c on c.id = m.color_id
-    where m.user_id = ${userId}
-    order by m.name asc
-  `;
+  const rows = includeThumbData
+    ? await sql<MemoRow>`
+        select
+          m.id,
+          m.name,
+          m.owner_name,
+          m.breed_id,
+          b.name as breed_name,
+          m.sex,
+          m.color_id,
+          c.name as color_name,
+          m.color,
+          m.birthday,
+          m.age_years,
+          m.note,
+          m.last_met_on,
+          m.rainbow_bridge,
+          m.rainbow_bridge_on,
+          m.images,
+          m.cover_index,
+          m.image_url,
+          m.image_pathname,
+          m.created_at,
+          m.updated_at
+        from memos m
+        left join dog_breeds b on b.id = m.breed_id
+        left join dog_colors c on c.id = m.color_id
+        where m.user_id = ${userId}
+        order by m.name asc
+      `
+    : await sql<MemoRow>`
+        select
+          m.id,
+          m.name,
+          m.owner_name,
+          m.breed_id,
+          b.name as breed_name,
+          m.sex,
+          m.color_id,
+          c.name as color_name,
+          m.color,
+          m.birthday,
+          m.age_years,
+          m.note,
+          m.last_met_on,
+          m.rainbow_bridge,
+          m.rainbow_bridge_on,
+          coalesce((
+            select jsonb_agg(jsonb_build_object('url', elem->>'url', 'pathname', elem->>'pathname'))
+            from jsonb_array_elements(coalesce(m.images, '[]'::jsonb)) as elem
+          ), '[]'::jsonb) as images,
+          m.cover_index,
+          m.image_url,
+          m.image_pathname,
+          m.created_at,
+          m.updated_at
+        from memos m
+        left join dog_breeds b on b.id = m.breed_id
+        left join dog_colors c on c.id = m.color_id
+        where m.user_id = ${userId}
+        order by m.name asc
+      `;
   return rows.map((row) => mapMemo(row, includeThumbData));
 }
 
@@ -411,22 +447,35 @@ export const getWalkState = createServerFn({ method: "GET" })
 export const getWalkThumbs = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const memos = await listMemos(context.userId, true);
-    return memos.flatMap((memo) => {
-      const cover = memo.images[memo.coverIndex] ?? memo.images[0];
-      if (!cover) return [];
-      const thumbData = cover.thumbData && cover.thumbData.length > 100 ? cover.thumbData : null;
+    const sql = await getSql();
+    const rows = await sql<{
+      id: string;
+      thumb_data: string | null;
+      thumb_url: string | null;
+      thumb_public: unknown;
+    }>`
+      select
+        m.id,
+        cover.elem->>'thumbData' as thumb_data,
+        cover.elem->>'thumbUrl' as thumb_url,
+        cover.elem->>'thumbPublic' as thumb_public
+      from memos m
+      left join lateral (
+        select elem
+        from jsonb_array_elements(coalesce(m.images, '[]'::jsonb)) with ordinality as t(elem, ord)
+        order by case when ord - 1 = coalesce(m.cover_index, 0) then 0 else 1 end, ord
+        limit 1
+      ) cover on true
+      where m.user_id = ${context.userId}
+    `;
+    return rows.flatMap((row) => {
+      const thumbData = row.thumb_data && row.thumb_data.length > 100 ? row.thumb_data : null;
       const thumbUrl =
-        cover.thumbPublic && cover.thumbUrl && cover.thumbUrl !== cover.url ? cover.thumbUrl : null;
+        row.thumb_url && (row.thumb_public === true || row.thumb_public === "true")
+          ? row.thumb_url
+          : null;
       if (!thumbData && !thumbUrl) return [];
-      return [
-        {
-          id: memo.id,
-          thumbData,
-          thumbUrl,
-          thumbPublic: Boolean(thumbUrl),
-        },
-      ];
+      return [{ id: row.id, thumbData, thumbUrl, thumbPublic: Boolean(thumbUrl) }];
     });
   });
 
