@@ -1,6 +1,9 @@
 export const VISIT_KINDS = ["定期健診", "予防接種", "病気", "けが", "歯科", "その他"] as const;
 export type VisitKind = (typeof VISIT_KINDS)[number];
 
+export const VISIT_STATUSES = ["planned", "done"] as const;
+export type VisitStatus = (typeof VISIT_STATUSES)[number];
+
 export type VetVisit = {
   id: string;
   visitOn: string;
@@ -12,8 +15,13 @@ export type VetVisit = {
   nextVisitOn: string | null;
   costYen: number | null;
   note: string | null;
+  status: VisitStatus;
 };
 
 export function isVisitKind(value: string): value is VisitKind {
   return (VISIT_KINDS as readonly string[]).includes(value);
+}
+
+export function isVisitStatus(value: string): value is VisitStatus {
+  return (VISIT_STATUSES as readonly string[]).includes(value);
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
 import { todayJst } from "@/lib/walk/age";
-import { isVisitKind, type VetVisit, type VisitKind } from "./types";
+import { isVisitKind, isVisitStatus, type VetVisit, type VisitKind, type VisitStatus } from "./types";
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -27,6 +27,10 @@ function asKind(value: string | null): VisitKind {
   return value && isVisitKind(value) ? value : "その他";
 }
 
+function asStatus(value: string | null): VisitStatus {
+  return value && isVisitStatus(value) ? value : "done";
+}
+
 type VisitRow = {
   id: string;
   visit_on: unknown;
@@ -38,6 +42,7 @@ type VisitRow = {
   next_visit_on: unknown;
   cost_yen: number | null;
   note: string | null;
+  status: string | null;
 };
 
 function mapVisit(row: VisitRow): VetVisit {
@@ -52,6 +57,7 @@ function mapVisit(row: VisitRow): VetVisit {
     nextVisitOn: asDate(row.next_visit_on),
     costYen: row.cost_yen == null ? null : Number(row.cost_yen),
     note: row.note,
+    status: asStatus(row.status),
   };
 }
 
@@ -68,22 +74,68 @@ const visitInput = z.object({
   nextVisitOn: isoDate.nullable(),
   costYen: z.number().int().min(0).max(10_000_000).nullable(),
   note: z.string().trim().max(1000).nullable(),
+  status: z.enum(["planned", "done"]).default("done"),
 });
 
-async function clearFulfilledNextVisits(sql: Sql, userId: string) {
+async function findByDateClinic(
+  sql: Sql,
+  userId: string,
+  visitOn: string,
+  clinic: string | null,
+  status?: VisitStatus,
+): Promise<string | null> {
+  const rows = status
+    ? await sql<{ id: string }>`
+        select id from vet_visits
+        where user_id = ${userId}
+          and visit_on = ${visitOn}
+          and coalesce(btrim(clinic_name), '') = coalesce(${clinic}, '')
+          and status = ${status}
+        limit 1
+      `
+    : await sql<{ id: string }>`
+        select id from vet_visits
+        where user_id = ${userId}
+          and visit_on = ${visitOn}
+          and coalesce(btrim(clinic_name), '') = coalesce(${clinic}, '')
+        limit 1
+      `;
+  return rows[0]?.id ?? null;
+}
+
+async function upsertPlanned(
+  sql: Sql,
+  userId: string,
+  data: { visitOn: string; clinicName: string | null; kind: string; title: string },
+) {
+  const today = todayJst();
+  if (data.visitOn < today) return;
+  const existing = await findByDateClinic(sql, userId, data.visitOn, data.clinicName);
+  if (existing) return;
   await sql`
-    update vet_visits as planned
+    insert into vet_visits (
+      id, user_id, visit_on, clinic_name, kind, title, status
+    )
+    values (
+      ${crypto.randomUUID()},
+      ${userId},
+      ${data.visitOn},
+      ${data.clinicName},
+      ${data.kind},
+      ${data.title},
+      'planned'
+    )
+  `;
+}
+
+async function clearMatchedPlans(sql: Sql, userId: string, visitOn: string, clinic: string | null, keepId: string) {
+  await sql`
+    update vet_visits
     set next_visit_on = null, updated_at = now()
-    from vet_visits as done
-    where planned.user_id = ${userId}
-      and done.user_id = ${userId}
-      and planned.id <> done.id
-      and planned.next_visit_on is not null
-      and planned.next_visit_on = done.visit_on
-      and planned.clinic_name is not null
-      and done.clinic_name is not null
-      and btrim(planned.clinic_name) <> ''
-      and btrim(planned.clinic_name) = btrim(done.clinic_name)
+    where user_id = ${userId}
+      and id <> ${keepId}
+      and next_visit_on = ${visitOn}
+      and coalesce(btrim(clinic_name), '') = coalesce(${clinic}, '')
   `;
 }
 
@@ -92,7 +144,7 @@ export const listVetVisits = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     const rows = await sql<VisitRow>`
-      select id, visit_on, clinic_name, kind, title, diagnosis, treatment, next_visit_on, cost_yen, note
+      select id, visit_on, clinic_name, kind, title, diagnosis, treatment, next_visit_on, cost_yen, note, status
       from vet_visits
       where user_id = ${context.userId}
       order by visit_on desc, updated_at desc
@@ -106,7 +158,7 @@ export const getVetVisit = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const rows = await sql<VisitRow>`
-      select id, visit_on, clinic_name, kind, title, diagnosis, treatment, next_visit_on, cost_yen, note
+      select id, visit_on, clinic_name, kind, title, diagnosis, treatment, next_visit_on, cost_yen, note, status
       from vet_visits
       where id = ${data.id} and user_id = ${context.userId}
       limit 1
@@ -121,11 +173,18 @@ export const saveVetVisit = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const clinic = data.clinicName?.trim() || null;
-    const diagnosis = data.diagnosis?.trim() || null;
-    const treatment = data.treatment?.trim() || null;
+    let status: VisitStatus = data.status;
+    const diagnosis = status === "planned" ? null : data.diagnosis?.trim() || null;
+    const treatment = status === "planned" ? null : data.treatment?.trim() || null;
     const note = data.note?.trim() || null;
-    const id = data.id ?? crypto.randomUUID();
-    if (data.id) {
+    const nextVisitOn = status === "planned" ? null : data.nextVisitOn;
+    const costYen = status === "planned" ? null : data.costYen;
+    let id = data.id ?? null;
+    if (!id && status === "done") {
+      id = await findByDateClinic(sql, context.userId, data.visitOn, clinic, "planned");
+    }
+    const writingId = id ?? crypto.randomUUID();
+    if (id) {
       const updated = await sql<{ id: string }>`
         update vet_visits
         set
@@ -135,21 +194,22 @@ export const saveVetVisit = createServerFn({ method: "POST" })
           title = ${data.title},
           diagnosis = ${diagnosis},
           treatment = ${treatment},
-          next_visit_on = ${data.nextVisitOn},
-          cost_yen = ${data.costYen},
+          next_visit_on = ${nextVisitOn},
+          cost_yen = ${costYen},
           note = ${note},
+          status = ${status},
           updated_at = now()
-        where id = ${data.id} and user_id = ${context.userId}
+        where id = ${id} and user_id = ${context.userId}
         returning id
       `;
       if (!updated[0]) throw new Error("記録が見つかりません");
     } else {
       await sql`
         insert into vet_visits (
-          id, user_id, visit_on, clinic_name, kind, title, diagnosis, treatment, next_visit_on, cost_yen, note
+          id, user_id, visit_on, clinic_name, kind, title, diagnosis, treatment, next_visit_on, cost_yen, note, status
         )
         values (
-          ${id},
+          ${writingId},
           ${context.userId},
           ${data.visitOn},
           ${clinic},
@@ -157,14 +217,25 @@ export const saveVetVisit = createServerFn({ method: "POST" })
           ${data.title},
           ${diagnosis},
           ${treatment},
-          ${data.nextVisitOn},
-          ${data.costYen},
-          ${note}
+          ${nextVisitOn},
+          ${costYen},
+          ${note},
+          ${status}
         )
       `;
     }
-    await clearFulfilledNextVisits(sql, context.userId);
-    return { id };
+    if (status === "done") {
+      await clearMatchedPlans(sql, context.userId, data.visitOn, clinic, writingId);
+      if (nextVisitOn && nextVisitOn !== data.visitOn) {
+        await upsertPlanned(sql, context.userId, {
+          visitOn: nextVisitOn,
+          clinicName: clinic,
+          kind: data.kind,
+          title: data.title,
+        });
+      }
+    }
+    return { id: writingId };
   });
 
 export const deleteVetVisit = createServerFn({ method: "POST" })

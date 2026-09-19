@@ -24,6 +24,6 @@ export const MENUS = [
     to: "/vet",
     index: "04",
     title: "通院履歴",
-    description: "病院での記録と次の予約を残す",
+    description: "病院の予定と記録を残す",
   },
 ] as const;

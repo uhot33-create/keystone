@@ -31,7 +31,9 @@ function VetEdit() {
     <div className="stagger-in flex flex-1 flex-col gap-5">
       <BusyOverlay show={!visit && !error} label="読み込み中…" />
       <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">通院を編集</h1>
+        <h1 className="font-display text-3xl font-semibold text-fg">
+          {visit?.status === "planned" ? "予定を編集" : "通院を編集"}
+        </h1>
       </div>
       {error ? (
         <p className="text-sm text-danger" role="alert">

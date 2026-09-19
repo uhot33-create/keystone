@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { deleteVetVisit, saveVetVisit } from "@/lib/vet/api";
-import { VISIT_KINDS, type VetVisit, type VisitKind } from "@/lib/vet/types";
+import { VISIT_KINDS, type VetVisit, type VisitKind, type VisitStatus } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -10,9 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
-export function VisitForm({ visit }: { visit?: VetVisit }) {
+export function VisitForm({
+  visit,
+  initialStatus = "done",
+}: {
+  visit?: VetVisit;
+  initialStatus?: VisitStatus;
+}) {
   const navigate = useNavigate();
-  const [visitOn, setVisitOn] = useState(visit?.visitOn ?? todayJst());
+  const today = todayJst();
+  const [status, setStatus] = useState<VisitStatus>(visit?.status ?? initialStatus);
+  const [visitOn, setVisitOn] = useState(visit?.visitOn ?? today);
   const [clinicName, setClinicName] = useState(visit?.clinicName ?? "");
   const [kind, setKind] = useState<VisitKind>(visit?.kind ?? "定期健診");
   const [title, setTitle] = useState(visit?.title ?? "");
@@ -23,11 +31,11 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
   const [note, setNote] = useState(visit?.note ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const planned = status === "planned";
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function save(nextStatus: VisitStatus) {
     const cost = costYen.trim() === "" ? null : Number(costYen);
-    if (costYen.trim() !== "" && (!Number.isInteger(cost) || (cost ?? 0) < 0)) {
+    if (nextStatus === "done" && costYen.trim() !== "" && (!Number.isInteger(cost) || (cost ?? 0) < 0)) {
       setError("費用は0以上の整数で入力してください");
       return;
     }
@@ -43,9 +51,10 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
           title: title.trim(),
           diagnosis: diagnosis.trim() || null,
           treatment: treatment.trim() || null,
-          nextVisitOn: nextVisitOn || null,
-          costYen: cost,
+          nextVisitOn: nextStatus === "done" && nextVisitOn ? nextVisitOn : null,
+          costYen: nextStatus === "done" ? cost : null,
           note: note.trim() || null,
+          status: nextStatus,
         },
       });
       await navigate({ to: "/vet" });
@@ -56,8 +65,13 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
     }
   }
 
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    await save(status);
+  }
+
   async function onDelete() {
-    if (!visit || !window.confirm("この通院記録を削除しますか？")) return;
+    if (!visit || !window.confirm(planned ? "この予定を削除しますか？" : "この通院記録を削除しますか？")) return;
     setPending(true);
     setError(null);
     try {
@@ -73,9 +87,25 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
   return (
     <form className="flex flex-col gap-4" onSubmit={onSubmit}>
       <BusyOverlay show={pending} label="処理中…" />
+      <div className="grid grid-cols-2 rounded-md bg-surface-2 p-1">
+        <button
+          type="button"
+          className={`h-11 rounded-sm text-sm font-medium ${planned ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+          onClick={() => setStatus("planned")}
+        >
+          予定
+        </button>
+        <button
+          type="button"
+          className={`h-11 rounded-sm text-sm font-medium ${!planned ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+          onClick={() => setStatus("done")}
+        >
+          履歴
+        </button>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="visit-on">通院日</Label>
+          <Label htmlFor="visit-on">{planned ? "予定日" : "通院日"}</Label>
           <Input id="visit-on" type="date" value={visitOn} required onChange={(e) => setVisitOn(e.target.value)} />
         </div>
         <div className="space-y-1.5">
@@ -110,56 +140,61 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
           onChange={(e) => setClinicName(e.target.value)}
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="visit-diagnosis">診断</Label>
-        <Input
-          id="visit-diagnosis"
-          value={diagnosis}
-          maxLength={200}
-          placeholder="任意"
-          onChange={(e) => setDiagnosis(e.target.value)}
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="visit-treatment">処置・処方</Label>
-        <Input
-          id="visit-treatment"
-          value={treatment}
-          maxLength={200}
-          placeholder="任意"
-          onChange={(e) => setTreatment(e.target.value)}
-        />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="visit-next">次回予約</Label>
-          <div className="flex gap-2">
-            <Input id="visit-next" type="date" value={nextVisitOn} onChange={(e) => setNextVisitOn(e.target.value)} />
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0"
-              disabled={!nextVisitOn}
-              onClick={() => setNextVisitOn("")}
-            >
-              クリア
-            </Button>
+      {!planned ? (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="visit-diagnosis">診断</Label>
+            <Input
+              id="visit-diagnosis"
+              value={diagnosis}
+              maxLength={200}
+              placeholder="任意"
+              onChange={(e) => setDiagnosis(e.target.value)}
+            />
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="visit-cost">費用（円）</Label>
-          <Input
-            id="visit-cost"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            value={costYen}
-            placeholder="任意"
-            onChange={(e) => setCostYen(e.target.value)}
-          />
-        </div>
-      </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="visit-treatment">処置・処方</Label>
+            <Input
+              id="visit-treatment"
+              value={treatment}
+              maxLength={200}
+              placeholder="任意"
+              onChange={(e) => setTreatment(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="visit-next">次回予約</Label>
+              <div className="flex gap-2">
+                <Input id="visit-next" type="date" min={today} value={nextVisitOn} onChange={(e) => setNextVisitOn(e.target.value)} />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={!nextVisitOn}
+                  onClick={() => setNextVisitOn("")}
+                >
+                  クリア
+                </Button>
+              </div>
+              <p className="text-xs text-subtle">保存すると、次の予定カードができます。</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="visit-cost">費用（円）</Label>
+              <Input
+                id="visit-cost"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={costYen}
+                placeholder="任意"
+                onChange={(e) => setCostYen(e.target.value)}
+              />
+            </div>
+          </div>
+        </>
+      ) : null}
       <div className="space-y-1.5">
         <Label htmlFor="visit-note">メモ</Label>
         <Textarea
@@ -180,6 +215,11 @@ export function VisitForm({ visit }: { visit?: VetVisit }) {
         <Button type="submit" className="w-full" disabled={pending}>
           保存
         </Button>
+        {planned && visit ? (
+          <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={() => void save("done")}>
+            履歴として保存
+          </Button>
+        ) : null}
         <Button type="button" variant="outline" className="w-full" disabled={pending} onClick={() => void navigate({ to: "/vet" })}>
           キャンセル
         </Button>

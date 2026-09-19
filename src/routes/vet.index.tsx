@@ -32,9 +32,14 @@ function VetIndex() {
   const upcoming = useMemo(() => {
     if (!visits) return [];
     return visits
-      .filter((item) => item.nextVisitOn && item.nextVisitOn >= today)
-      .sort((a, b) => (a.nextVisitOn ?? "").localeCompare(b.nextVisitOn ?? ""));
-  }, [visits, today]);
+      .filter((item) => item.status === "planned")
+      .sort((a, b) => a.visitOn.localeCompare(b.visitOn));
+  }, [visits]);
+
+  const history = useMemo(() => {
+    if (!visits) return [];
+    return visits.filter((item) => item.status !== "planned");
+  }, [visits]);
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-5">
@@ -42,11 +47,20 @@ function VetIndex() {
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold text-fg">通院履歴</h1>
-          <p className="mt-1 text-sm text-muted">病院での記録と、次の予約を残します。</p>
+          <p className="mt-1 text-sm text-muted">予定を残し、行ったら同じカードを履歴にします。</p>
         </div>
-        <Button asChild>
-          <Link to="/vet/new">追加</Link>
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button asChild variant="outline">
+            <Link to="/vet/new" search={{ as: "planned" }}>
+              予定
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link to="/vet/new" search={{ as: "done" }}>
+              記録
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {error ? (
@@ -58,11 +72,23 @@ function VetIndex() {
       {upcoming.length > 0 ? (
         <div className="rounded-xl border border-border bg-surface px-4 py-3 shadow-card">
           <p className="text-xs font-medium tracking-widest text-subtle">次の予約</p>
-          <ul className="mt-2 space-y-1.5">
-            {upcoming.slice(0, 3).map((item) => (
-              <li key={item.id} className="text-sm text-fg">
-                {item.nextVisitOn ? formatJaDate(item.nextVisitOn) : ""}
-                <span className="ml-2 text-muted">{item.clinicName || item.title}</span>
+          <ul className="mt-2 space-y-2">
+            {upcoming.map((item) => (
+              <li key={item.id}>
+                <Link
+                  to="/vet/$id/edit"
+                  params={{ id: item.id }}
+                  className="block outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/35"
+                >
+                  <p className="text-sm text-fg">
+                    {formatJaDate(item.visitOn)}
+                    {item.visitOn < today ? <span className="ml-2 text-xs text-danger">予定日を過ぎています</span> : null}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {item.title}
+                    {item.clinicName ? `　${item.clinicName}` : ""}
+                  </p>
+                </Link>
               </li>
             ))}
           </ul>
@@ -74,14 +100,14 @@ function VetIndex() {
           <Skeleton className="h-20 rounded-xl" />
           <Skeleton className="h-20 rounded-xl" />
         </div>
-      ) : visits.length === 0 ? (
+      ) : history.length === 0 ? (
         <div className="rounded-xl border border-border bg-surface px-5 py-8 shadow-card">
           <p className="font-display text-lg font-semibold text-fg">まだ記録がありません</p>
-          <p className="mt-2 text-sm text-muted">ワクチンや健診、病気のときの通院を残してください。</p>
+          <p className="mt-2 text-sm text-muted">予定を入れておくか、ワクチンや健診の通院を残してください。</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
-          {visits.map((visit) => (
+          {history.map((visit) => (
             <li key={visit.id}>
               <Link
                 to="/vet/$id/edit"
