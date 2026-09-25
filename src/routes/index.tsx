@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
-import { ChevronRight, Cigarette, Footprints, LayoutGrid, List, PawPrint, Stethoscope } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight, Cigarette, Footprints, PawPrint, Stethoscope } from "lucide-react";
 import { MENUS } from "@/lib/app-meta";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { useMenuLayout } from "@/lib/menu-layout";
 import { AppShell } from "@/components/app-shell";
 import { AuthSplash, LoginScreen } from "@/components/login-form";
 import { DeskPanel } from "@/components/desk-panel";
@@ -15,14 +15,6 @@ const ICONS = {
   "/walk": Footprints,
   "/vet": Stethoscope,
 } as const;
-
-const LAYOUT_KEY = "kurashi-menu-layout";
-type MenuLayout = "icons" | "list";
-
-function readLayout(): MenuLayout {
-  if (typeof localStorage === "undefined") return "icons";
-  return localStorage.getItem(LAYOUT_KEY) === "list" ? "list" : "icons";
-}
 
 function Home() {
   const { sessionUser } = useRouteContext({ from: "__root__" });
@@ -40,42 +32,10 @@ function Home() {
 }
 
 function MenuScreen() {
-  const [layout, setLayout] = useState<MenuLayout>(readLayout);
-
-  function switchLayout(next: MenuLayout) {
-    setLayout(next);
-    try {
-      localStorage.setItem(LAYOUT_KEY, next);
-    } catch {
-      /* ignore */
-    }
-  }
+  const layout = useMenuLayout();
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
-      <div className="flex justify-end">
-        <div className="grid grid-cols-2 rounded-md bg-surface-2 p-1" role="group" aria-label="メニューの表示">
-          <button
-            type="button"
-            aria-pressed={layout === "icons"}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-sm px-3 text-xs font-medium ${layout === "icons" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
-            onClick={() => switchLayout("icons")}
-          >
-            <LayoutGrid className="size-3.5" strokeWidth={1.75} />
-            アイコン
-          </button>
-          <button
-            type="button"
-            aria-pressed={layout === "list"}
-            className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-sm px-3 text-xs font-medium ${layout === "list" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
-            onClick={() => switchLayout("list")}
-          >
-            <List className="size-3.5" strokeWidth={1.75} />
-            一覧
-          </button>
-        </div>
-      </div>
-
       <nav
         aria-label="メインメニュー"
         className={

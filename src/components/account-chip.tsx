@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeSettings } from "@/components/theme-settings";
 import { DESK_ITEMS, setDeskItemVisible, useDeskVisibility } from "@/lib/desk/visibility";
+import { setMenuLayout, useMenuLayout } from "@/lib/menu-layout";
 
 export function AccountChip() {
   const user = useCurrentUser();
   const [signingOut, setSigningOut] = useState(false);
   const [open, setOpen] = useState(false);
   const deskVisible = useDeskVisibility();
+  const menuLayout = useMenuLayout();
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
@@ -65,6 +67,27 @@ export function AccountChip() {
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className="text-sm text-fg">配色</span>
           <ThemeSettings />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <span className="text-sm text-fg">メニュー</span>
+          <div className="grid grid-cols-2 rounded-md bg-surface-2 p-0.5" role="group" aria-label="メニューの表示">
+            <button
+              type="button"
+              aria-pressed={menuLayout === "icons"}
+              className={`h-8 rounded-sm px-2.5 text-xs font-medium ${menuLayout === "icons" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+              onClick={() => setMenuLayout("icons")}
+            >
+              アイコン
+            </button>
+            <button
+              type="button"
+              aria-pressed={menuLayout === "list"}
+              className={`h-8 rounded-sm px-2.5 text-xs font-medium ${menuLayout === "list" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+              onClick={() => setMenuLayout("list")}
+            >
+              一覧
+            </button>
+          </div>
         </div>
         <div className="mt-4 border-t border-border pt-3">
           <p className="text-xs font-medium tracking-widest text-subtle">メニュー下</p>
