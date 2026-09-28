@@ -1,5 +1,5 @@
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { ChartLine, ChevronLeft, ChevronRight, Notebook, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import {
   formatJaDayWeek,
@@ -81,6 +81,16 @@ export function TodayPanel({
   const [stapleId, setStapleId] = useState<number | null>(null);
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
+  const [view, setView] = useState<"home" | "add" | "weight" | "logs" | "chart">("home");
+  const skipScroll = useRef(true);
+
+  useEffect(() => {
+    if (skipScroll.current) {
+      skipScroll.current = false;
+      return;
+    }
+    window.scrollTo(0, 0);
+  }, [view]);
 
   useEffect(() => {
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
@@ -269,36 +279,81 @@ export function TodayPanel({
       ) : null}
       </div>
 
-      <div className="flex flex-col items-center gap-3">
-        <div className="size-44 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
-          <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
-        </div>
-        <div className="text-center">
-          <p className="font-display text-4xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
-          <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
-          <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
-            {target > 0
-              ? over
-                ? `${formatKcal(total - target)} kcal オーバー`
-                : `あと ${formatKcal(remaining ?? 0)} kcal`
-              : "目標未設定"}
+      {view === "home" ? (
+        <>
+          <div className="flex flex-col items-center gap-3">
+            <div className="size-44 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
+              <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
+            </div>
+            <div className="text-center">
+              <p className="font-display text-4xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
+              <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
+              <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
+                {target > 0
+                  ? over
+                    ? `${formatKcal(total - target)} kcal オーバー`
+                    : `あと ${formatKcal(remaining ?? 0)} kcal`
+                  : "目標未設定"}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
+              <p className="text-xs text-muted">ごはん</p>
+              <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(mealEaten)} kcal</p>
+              <p className="mt-1 text-xs text-subtle">目標 {mealKcal || "—"}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
+              <p className="text-xs text-muted">おやつ</p>
+              <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(treatEaten)} kcal</p>
+              <p className="mt-1 text-xs text-subtle">上限 {treatPct}%</p>
+            </div>
+          </div>
+
+          <nav aria-label="今日の操作" className="grid grid-cols-2 gap-3">
+            {(
+              [
+                { id: "add", label: "餌箱", Icon: Utensils },
+                { id: "weight", label: "体重計", Icon: Scale },
+                { id: "logs", label: "ノート", Icon: Notebook },
+                { id: "chart", label: "折れ線グラフ", Icon: ChartLine },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setView(item.id)}
+                className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-4 text-center shadow-card outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
+              >
+                <span className="grid size-12 place-items-center rounded-full bg-surface-2 text-primary">
+                  <item.Icon className="size-6" strokeWidth={1.75} />
+                </span>
+                <span className="font-display text-sm font-semibold text-fg">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          <p className="text-center text-xs text-subtle">
+            目標カロリーは
+            <button type="button" className="mx-1 font-medium text-primary underline-offset-4 hover:underline" onClick={onOpenPlan}>
+              プラン
+            </button>
+            で計算しています
           </p>
-        </div>
-      </div>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setView("home")}
+            className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-medium text-primary"
+          >
+            <ChevronLeft className="size-4" strokeWidth={1.75} />
+            戻る
+          </button>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
-          <p className="text-xs text-muted">ごはん</p>
-          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(mealEaten)} kcal</p>
-          <p className="mt-1 text-xs text-subtle">目標 {mealKcal || "—"}</p>
-        </div>
-        <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
-          <p className="text-xs text-muted">おやつ</p>
-          <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(treatEaten)} kcal</p>
-          <p className="mt-1 text-xs text-subtle">上限 {treatPct}%</p>
-        </div>
-      </div>
-
+      {view === "weight" ? (
       <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onSaveWeight}>
         <p className="font-display text-lg font-semibold text-fg">体重（20時計測）</p>
         <p className="mt-1 text-sm text-muted">毎日20時に測り、1日1回記録します。同じ日は上書きされます。</p>
@@ -326,7 +381,9 @@ export function TodayPanel({
           <p className="mt-2 text-xs text-subtle">まだ記録がありません</p>
         )}
       </form>
+      ) : null}
 
+      {view === "add" ? (
       <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-lg font-semibold text-fg">カロリーを足す</p>
@@ -600,7 +657,9 @@ export function TodayPanel({
           足す
         </Button>
       </form>
+      ) : null}
 
+      {view === "logs" ? (
       <div>
         <div className="flex items-end justify-between">
           <p className="font-display text-lg font-semibold text-fg">今日の記録</p>
@@ -641,7 +700,9 @@ export function TodayPanel({
           </ul>
         )}
       </div>
+      ) : null}
 
+      {view === "chart" ? (
       <TrendChart
         grain={grain}
         days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}
@@ -658,14 +719,9 @@ export function TodayPanel({
         }}
         onShift={(direction) => setChartEnd((prev) => shiftChartEnd(grain, prev, direction, todayJst()))}
       />
-
-      <p className="text-center text-xs text-subtle">
-        目標カロリーは
-        <button type="button" className="mx-1 font-medium text-primary underline-offset-4 hover:underline" onClick={onOpenPlan}>
-          プラン
-        </button>
-        で計算しています
-      </p>
+      ) : null}
+        </>
+      )}
 
       {error ? (
         <p className="text-sm text-danger" role="alert">
