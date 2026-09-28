@@ -94,6 +94,8 @@ export function TrendChart({
   const guideLine = guides.some((value) => value > 0)
     ? guides.map((value, index) => `${x(index).toFixed(1)},${yKcal(value).toFixed(1)}`).join(" ")
     : "";
+  const guideIndex = guides.reduce((found, value, index) => (value > 0 ? index : found), -1);
+  const guideValue = guideIndex >= 0 ? guides[guideIndex]! : 0;
   const weightPts = days
     .map((day, index) => (day.weightKg != null ? { index, kg: day.weightKg } : null))
     .filter((item): item is { index: number; kg: number } => item != null);
@@ -152,7 +154,7 @@ export function TrendChart({
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-0.5 w-4 border-t border-dashed border-accent" />
-          目安
+          {guideValue > 0 ? `目安 ${formatKcal(guideValue)}` : "目安"}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-fg" />
@@ -176,6 +178,17 @@ export function TrendChart({
             strokeDasharray="4 3"
             points={guideLine}
           />
+        ) : null}
+        {guideIndex >= 0 ? (
+          <text
+            x={Math.min(x(guideIndex) + 2, width - pad.right)}
+            y={Math.max(yKcal(guideValue) - 4, pad.top + 8)}
+            textAnchor="end"
+            fill="var(--color-accent)"
+            fontSize="9"
+          >
+            {formatKcal(guideValue)}
+          </text>
         ) : null}
         <polyline fill="none" stroke="var(--color-primary)" strokeWidth="2" points={kcalLine} />
         {weightLine ? (
