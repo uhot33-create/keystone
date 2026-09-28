@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJaDate } from "@/lib/calorie/formula";
 import { listVetVisits } from "@/lib/vet/api";
 import type { VetVisit } from "@/lib/vet/types";
@@ -8,11 +8,15 @@ import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const PAGE_SIZE = 10;
+
 export const Route = createFileRoute("/vet/")({ component: VetIndex });
 
 function VetIndex() {
   const [visits, setVisits] = useState<VetVisit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [shown, setShown] = useState(PAGE_SIZE);
+  const sentinel = useRef<HTMLDivElement>(null);
   const today = todayJst();
 
   useEffect(() => {
@@ -41,16 +45,30 @@ function VetIndex() {
     return visits.filter((item) => item.status !== "planned");
   }, [visits]);
 
+  const hasMore = shown < history.length;
+
   const historyByYear = useMemo(() => {
     const groups: { year: string; items: VetVisit[] }[] = [];
-    for (const visit of history) {
+    for (const visit of history.slice(0, shown)) {
       const year = visit.visitOn.slice(0, 4);
       const last = groups[groups.length - 1];
       if (last?.year === year) last.items.push(visit);
       else groups.push({ year, items: [visit] });
     }
     return groups;
-  }, [history]);
+  }, [history, shown]);
+
+  useEffect(() => {
+    const node = sentinel.current;
+    if (!node || !hasMore) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        setShown((count) => count + PAGE_SIZE);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, shown]);
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-5">
@@ -144,6 +162,7 @@ function VetIndex() {
               </ul>
             </section>
           ))}
+          {hasMore ? <div ref={sentinel} className="h-8" aria-hidden /> : null}
         </div>
       )}
     </div>
