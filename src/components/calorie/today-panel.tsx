@@ -106,7 +106,6 @@ export function TodayPanel({
   const barScale = target > 0 ? Math.max(target, total) : Math.max(total, 1);
   const mealShare = (mealEaten / barScale) * 100;
   const treatShare = (treatEaten / barScale) * 100;
-  const treatRatioPct = total > 0 ? Math.round((treatEaten / total) * 100) : 0;
   const latestWeight = (() => {
     const days = state.trends?.day ?? state.trend ?? [];
     for (let index = days.length - 1; index >= 0; index -= 1) {
@@ -322,28 +321,33 @@ export function TodayPanel({
             <div className="size-36 shrink-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card sm:size-44">
               <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
             </div>
-            <div className="flex min-w-0 flex-1 items-start justify-center gap-3">
+            <div className="flex min-w-0 flex-1 items-start justify-center gap-4">
             <div className="flex flex-col items-center">
-              <p className="text-sm font-semibold tabular-nums text-accent">{treatRatioPct}%</p>
-              <div
-                className="relative mt-1 h-28 w-8 overflow-hidden rounded-full bg-surface-2"
-                role="img"
-                aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、割合 ${treatRatioPct}%`}
-              >
-                <div className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
-                <div className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
+              <p className="text-[11px] leading-none text-muted">ごはん</p>
+              <div className="mt-1 flex items-start">
+                <div
+                  className="relative h-28 w-8"
+                  role="img"
+                  aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
+                >
+                  <div className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
+                    <div className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
+                    <div className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
+                  </div>
+                </div>
+                {target > 0 ? (
+                  <span className="ml-0.5 text-[10px] leading-none tabular-nums text-subtle">{formatKcal(target)}</span>
+                ) : (
+                  <span className="ml-0.5 w-4" />
+                )}
               </div>
-              <p className={`mt-1 text-center text-[11px] leading-tight ${over ? "text-danger" : "text-muted"}`}>
-                {target > 0
-                  ? over
-                    ? `${formatKcal(total - target)} kcal オーバー`
-                    : `あと ${formatKcal(remaining ?? 0)} kcal`
-                  : "目標未設定"}
+              <p className={`mt-1 text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
+                {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
               </p>
-              <p className="text-center text-[11px] leading-tight text-subtle">目標 {target > 0 ? `${formatKcal(target)} kcal` : "—"}</p>
             </div>
-            <div className="flex flex-col items-center">
-              <p className={`text-sm font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
+            <div className="flex flex-col items-center pr-7">
+              <p className="text-[11px] leading-none text-muted">体重</p>
+              <p className={`mt-1 text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
                 {latestWeight != null ? (
                   <>
                     {latestWeight.toFixed(2)}
@@ -354,7 +358,7 @@ export function TodayPanel({
                 )}
               </p>
               <div
-                className="relative mt-1 h-28 w-10"
+                className="relative mt-1 h-28 w-8"
                 role="img"
                 aria-label={
                   latestWeight != null
@@ -362,19 +366,24 @@ export function TodayPanel({
                     : "体重は未記録"
                 }
               >
-                <div className="absolute inset-x-1 bottom-0 top-0 overflow-hidden rounded-full bg-surface-2">
+                <div className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
                   <div className="absolute inset-x-0 bottom-0 bg-fg/55" style={{ height: `${weightWithin}%` }} />
                   {weightAbove > 0 ? (
                     <div className="absolute inset-x-0 bg-danger" style={{ bottom: `${idealLine}%`, height: `${weightAbove}%` }} />
                   ) : null}
                 </div>
                 {idealWeight > 0 ? (
-                  <div className="absolute -left-0.5 -right-0.5 z-10 h-0.5 bg-fg" style={{ bottom: `${idealLine}%` }} />
+                  <>
+                    <div className="absolute -left-0.5 right-0 z-10 h-0.5 bg-fg" style={{ bottom: `${idealLine}%` }} />
+                    <span
+                      className="absolute left-full z-10 ml-0.5 -translate-y-1/2 text-[10px] leading-none tabular-nums text-subtle"
+                      style={{ bottom: `${idealLine}%` }}
+                    >
+                      {idealWeight.toFixed(2)}
+                    </span>
+                  </>
                 ) : null}
               </div>
-              <p className="mt-1 text-center text-[11px] leading-tight text-subtle">
-                理想 {idealWeight > 0 ? `${idealWeight.toFixed(2)} kg` : "—"}
-              </p>
             </div>
             </div>
           </div>
