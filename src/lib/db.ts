@@ -1,4 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { serverlessDatabaseUrl } from "./postgres-url";
 
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
@@ -93,12 +94,16 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const url = databaseUrl;
+    const url = databaseUrl ? serverlessDatabaseUrl(databaseUrl) : undefined;
     if (!url) throw new Error("DATABASE_URL is not set");
+    const supabase = url.includes("supabase.com");
     const pool = new Pool({
       connectionString: url,
+      // One client per instance. The default of 10 fills Supabase's session cap.
+      max: supabase ? 1 : undefined,
+      idleTimeoutMillis: supabase ? 5000 : undefined,
       // Supabase's pooler presents a chain Node does not verify as public.
-      ssl: url.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
+      ssl: supabase ? { rejectUnauthorized: false } : undefined,
     });
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);

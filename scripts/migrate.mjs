@@ -18,7 +18,21 @@ import { dirname, join } from "node:path";
 import pg from "pg";
 import { pendingMigrations } from "./migration-plan.mjs";
 
-const databaseUrl = process.env.DATABASE_URL;
+function serverlessDatabaseUrl(raw) {
+  try {
+    const url = new URL(raw);
+    if (url.hostname.endsWith("pooler.supabase.com") && (url.port === "5432" || url.port === "")) {
+      url.port = "6543";
+    }
+    return url.toString();
+  } catch {
+    return raw;
+  }
+}
+
+const databaseUrl = process.env.DATABASE_URL
+  ? serverlessDatabaseUrl(process.env.DATABASE_URL)
+  : undefined;
 if (!databaseUrl) {
   console.log(
     "[migrate] DATABASE_URL not set — skipping (the PGLite fallback migrates itself).",
@@ -42,7 +56,11 @@ async function main() {
     return;
   }
 
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
+  const pool = new pg.Pool({
+    connectionString: databaseUrl,
+    max: 1,
+    ssl: databaseUrl.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
+  });
   const client = await pool.connect();
   try {
     await client.query(
