@@ -41,6 +41,17 @@ function VetIndex() {
     return visits.filter((item) => item.status !== "planned");
   }, [visits]);
 
+  const historyByYear = useMemo(() => {
+    const groups: { year: string; items: VetVisit[] }[] = [];
+    for (const visit of history) {
+      const year = visit.visitOn.slice(0, 4);
+      const last = groups[groups.length - 1];
+      if (last?.year === year) last.items.push(visit);
+      else groups.push({ year, items: [visit] });
+    }
+    return groups;
+  }, [history]);
+
   return (
     <div className="stagger-in flex flex-1 flex-col gap-5">
       <BusyOverlay show={visits === null} label="読み込み中…" />
@@ -106,27 +117,34 @@ function VetIndex() {
           <p className="mt-2 text-sm text-muted">予定を入れておくか、ワクチンや健診の通院を残してください。</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {history.map((visit) => (
-            <li key={visit.id}>
-              <Link
-                to="/vet/$id/edit"
-                params={{ id: visit.id }}
-                className="block rounded-xl border border-border bg-surface px-4 py-3 shadow-card outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-fg">{formatJaDate(visit.visitOn)}</p>
-                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">{visit.kind}</span>
-                </div>
-                <p className="mt-1 truncate font-display text-base font-semibold text-fg">{visit.title}</p>
-                <p className="mt-0.5 text-xs text-muted">
-                  {visit.clinicName || "病院未記入"}
-                  {visit.nextVisitOn ? `　次回 ${formatJaDate(visit.nextVisitOn)}` : ""}
-                </p>
-              </Link>
-            </li>
+        <div className="flex flex-col gap-5">
+          {historyByYear.map((group) => (
+            <section key={group.year}>
+              <h2 className="font-display text-lg font-semibold text-fg">{group.year}年</h2>
+              <ul className="mt-2 flex flex-col gap-2">
+                {group.items.map((visit) => (
+                  <li key={visit.id}>
+                    <Link
+                      to="/vet/$id/edit"
+                      params={{ id: visit.id }}
+                      className="block rounded-xl border border-border bg-surface px-4 py-3 shadow-card outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-fg">{formatJaDate(visit.visitOn)}</p>
+                        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">{visit.kind}</span>
+                      </div>
+                      <p className="mt-1 truncate font-display text-base font-semibold text-fg">{visit.title}</p>
+                      <p className="mt-0.5 text-xs text-muted">
+                        {visit.clinicName || "病院未記入"}
+                        {visit.nextVisitOn ? `　次回 ${formatJaDate(visit.nextVisitOn)}` : ""}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
