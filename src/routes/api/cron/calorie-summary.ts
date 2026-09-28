@@ -19,8 +19,13 @@ export const Route = createFileRoute("/api/cron/calorie-summary")({
         }
         try {
           const sql = await getSql();
+          let smoking: { users: number } | { error: string };
+          try {
+            smoking = await resetSmokingIfDue(sql);
+          } catch (err) {
+            smoking = { error: err instanceof Error ? err.message : "喫煙のリセットに失敗しました" };
+          }
           const result = await rebuildAllCalorieStats(sql);
-          const smoking = await resetSmokingIfDue(sql);
           return Response.json({ ok: true, ...result, smoking });
         } catch (err) {
           const message = err instanceof Error ? err.message : "集計に失敗しました";
