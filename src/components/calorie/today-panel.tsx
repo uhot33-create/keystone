@@ -1,4 +1,4 @@
-import { ChartLine, ChevronLeft, ChevronRight, Notebook, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { ChartLine, ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import {
@@ -78,7 +78,7 @@ export function TodayPanel({
   const [stapleId, setStapleId] = useState<number | null>(null);
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
-  const [view, setView] = useState<"home" | "add" | "weight" | "logs" | "chart">("home");
+  const [view, setView] = useState<"home" | "add" | "weight" | "chart">("home");
   const skipScroll = useRef(true);
 
   useEffect(() => {
@@ -283,7 +283,6 @@ export function TodayPanel({
               {(
                 [
                   { id: "add", label: "餌箱", Icon: Utensils },
-                  { id: "logs", label: "ノート", Icon: Notebook },
                   { id: "weight", label: "体重計", Icon: Scale },
                 ] as const
               ).map((item) => (
@@ -407,6 +406,7 @@ export function TodayPanel({
       ) : null}
 
       {view === "add" ? (
+      <>
       <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
         <div className="flex items-center justify-between gap-2">
           <p className="font-display text-lg font-semibold text-fg">カロリーを足す</p>
@@ -680,9 +680,7 @@ export function TodayPanel({
           足す
         </Button>
       </form>
-      ) : null}
 
-      {view === "logs" ? (
       <div>
         <div className="flex items-end justify-between">
           <p className="font-display text-lg font-semibold text-fg">今日の記録</p>
@@ -723,6 +721,7 @@ export function TodayPanel({
           </ul>
         )}
       </div>
+      </>
       ) : null}
 
       {view === "chart" ? (
