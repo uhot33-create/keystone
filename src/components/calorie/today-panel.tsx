@@ -1,4 +1,4 @@
-import { ChartLine, ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import {
@@ -78,7 +78,7 @@ export function TodayPanel({
   const [stapleId, setStapleId] = useState<number | null>(null);
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
-  const [view, setView] = useState<"home" | "add" | "weight" | "chart">("home");
+  const [view, setView] = useState<"home" | "add" | "weight">("home");
   const skipScroll = useRef(true);
 
   useEffect(() => {
@@ -315,52 +315,40 @@ export function TodayPanel({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <div className="flex w-full items-center justify-between gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="前日"
-                  onClick={() => void selectDate(shiftIsoDate(state.date, -1))}
-                >
-                  <ChevronLeft />
-                </Button>
-                <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="翌日"
-                  onClick={() => void selectDate(shiftIsoDate(state.date, 1))}
-                >
-                  <ChevronRight />
-                </Button>
-              </div>
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex w-full items-center justify-between gap-1">
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                disabled={state.date === todayJst()}
-                onClick={() => {
-                  setChartEnd(todayJst());
-                  void selectDate(todayJst());
-                }}
+                size="icon"
+                aria-label="前日"
+                onClick={() => void selectDate(shiftIsoDate(state.date, -1))}
               >
-                今日
+                <ChevronLeft />
+              </Button>
+              <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="翌日"
+                onClick={() => void selectDate(shiftIsoDate(state.date, 1))}
+              >
+                <ChevronRight />
               </Button>
             </div>
-            <button
+            <Button
               type="button"
-              aria-label="折れ線グラフ"
-              onClick={() => setView("chart")}
-              className="grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+              variant="ghost"
+              size="sm"
+              disabled={state.date === todayJst()}
+              onClick={() => {
+                setChartEnd(todayJst());
+                void selectDate(todayJst());
+              }}
             >
-              <span className="grid size-10 place-items-center rounded-full bg-surface-2 text-fg">
-                <ChartLine className="size-4" strokeWidth={1.75} />
-              </span>
-            </button>
+              今日
+            </Button>
           </div>
           {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
         </>
@@ -723,8 +711,9 @@ export function TodayPanel({
       </div>
       </>
       ) : null}
+        </>
+      )}
 
-      {view === "chart" ? (
       <TrendChart
         grain={grain}
         days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}
@@ -741,9 +730,6 @@ export function TodayPanel({
         }}
         onShift={(direction) => setChartEnd((prev) => shiftChartEnd(grain, prev, direction, todayJst()))}
       />
-      ) : null}
-        </>
-      )}
 
       {error ? (
         <p className="text-sm text-danger" role="alert">
