@@ -324,9 +324,10 @@ export function TodayPanel({
             <div className="flex min-w-0 flex-1 items-start justify-center gap-4">
             <div className="flex flex-col items-center">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
-              <div className="mt-1 flex items-start">
+              <p className="mt-1 h-4" aria-hidden />
+              <div className="mt-1 flex h-28 items-start">
                 <div
-                  className="relative h-28 w-8"
+                  className="relative h-full w-8"
                   role="img"
                   aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
                 >
@@ -347,7 +348,7 @@ export function TodayPanel({
             </div>
             <div className="flex flex-col items-center pr-7">
               <p className="text-[11px] leading-none text-muted">体重</p>
-              <p className={`mt-1 text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
+              <p className={`mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
                 {latestWeight != null ? (
                   <>
                     {latestWeight.toFixed(2)}
