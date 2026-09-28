@@ -6,7 +6,7 @@ import { BadgePanel } from "@/components/smoking/badge-panel";
 import { Protected } from "@/components/protected";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getSmokingState } from "@/lib/smoking/api";
+import { getSmokingBadges, getSmokingState } from "@/lib/smoking/api";
 import type { SmokingState } from "@/lib/smoking/types";
 
 export const Route = createFileRoute("/smoking")({ component: SmokingPage });
@@ -40,6 +40,25 @@ function SmokingApp() {
     };
   }, []);
 
+  useEffect(() => {
+    if (tab !== "badge") return;
+    let cancelled = false;
+    getSmokingBadges()
+      .then((badges) => {
+        if (!cancelled) setState((prev) => (prev ? { ...prev, badges } : prev));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "バッチを読み込めませんでした");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab]);
+
+  function applyState(next: SmokingState) {
+    setState((prev) => (prev ? { ...next, badges: prev.badges } : next));
+  }
+
   return (
     <div className="stagger-in flex flex-1 flex-col gap-3">
       <div>
@@ -72,9 +91,9 @@ function SmokingApp() {
           <Skeleton className="h-32 w-full rounded-xl" />
         </div>
       ) : tab === "count" ? (
-        <CountPanel state={state} onChange={setState} />
+        <CountPanel state={state} onChange={applyState} />
       ) : tab === "master" ? (
-        <MasterPanel state={state} onChange={setState} />
+        <MasterPanel state={state} onChange={applyState} />
       ) : (
         <BadgePanel state={state} />
       )}

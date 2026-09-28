@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { rebuildAllCalorieStats } from "@/lib/calorie/summary";
+import { resetSmokingIfDue } from "@/lib/smoking/api";
 
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -19,7 +20,8 @@ export const Route = createFileRoute("/api/cron/calorie-summary")({
         try {
           const sql = await getSql();
           const result = await rebuildAllCalorieStats(sql);
-          return Response.json({ ok: true, ...result });
+          const smoking = await resetSmokingIfDue(sql);
+          return Response.json({ ok: true, ...result, smoking });
         } catch (err) {
           const message = err instanceof Error ? err.message : "集計に失敗しました";
           return Response.json({ error: message }, { status: 500 });

@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql } from "@/lib/db";
+import { getSql, type Sql } from "@/lib/db";
 import { applyClosedDay, convertStoredNices, eachJstDay, emptyBadges, yesterdayJst } from "./badges";
-import { applyReset, clampRemaining, jstDateKey, resetsAtIso, toIso } from "./period";
+import { applyReset, clampRemaining, jstDateKey, resetsAtIso, startOfJstDayIso, toIso } from "./period";
 import type { SmokingBadges, SmokingState } from "./types";
 
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
@@ -80,16 +80,15 @@ function mapBadges(row: BadgeRow | undefined): SmokingBadges {
 
 function toState(row: SettingsRow, badges: SmokingBadges): SmokingState {
   const dailyLimit = Math.max(1, int(row.daily_limit) || 10);
-  const periodStartedAt = toIso(row.period_started_at) ?? new Date().toISOString();
+  const periodStartedAt = toIso(row.period_started_at) ?? startOfJstDayIso(Date.now());
   const remaining = clampRemaining(int(row.remaining), dailyLimit);
-  const reset = applyReset(dailyLimit, remaining, periodStartedAt);
   return {
     dailyLimit,
-    remaining: reset.remaining,
-    periodStartedAt: reset.periodStartedAt,
+    remaining,
+    periodStartedAt,
     lastSmokedAt: toIso(row.last_smoked_at),
-    resetsAt: resetsAtIso(reset.periodStartedAt),
-    exceeded: Boolean(row.exceeded) && !reset.didReset,
+    resetsAt: resetsAtIso(periodStartedAt),
+    exceeded: Boolean(row.exceeded),
     badges,
   };
 }
@@ -217,30 +216,41 @@ async function settleBadges(userId: string, raw: SettingsRow, didReset: boolean)
 }
 
 async function loadState(userId: string): Promise<SmokingState> {
-  const sql = await getSql();
   const raw = await ensureRow(userId);
-  const periodIso = toIso(raw.period_started_at) ?? "";
-  const remainingNow = clampRemaining(int(raw.remaining), Math.max(1, int(raw.daily_limit) || 10));
-  const reset = applyReset(Math.max(1, int(raw.daily_limit) || 10), remainingNow, periodIso || new Date().toISOString());
-  const badges = await settleBadges(userId, raw, reset.didReset);
+  return toState(raw, emptyBadges());
+}
 
-  const periodChanged = reset.periodStartedAt !== periodIso;
-  const remainingChanged = reset.remaining !== int(raw.remaining);
-  const exceededChanged = reset.didReset && Boolean(raw.exceeded);
-  if (periodChanged || remainingChanged || exceededChanged) {
+export async function resetSmokingIfDue(sql: Sql): Promise<{ users: number }> {
+  const rows = await sql<SettingsRow & { user_id: unknown }>`
+    select user_id, daily_limit, remaining, period_started_at, last_smoked_at, exceeded
+    from smoking_settings
+  `;
+  let users = 0;
+  for (const raw of rows) {
+    const dailyLimit = Math.max(1, int(raw.daily_limit) || 10);
+    const remainingNow = clampRemaining(int(raw.remaining), dailyLimit);
+    const periodIso = toIso(raw.period_started_at) ?? new Date(0).toISOString();
+    const reset = applyReset(dailyLimit, remainingNow, periodIso);
+    if (!reset.didReset) continue;
+    const userId = String(raw.user_id);
+    await settleBadges(userId, raw, true);
     await sql`
       update smoking_settings
       set
         remaining = ${reset.remaining},
         period_started_at = ${reset.periodStartedAt},
-        exceeded = ${reset.didReset ? false : Boolean(raw.exceeded)},
+        exceeded = false,
         updated_at = now()
       where user_id = ${userId}
     `;
+    users += 1;
   }
-  const latest = await ensureRow(userId);
-  return toState(latest, badges);
+  return { users };
 }
+
+export const getSmokingBadges = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => mapBadges(await loadBadgeRow(context.userId)));
 
 export const getSmokingState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -276,8 +286,8 @@ export const saveDailyLimit = createServerFn({ method: "POST" })
       where user_id = ${context.userId}
     `;
     if (lowered) {
-      const badges = { ...current.badges, limitDownCount: current.badges.limitDownCount + 1 };
-      await saveBadges(context.userId, badges);
+      const badges = mapBadges(await loadBadgeRow(context.userId));
+      await saveBadges(context.userId, { ...badges, limitDownCount: badges.limitDownCount + 1 });
     }
     return loadState(context.userId);
   });
