@@ -324,23 +324,18 @@ export function TodayPanel({
             <div className="flex min-w-0 flex-1 items-start justify-center gap-4">
             <div className="flex flex-col items-center">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
-              <p className="mt-1 h-4" aria-hidden />
-              <div className="mt-1 flex h-28 items-start">
-                <div
-                  className="relative h-full w-8"
-                  role="img"
-                  aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
-                >
-                  <div className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
-                    <div className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
-                    <div className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
-                  </div>
+              <p className="mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
+                {target > 0 ? formatKcal(target) : "—"}
+              </p>
+              <div
+                className="relative mt-1 h-28 w-8"
+                role="img"
+                aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
+              >
+                <div className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
+                  <div className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
+                  <div className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
                 </div>
-                {target > 0 ? (
-                  <span className="ml-0.5 text-[10px] leading-none tabular-nums text-subtle">{formatKcal(target)}</span>
-                ) : (
-                  <span className="ml-0.5 w-4" />
-                )}
               </div>
               <p className={`mt-1 text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
                 {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
