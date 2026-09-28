@@ -79,6 +79,7 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight">("home");
+  const [barTip, setBarTip] = useState<"kcal" | "weight" | null>(null);
   const skipScroll = useRef(true);
 
   useEffect(() => {
@@ -321,22 +322,25 @@ export function TodayPanel({
             <div className="size-36 shrink-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card sm:size-44">
               <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
             </div>
-            <div className="flex min-w-0 flex-1 items-start justify-center gap-4">
+            <div className="flex min-w-0 flex-1 flex-col items-center">
+            <div className="flex items-start justify-center gap-4">
             <div className="flex flex-col items-center">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
               <p className="mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
                 {target > 0 ? formatKcal(target) : "—"}
               </p>
-              <div
-                className="relative mt-1 h-28 w-8"
-                role="img"
+              <button
+                type="button"
+                className={`relative mt-1 h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "kcal" ? "ring-2 ring-ring/40" : ""}`}
+                aria-pressed={barTip === "kcal"}
                 aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
+                onClick={() => setBarTip((current) => (current === "kcal" ? null : "kcal"))}
               >
-                <div className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
-                  <div className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
-                  <div className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
-                </div>
-              </div>
+                <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
+                  <span className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
+                  <span className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
+                </span>
+              </button>
               <p className={`mt-1 text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
                 {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
               </p>
@@ -353,34 +357,46 @@ export function TodayPanel({
                   "—"
                 )}
               </p>
-              <div
-                className="relative mt-1 h-28 w-8"
-                role="img"
+              <button
+                type="button"
+                className={`relative mt-1 h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "weight" ? "ring-2 ring-ring/40" : ""}`}
+                aria-pressed={barTip === "weight"}
                 aria-label={
                   latestWeight != null
                     ? `最新 ${latestWeight.toFixed(2)} kg、理想 ${idealWeight > 0 ? idealWeight.toFixed(2) : "未設定"} kg`
                     : "体重は未記録"
                 }
+                onClick={() => setBarTip((current) => (current === "weight" ? null : "weight"))}
               >
-                <div className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
-                  <div className="absolute inset-x-0 bottom-0 bg-fg/55" style={{ height: `${weightWithin}%` }} />
+                <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
+                  <span className="absolute inset-x-0 bottom-0 bg-fg/55" style={{ height: `${weightWithin}%` }} />
                   {weightAbove > 0 ? (
-                    <div className="absolute inset-x-0 bg-danger" style={{ bottom: `${idealLine}%`, height: `${weightAbove}%` }} />
+                    <span className="absolute inset-x-0 bg-danger" style={{ bottom: `${idealLine}%`, height: `${weightAbove}%` }} />
                   ) : null}
-                </div>
+                </span>
                 {idealWeight > 0 ? (
                   <>
-                    <div className="absolute -left-0.5 right-0 z-10 h-0.5 bg-fg" style={{ bottom: `${idealLine}%` }} />
+                    <span className="absolute -left-0.5 right-0 z-10 h-0.5 bg-fg" style={{ bottom: `${idealLine}%` }} />
                     <span
-                      className="absolute left-full z-10 ml-0.5 -translate-y-1/2 text-[10px] leading-none tabular-nums text-subtle"
+                      className="pointer-events-none absolute left-full z-10 ml-0.5 -translate-y-1/2 text-[10px] leading-none tabular-nums text-subtle"
                       style={{ bottom: `${idealLine}%` }}
                     >
                       {idealWeight.toFixed(2)}
                     </span>
                   </>
                 ) : null}
-              </div>
+              </button>
             </div>
+            </div>
+            <p className="mt-2 min-h-4 text-center text-[11px] leading-none text-muted">
+              {barTip === "kcal"
+                ? `ごはん ${formatKcal(mealEaten)}　おやつ ${formatKcal(treatEaten)}`
+                : barTip === "weight"
+                  ? latestWeight == null
+                    ? "体重は未記録"
+                    : `最新 ${latestWeight.toFixed(2)} kg${idealWeight > 0 ? `　差 ${(latestWeight - idealWeight).toFixed(2)} kg` : ""}`
+                  : "棒をタップすると内訳"}
+            </p>
             </div>
           </div>
 
