@@ -93,10 +93,12 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
+    const url = databaseUrl;
+    if (!url) throw new Error("DATABASE_URL is not set");
     const pool = new Pool({
-      connectionString: databaseUrl,
+      connectionString: url,
       // Supabase's pooler presents a chain Node does not verify as public.
-      ssl: databaseUrl.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
+      ssl: url.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
     });
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);

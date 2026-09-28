@@ -20,6 +20,12 @@ export type DogFood = {
   usualQty: number;
 };
 
+export type CalorieStaple = {
+  id: number;
+  foodId: number;
+  qty: number;
+};
+
 export type CalorieLog = {
   id: number;
   date: string;
@@ -59,6 +65,7 @@ export type CalorieState = {
   dog: DogProfile;
   dogs: DogProfile[];
   foods: DogFood[];
+  staples: CalorieStaple[];
   logs: CalorieLog[];
   week: DayTotal[];
   trend: DayTrend[];

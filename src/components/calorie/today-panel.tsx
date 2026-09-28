@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { addCalorieLog, deleteCalorieLog, getCalorieDay, saveWeightLog } from "@/lib/calorie/api";
+import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import {
   formatJaDayWeek,
   formatKcal,
@@ -20,13 +20,9 @@ import { TrendChart } from "@/components/calorie/trend-chart";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 const QTY_STEPS = [15, 2, 4] as const;
-const STAPLES = [
-  { name: "NOWフレッシュ", qty: 15 },
-  { name: "ささみジャーキー", qty: 2 },
-  { name: "ささみジャーキー", qty: 4 },
-] as const;
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
@@ -81,6 +77,10 @@ export function TodayPanel({
   const [error, setError] = useState<string | null>(null);
   const [grain, setGrain] = useState<TrendGrain>("day");
   const [chartEnd, setChartEnd] = useState(todayJst);
+  const [stapleOpen, setStapleOpen] = useState(false);
+  const [stapleId, setStapleId] = useState<number | null>(null);
+  const [stapleFoodId, setStapleFoodId] = useState("");
+  const [stapleQty, setStapleQty] = useState("");
 
   useEffect(() => {
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
@@ -333,18 +333,33 @@ export function TodayPanel({
           <p className="text-xs text-muted">名前は省略できます</p>
         </div>
 
-        <p className="mt-3 text-xs font-medium text-subtle">定番</p>
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-subtle">定番</p>
+          <button
+            type="button"
+            className="text-xs font-medium text-primary"
+            disabled={locked}
+            onClick={() => {
+              setStapleOpen((open) => !open);
+              setStapleId(null);
+              setStapleFoodId("");
+              setStapleQty("");
+            }}
+          >
+            {stapleOpen ? "閉じる" : "管理"}
+          </button>
+        </div>
         <div className="mt-2 flex flex-wrap gap-2">
-          {STAPLES.map((item) => {
-            const food = state.foods.find((entry) => entry.name === item.name);
+          {state.staples.map((item) => {
+            const food = state.foods.find((entry) => entry.id === item.foodId);
+            if (!food) return null;
             return (
               <button
-                key={`${item.name}-${item.qty}`}
+                key={item.id}
                 type="button"
-                disabled={pending || locked || !food}
+                disabled={pending || locked}
                 className="rounded-full border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg disabled:opacity-50"
                 onClick={() => {
-                  if (!food) return;
                   const kcal = kcalForQuantity(food.kcal, food.amount, item.qty);
                   if (!(kcal > 0)) return;
                   void run(() =>
@@ -363,11 +378,122 @@ export function TodayPanel({
                   );
                 }}
               >
-                + {item.name} {item.qty}g
+                + {food.name} {formatQuantity(item.qty, food.unit)}
               </button>
             );
           })}
+          {state.staples.length === 0 ? <p className="text-xs text-muted">まだありません。管理から追加できます。</p> : null}
         </div>
+        {stapleOpen ? (
+          <div className="mt-3 space-y-3">
+            <div className="grid grid-cols-[1fr_5.5rem] gap-2">
+              <Select
+                aria-label="定番のフード"
+                value={stapleFoodId}
+                disabled={locked || state.foods.length === 0}
+                onChange={(event) => setStapleFoodId(event.target.value)}
+              >
+                <option value="">フードを選択</option>
+                {state.foods.map((food) => (
+                  <option key={food.id} value={food.id}>
+                    {food.name}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                type="number"
+                inputMode="decimal"
+                min={0.1}
+                step="any"
+                placeholder="数量"
+                aria-label="定番の数量"
+                value={stapleQty}
+                disabled={locked}
+                onChange={(event) => setStapleQty(event.target.value)}
+                onFocus={(event) => event.currentTarget.select()}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                className="flex-1"
+                disabled={pending || locked || !stapleFoodId || !(Number(stapleQty) > 0)}
+                onClick={() =>
+                  void run(async () => {
+                    const next = await saveCalorieStaple({
+                      data: {
+                        date: state.date,
+                        dogId: state.dog.id,
+                        id: stapleId ?? undefined,
+                        foodId: Number(stapleFoodId),
+                        qty: Number(stapleQty),
+                      },
+                    });
+                    setStapleId(null);
+                    setStapleFoodId("");
+                    setStapleQty("");
+                    return next;
+                  })
+                }
+              >
+                {stapleId ? "更新" : "登録"}
+              </Button>
+              {stapleId ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => {
+                    setStapleId(null);
+                    setStapleFoodId("");
+                    setStapleQty("");
+                  }}
+                >
+                  取消
+                </Button>
+              ) : null}
+            </div>
+            {state.foods.length === 0 ? <p className="text-xs text-muted">先にフードを登録してください。</p> : null}
+            {state.staples.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {state.staples.map((item) => {
+                  const food = state.foods.find((entry) => entry.id === item.foodId);
+                  const label = food ? `${food.name} ${formatQuantity(item.qty, food.unit)}` : "フードがありません";
+                  return (
+                    <li key={item.id} className="flex items-center gap-2 py-2">
+                      <p className="min-w-0 flex-1 truncate text-sm text-fg">{label}</p>
+                      <button
+                        type="button"
+                        className="shrink-0 text-xs font-medium text-primary"
+                        disabled={pending || locked || !food}
+                        onClick={() => {
+                          setStapleId(item.id);
+                          setStapleFoodId(String(item.foodId));
+                          setStapleQty(String(item.qty));
+                        }}
+                      >
+                        編集
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-9 min-h-9 text-muted"
+                        aria-label={`${label}を削除`}
+                        disabled={pending || locked}
+                        onClick={() =>
+                          void run(() => deleteCalorieStaple({ data: { date: state.date, dogId: state.dog.id, id: item.id } }))
+                        }
+                      >
+                        <Trash2 />
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-3 grid grid-cols-2 rounded-md bg-surface-2 p-1">
           <button

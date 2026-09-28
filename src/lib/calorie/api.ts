@@ -132,12 +132,18 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const seriesEnd = todayJst();
   const from = shiftIsoDate(seriesEnd, -5 * 366);
 
-  const [foods, logs, maps] = await Promise.all([
+  const [foods, staples, logs, maps] = await Promise.all([
     sql<FoodRow>`
       select id, name, kind, kcal, amount, unit, usual_qty
       from dog_foods
       where user_id = ${userId} and dog_id = ${dog.id}
       order by kind asc, id asc
+    `,
+    sql<{ id: number; food_id: number; qty: unknown }>`
+      select id, food_id, qty
+      from calorie_staples
+      where user_id = ${userId} and dog_id = ${dog.id}
+      order by sort_order asc, id asc
     `,
     sql<LogRow>`
       select id, log_date, label, kcal, kind, food_id, amount, unit
@@ -167,6 +173,11 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       amount: num(row.amount),
       unit: row.unit,
       usualQty: num(row.usual_qty) || num(row.amount),
+    })),
+    staples: staples.map((row) => ({
+      id: row.id,
+      foodId: row.food_id,
+      qty: num(row.qty),
     })),
     logs: logs.map((row) => ({
       id: row.id,
@@ -368,6 +379,65 @@ export const deleteDogFood = createServerFn({ method: "POST" })
     const dog = await requireDog(context.userId, data.dogId);
     await sql`
       delete from dog_foods
+      where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
+    `;
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+const stapleInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
+  id: z.number().int().positive().optional(),
+  foodId: z.number().int().positive(),
+  qty: z.number().positive("数量を入力してください").max(10000),
+});
+
+export const saveCalorieStaple = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(stapleInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    const food = await sql<{ id: number }>`
+      select id from dog_foods
+      where id = ${data.foodId} and user_id = ${context.userId} and dog_id = ${dog.id}
+      limit 1
+    `;
+    if (!food[0]) throw new Error("フードが見つかりません");
+    if (data.id) {
+      const updated = await sql<{ id: number }>`
+        update calorie_staples
+        set food_id = ${data.foodId}, qty = ${data.qty}
+        where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
+        returning id
+      `;
+      if (!updated[0]) throw new Error("定番が見つかりません");
+    } else {
+      await sql`
+        insert into calorie_staples (user_id, dog_id, food_id, qty, sort_order)
+        values (
+          ${context.userId},
+          ${dog.id},
+          ${data.foodId},
+          ${data.qty},
+          coalesce((
+            select max(sort_order) + 1 from calorie_staples
+            where dog_id = ${dog.id}
+          ), 1)
+        )
+      `;
+    }
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+export const deleteCalorieStaple = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(idDateInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    await sql`
+      delete from calorie_staples
       where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
     `;
     return loadState(context.userId, data.date, dog.id);
