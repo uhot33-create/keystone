@@ -7,7 +7,6 @@ import {
   formatQuantity,
   kcalForQuantity,
   shiftIsoDate,
-  splitMealsAndTreats,
   dailyEnergy,
   todayJst,
   trimNum,
@@ -55,12 +54,10 @@ function kindLabel(kind: string): string {
 export function TodayPanel({
   state,
   onChange,
-  onOpenPlan,
   onOpenFoods,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
-  onOpenPlan: () => void;
   onOpenFoods: () => void;
 }) {
   const [kind, setKind] = useState<FoodKind>("food");
@@ -97,7 +94,6 @@ export function TodayPanel({
   }, [state.date, state.todayWeightKg]);
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
-  const { mealKcal, treatKcal } = splitMealsAndTreats(target, state.dog.treatRatio);
   const mealEaten = truncKcal(
     state.logs.filter((log) => log.kind !== "treat").reduce((sum, log) => sum + log.kcal, 0),
   );
@@ -108,7 +104,6 @@ export function TodayPanel({
   const remaining = target > 0 ? target - total : null;
   const over = target > 0 && total > target;
   const saburo = calorieSaburoStage(total, target);
-  const treatPct = Math.round(state.dog.treatRatio * 100);
 
   const foods = useMemo(
     () => state.foods.filter((item) => item.kind === kind),
@@ -240,6 +235,7 @@ export function TodayPanel({
   return (
     <div className="flex flex-col gap-5">
       <BusyOverlay show={Boolean(busy)} label={busy ?? "処理中…"} />
+      {view !== "home" ? (
       <div className="flex flex-col items-center gap-1">
       <div className="flex w-full items-center justify-between gap-2">
         <Button
@@ -278,17 +274,39 @@ export function TodayPanel({
         <p className="text-xs text-muted">2週間以上前の記録は閲覧のみです</p>
       ) : null}
       </div>
+      ) : null}
 
       {view === "home" ? (
         <>
-          <div className="flex flex-col items-center gap-3">
-            <div className="size-44 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
+          <div className="flex items-center gap-3">
+            <div className="flex shrink-0 flex-col gap-2">
+              {(
+                [
+                  { id: "add", label: "餌箱", Icon: Utensils },
+                  { id: "logs", label: "ノート", Icon: Notebook },
+                  { id: "weight", label: "体重計", Icon: Scale },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  aria-label={item.label}
+                  onClick={() => setView(item.id)}
+                  className="grid size-12 place-items-center rounded-xl border border-border bg-surface shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+                >
+                  <span className="grid size-9 place-items-center rounded-full bg-surface-2 text-fg">
+                    <item.Icon className="size-4" strokeWidth={1.75} />
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="size-36 shrink-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card sm:size-44">
               <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
             </div>
-            <div className="text-center">
-              <p className="font-display text-4xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
-              <p className="mt-2 text-sm text-muted">/ {target || "—"} kcal</p>
-              <p className={`mt-1 text-sm ${over ? "text-danger" : "text-muted"}`}>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-3xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
+              <p className="mt-1 text-xs text-muted">/ {target || "—"} kcal</p>
+              <p className={`mt-0.5 text-xs ${over ? "text-danger" : "text-muted"}`}>
                 {target > 0
                   ? over
                     ? `${formatKcal(total - target)} kcal オーバー`
@@ -298,49 +316,54 @@ export function TodayPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
-              <p className="text-xs text-muted">ごはん</p>
-              <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(mealEaten)} kcal</p>
-              <p className="mt-1 text-xs text-subtle">目標 {mealKcal || "—"}</p>
-            </div>
-            <div className="rounded-xl border border-border bg-surface px-4 py-4 shadow-card">
-              <p className="text-xs text-muted">おやつ</p>
-              <p className="mt-1 font-display text-2xl font-semibold tabular-nums text-fg">{formatKcal(treatEaten)} kcal</p>
-              <p className="mt-1 text-xs text-subtle">上限 {treatPct}%</p>
-            </div>
-          </div>
-
-          <nav aria-label="今日の操作" className="grid grid-cols-2 gap-3">
-            {(
-              [
-                { id: "add", label: "餌箱", Icon: Utensils },
-                { id: "weight", label: "体重計", Icon: Scale },
-                { id: "logs", label: "ノート", Icon: Notebook },
-                { id: "chart", label: "折れ線グラフ", Icon: ChartLine },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.id}
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-1">
+              <div className="flex w-full items-center justify-between gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="前日"
+                  onClick={() => void selectDate(shiftIsoDate(state.date, -1))}
+                >
+                  <ChevronLeft />
+                </Button>
+                <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="翌日"
+                  onClick={() => void selectDate(shiftIsoDate(state.date, 1))}
+                >
+                  <ChevronRight />
+                </Button>
+              </div>
+              <Button
                 type="button"
-                onClick={() => setView(item.id)}
-                className="flex min-h-28 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-4 text-center shadow-card outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
+                variant="ghost"
+                size="sm"
+                disabled={state.date === todayJst()}
+                onClick={() => {
+                  setChartEnd(todayJst());
+                  void selectDate(todayJst());
+                }}
               >
-                <span className="grid size-12 place-items-center rounded-full bg-surface-2 text-primary">
-                  <item.Icon className="size-6" strokeWidth={1.75} />
-                </span>
-                <span className="font-display text-sm font-semibold text-fg">{item.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          <p className="text-center text-xs text-subtle">
-            目標カロリーは
-            <button type="button" className="mx-1 font-medium text-primary underline-offset-4 hover:underline" onClick={onOpenPlan}>
-              プラン
+                今日
+              </Button>
+            </div>
+            <button
+              type="button"
+              aria-label="折れ線グラフ"
+              onClick={() => setView("chart")}
+              className="grid size-14 shrink-0 place-items-center rounded-xl border border-border bg-surface shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            >
+              <span className="grid size-10 place-items-center rounded-full bg-surface-2 text-fg">
+                <ChartLine className="size-4" strokeWidth={1.75} />
+              </span>
             </button>
-            で計算しています
-          </p>
+          </div>
+          {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
         </>
       ) : (
         <>

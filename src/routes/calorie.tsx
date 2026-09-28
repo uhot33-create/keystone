@@ -84,7 +84,6 @@ function CalorieApp() {
               <TodayPanel
                 state={state}
                 onChange={onChange}
-                onOpenPlan={() => setTab("plan")}
                 onOpenFoods={() => setTab("foods")}
               />
             ) : tab === "plan" ? (
