@@ -103,6 +103,10 @@ export function TodayPanel({
   const total = mealEaten + treatEaten;
   const remaining = target > 0 ? target - total : null;
   const over = target > 0 && total > target;
+  const barScale = target > 0 ? Math.max(target, total) : Math.max(total, 1);
+  const mealShare = (mealEaten / barScale) * 100;
+  const treatShare = (treatEaten / barScale) * 100;
+  const treatRatioPct = total > 0 ? Math.round((treatEaten / total) * 100) : 0;
   const saburo = calorieSaburoStage(total, target);
 
   const foods = useMemo(
@@ -302,16 +306,24 @@ export function TodayPanel({
             <div className="size-36 shrink-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card sm:size-44">
               <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-display text-3xl font-semibold tabular-nums leading-none text-fg">{formatKcal(total)}</p>
-              <p className="mt-1 text-xs text-muted">/ {target || "—"} kcal</p>
-              <p className={`mt-0.5 text-xs ${over ? "text-danger" : "text-muted"}`}>
+            <div className="flex min-w-0 flex-1 flex-col items-center">
+              <p className="text-sm font-semibold tabular-nums text-accent">{treatRatioPct}%</p>
+              <div
+                className="relative mt-1 h-28 w-8 overflow-hidden rounded-full bg-surface-2"
+                role="img"
+                aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、割合 ${treatRatioPct}%`}
+              >
+                <div className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
+                <div className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
+              </div>
+              <p className={`mt-1 text-center text-[11px] leading-tight ${over ? "text-danger" : "text-muted"}`}>
                 {target > 0
                   ? over
                     ? `${formatKcal(total - target)} kcal オーバー`
                     : `あと ${formatKcal(remaining ?? 0)} kcal`
                   : "目標未設定"}
               </p>
+              <p className="text-center text-[11px] leading-tight text-subtle">目標 {target > 0 ? `${formatKcal(target)} kcal` : "—"}</p>
             </div>
           </div>
 
