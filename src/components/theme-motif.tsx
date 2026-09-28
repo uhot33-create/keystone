@@ -38,6 +38,7 @@ const MOTIFS: Partial<Record<ThemeId, () => JSX.Element>> = {
   autumn: AutumnMotif,
   tsukimi: TsukimiMotif,
   winter: WinterMotif,
+  macaron: MacaronMotif,
 };
 
 /** 桜 + いちご */
@@ -107,6 +108,16 @@ function WinterMotif() {
     <g fill="none">
       <Camellia cx={262} cy={148} />
       <Yuzu x={58} y={200} />
+    </g>
+  );
+}
+
+/** バラ + マカロン */
+function MacaronMotif() {
+  return (
+    <g fill="none">
+      <Rose cx={268} cy={150} />
+      <Macaron x={48} y={196} />
     </g>
   );
 }
@@ -379,6 +390,42 @@ function Dango({ x, y }: { x: number; y: number }) {
       <circle cx="88" cy="40" r="26" fill="#e8d0d0" />
       <circle cx="88" cy="90" r="26" fill="#f4efe0" />
       <circle cx="88" cy="140" r="26" fill="#d8c07a" />
+    </g>
+  );
+}
+
+function Rose({ cx, cy }: { cx: number; cy: number }) {
+  const outer = [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    const x = cx + Math.cos(rad) * 34;
+    const y = cy + Math.sin(rad) * 34;
+    return <ellipse key={deg} cx={x} cy={y} rx={28} ry={48} fill="#e8a0b0" transform={`rotate(${deg} ${x} ${y})`} />;
+  });
+  const inner = [20, 90, 160, 230, 300].map((deg) => {
+    const rad = ((deg - 90) * Math.PI) / 180;
+    const x = cx + Math.cos(rad) * 16;
+    const y = cy + Math.sin(rad) * 16;
+    return <ellipse key={deg} cx={x} cy={y} rx={16} ry={28} fill="#f3c6ce" transform={`rotate(${deg} ${x} ${y})`} />;
+  });
+  return (
+    <g>
+      {outer}
+      {inner}
+      <circle cx={cx} cy={cy} r={18} fill="#c46b7a" />
+      <circle cx={cx} cy={cy} r={8} fill="#f7e4c4" />
+    </g>
+  );
+}
+
+function Macaron({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <ellipse cx="88" cy="118" rx="72" ry="36" fill="#e7a8b4" />
+      <ellipse cx="88" cy="108" rx="72" ry="28" fill="#f3c4cc" />
+      <rect x="22" y="96" width="132" height="22" rx="8" fill="#f4e4c4" />
+      <ellipse cx="88" cy="78" rx="72" ry="36" fill="#d98998" />
+      <ellipse cx="88" cy="70" rx="72" ry="28" fill="#e8a0b0" />
+      <ellipse cx="62" cy="62" rx="18" ry="8" fill="#f8e6ea" opacity="0.8" />
     </g>
   );
 }

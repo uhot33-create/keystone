@@ -140,6 +140,21 @@
   --color-ring: #3a4e68;
 }
 
+:root[data-theme="macaron"] {
+  --color-bg: #fbf6f2;
+  --color-surface: #fffaf8;
+  --color-surface-2: #f4e6e4;
+  --color-fg: #3a2a2e;
+  --color-muted: #7a5a62;
+  --color-subtle: #a88890;
+  --color-primary: #c46b7a;
+  --color-primary-fg: #fffaf8;
+  --color-accent: #d4a574;
+  --color-border: #ead8d4;
+  --color-danger: #b43c48;
+  --color-ring: #c46b7a;
+}
+
 @layer base {
   html {
     color-scheme: light;

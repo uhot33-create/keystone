@@ -48,8 +48,8 @@ export function ThemeSettings() {
                 <p id={titleId} className="font-display text-lg font-semibold text-fg">
                   配色
                 </p>
-                <p className="mt-1 text-sm text-muted">季節の色に切り替えます。文字の読みやすさはそのままです。</p>
-                <div className="mt-4 grid gap-2">
+                <p className="mt-1 text-sm text-muted">色を切り替えます。文字の読みやすさはそのままです。</p>
+                <div className="mt-4 grid max-h-[60vh] gap-2 overflow-y-auto">
                   {THEMES.map((item) => {
                     const active = theme === item.id;
                     return (

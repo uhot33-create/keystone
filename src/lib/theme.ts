@@ -9,6 +9,7 @@ export const THEMES = [
   { id: "autumn", label: "秋", swatch: "#a04828", paper: "#f6efe4" },
   { id: "tsukimi", label: "月見", swatch: "#8a6a3a", paper: "#f4efe4" },
   { id: "winter", label: "冬", swatch: "#3a4e68", paper: "#eef1f5" },
+  { id: "macaron", label: "マカロン", swatch: "#c46b7a", paper: "#fbf6f2" },
 ] as const;
 
 export type ThemeId = (typeof THEMES)[number]["id"];
@@ -38,4 +39,4 @@ export function applyTheme(theme: ThemeId) {
   }
 }
 
-export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t==="spring"||t==="midori"||t==="tsuyu"||t==="summer"||t==="autumn"||t==="tsukimi"||t==="winter")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
+export const THEME_BOOT_SCRIPT = `try{var t=localStorage.getItem("${THEME_KEY}");if(t==="spring"||t==="midori"||t==="tsuyu"||t==="summer"||t==="autumn"||t==="tsukimi"||t==="winter"||t==="macaron")document.documentElement.setAttribute("data-theme",t)}catch(e){}`;
