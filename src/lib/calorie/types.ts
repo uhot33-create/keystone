@@ -57,6 +57,7 @@ export type DayTrend = {
   start: string;
   end: string;
   kcal: number;
+  guideKcal: number | null;
   weightKg: number | null;
 };
 

@@ -41,7 +41,6 @@ export function TrendChart({
   days,
   activeDate,
   todayDate,
-  targetKcal,
   canOlder = true,
   canNewer = true,
   onGrain,
@@ -53,7 +52,6 @@ export function TrendChart({
   days: DayTrend[];
   activeDate: string;
   todayDate: string;
-  targetKcal: number;
   canOlder?: boolean;
   canNewer?: boolean;
   onGrain: (grain: TrendGrain) => void;
@@ -67,7 +65,11 @@ export function TrendChart({
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
-  const maxKcal = niceMax(Math.max(...days.map((day) => day.kcal), grain === "day" ? targetKcal : 1, 1), grain === "day" ? 100 : 500);
+  const guides = days.map((day) => day.guideKcal ?? 0);
+  const maxKcal = niceMax(
+    Math.max(...days.map((day) => day.kcal), ...guides, 1),
+    grain === "day" ? 100 : 500,
+  );
   const weights = days.map((day) => day.weightKg).filter((value): value is number => value != null && value > 0);
   const minW = weights.length ? Math.min(...weights) : 0;
   const maxW = weights.length ? Math.max(...weights) : 1;
@@ -89,6 +91,9 @@ export function TrendChart({
   }
 
   const kcalLine = days.map((day, index) => `${x(index).toFixed(1)},${yKcal(day.kcal).toFixed(1)}`).join(" ");
+  const guideLine = guides.some((value) => value > 0)
+    ? guides.map((value, index) => `${x(index).toFixed(1)},${yKcal(value).toFixed(1)}`).join(" ")
+    : "";
   const weightPts = days
     .map((day, index) => (day.weightKg != null ? { index, kg: day.weightKg } : null))
     .filter((item): item is { index: number; kg: number } => item != null);
@@ -146,6 +151,10 @@ export function TrendChart({
           期間のカロリー合計
         </span>
         <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 border-t border-dashed border-accent" />
+          目安
+        </span>
+        <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-fg" />
           期末の体重
         </span>
@@ -159,14 +168,13 @@ export function TrendChart({
         }}
       >
       <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重の推移">
-        {grain === "day" && targetKcal > 0 ? (
-          <line
-            x1={pad.left}
-            x2={width - pad.right}
-            y1={yKcal(targetKcal)}
-            y2={yKcal(targetKcal)}
-            stroke="var(--color-border)"
+        {guideLine ? (
+          <polyline
+            fill="none"
+            stroke="var(--color-accent)"
+            strokeWidth="1.5"
             strokeDasharray="4 3"
+            points={guideLine}
           />
         ) : null}
         <polyline fill="none" stroke="var(--color-primary)" strokeWidth="2" points={kcalLine} />
@@ -213,7 +221,7 @@ export function TrendChart({
                 onSelect(day.date);
               }}
             >
-              <title>{`${day.label} ${formatKcal(day.kcal)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}`}</title>
+              <title>{`${day.label} ${formatKcal(day.kcal)}kcal / 目安 ${formatKcal(guides[index] ?? 0)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}`}</title>
             </rect>
           </g>
         ))}

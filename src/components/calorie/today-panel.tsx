@@ -793,7 +793,6 @@ export function TodayPanel({
         days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}
         activeDate={state.date}
         todayDate={todayJst()}
-        targetKcal={target}
         canOlder={windowedTrend(state.trends?.[grain] ?? [], grain, chartEnd)[0] !== (state.trends?.[grain] ?? [])[0]}
         canNewer={chartEnd < todayJst()}
         onGrain={setGrain}

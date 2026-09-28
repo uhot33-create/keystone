@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
-import { assertCalorieEditable, isLifeStageId, shiftIsoDate, todayJst, truncKcal } from "./formula";
-import { buildTrends, loadDayMaps, refreshDogStats } from "./summary";
+import { assertCalorieEditable, dailyEnergy, isLifeStageId, shiftIsoDate, todayJst, truncKcal } from "./formula";
+import { attachGuides, buildTrends, loadDayMaps, refreshDogStats, storePeriodGuides } from "./summary";
 import type { CalorieLog, CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
 
 function num(value: unknown, places = 1): number {
@@ -132,7 +132,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const seriesEnd = todayJst();
   const from = shiftIsoDate(seriesEnd, -5 * 366);
 
-  const [foods, staples, logs, maps] = await Promise.all([
+  const [foods, staples, logs, maps, guideRows] = await Promise.all([
     sql<FoodRow>`
       select id, name, kind, kcal, amount, unit, usual_qty
       from dog_foods
@@ -152,9 +152,21 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       order by id asc
     `,
     loadDayMaps(sql, userId, dog.id, from, seriesEnd),
+    sql<{ period_type: string; period_start: unknown; guide_kcal: unknown }>`
+      select period_type, period_start, guide_kcal
+      from calorie_period_guides
+      where dog_id = ${dog.id}
+        and period_start <= ${seriesEnd}
+        and period_end >= ${from}
+    `,
   ]);
 
-  const trends = buildTrends(maps.kcal, maps.kg, seriesEnd, from);
+  const guideMap = new Map<string, number>();
+  for (const row of guideRows) {
+    const start = asDateKey(row.period_start);
+    if (start) guideMap.set(`${row.period_type}:${start}`, truncKcal(num(row.guide_kcal)));
+  }
+  const trends = attachGuides(buildTrends(maps.kcal, maps.kg, seriesEnd, from), guideMap);
   const week: DayTotal[] = [];
   for (let offset = -6; offset <= 0; offset += 1) {
     const day = shiftIsoDate(date, offset);
@@ -299,6 +311,12 @@ export const saveDogProfile = createServerFn({ method: "POST" })
         updated_at = now()
       where id = ${dog.id} and user_id = ${context.userId}
     `;
+    await storePeriodGuides(
+      sql,
+      context.userId,
+      dog.id,
+      dailyEnergy(data.idealWeightKg, data.lifeStage),
+    );
     return loadState(context.userId, data.date, dog.id);
   });
 

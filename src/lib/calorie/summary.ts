@@ -154,10 +154,77 @@ export function buildTrends(
         start: period.start,
         end: period.end,
         kcal: grain === "day" ? (kcal.get(period.start) ?? 0) : kcalInRange(kcal, period.start, end),
+        guideKcal: null,
         weightKg:
           grain === "day" ? (weights.get(period.start) ?? null) : weightOnEnd(weights, period.start, end),
       };
     });
+  }
+  return out;
+}
+
+function inclusiveDays(start: string, end: string): number {
+  const from = Date.parse(`${start}T00:00:00Z`);
+  const to = Date.parse(`${end}T00:00:00Z`);
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return 1;
+  return Math.round((to - from) / 86400000) + 1;
+}
+
+function periodsThrough(grain: TrendGrain, from: string, to: string) {
+  const items = [];
+  let cursor = from;
+  for (let i = 0; i < 4000 && cursor <= to; i += 1) {
+    const period = describePeriod(grain, cursor);
+    items.push(period);
+    const next = shiftPeriod(grain, period.start, 1);
+    if (next <= cursor) break;
+    cursor = period.end < next ? next : shiftIsoDate(period.end, 1);
+  }
+  return items;
+}
+
+export async function storePeriodGuides(sql: Sql, userId: string, dogId: number, dailyKcal: number, asOf = todayJst()) {
+  const from = shiftIsoDate(asOf, -5 * 366);
+  const through = `${Number(asOf.slice(0, 4)) + 1}-12-31`;
+  const grains: TrendGrain[] = ["day", "week", "month", "year"];
+  const types: string[] = [];
+  const keys: string[] = [];
+  const starts: string[] = [];
+  const ends: string[] = [];
+  const guides: number[] = [];
+  for (const grain of grains) {
+    for (const period of periodsThrough(grain, from, through)) {
+      types.push(grain);
+      keys.push(period.key);
+      starts.push(period.start);
+      ends.push(period.end);
+      guides.push(truncKcal(dailyKcal * inclusiveDays(period.start, period.end)));
+    }
+  }
+  await sql.query(
+    `insert into calorie_period_guides (
+       user_id, dog_id, period_type, period_key, period_start, period_end, guide_kcal, updated_at
+     )
+     select $1, $2, period_type, period_key, period_start, period_end, guide_kcal, now()
+     from unnest($3::text[], $4::text[], $5::date[], $6::date[], $7::numeric[])
+       as u(period_type, period_key, period_start, period_end, guide_kcal)
+     on conflict (dog_id, period_type, period_key) do update set
+       period_start = excluded.period_start,
+       period_end = excluded.period_end,
+       guide_kcal = excluded.guide_kcal,
+       updated_at = now()`,
+    [userId, dogId, types, keys, starts, ends, guides],
+  );
+}
+
+export function attachGuides(trends: Record<TrendGrain, DayTrend[]>, guides: Map<string, number>) {
+  const grains: TrendGrain[] = ["day", "week", "month", "year"];
+  const out = {} as Record<TrendGrain, DayTrend[]>;
+  for (const grain of grains) {
+    out[grain] = trends[grain].map((point) => ({
+      ...point,
+      guideKcal: guides.get(`${grain}:${point.start}`) ?? null,
+    }));
   }
   return out;
 }
