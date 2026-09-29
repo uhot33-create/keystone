@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
-import { latestCronRun } from "@/lib/cron-log";
 import { applyClosedDay, convertStoredNices, eachJstDay, emptyBadges, yesterdayJst } from "./badges";
 import { applyReset, clampRemaining, jstDateKey, resetsAtIso, startOfJstDayIso, toIso } from "./period";
 import type { SmokingBadges, SmokingState } from "./types";
@@ -256,10 +255,6 @@ export const getSmokingBadges = createServerFn({ method: "GET" })
 export const getSmokingState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => loadState(context.userId));
-
-export const getLatestCronRun = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
-  .handler(async () => latestCronRun(await getSql()));
 
 const limitInput = z.object({
   dailyLimit: z
