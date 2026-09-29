@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
+import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import { chartWindowStart } from "@/lib/calorie/summary";
 import {
   formatJaDayWeek,
@@ -83,6 +83,7 @@ export function TodayPanel({
   const [pending, setPending] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [chartOpen, setChartOpen] = useState(false);
   const [grain, setGrain] = useState<TrendGrain>("day");
   const [chartEnd, setChartEnd] = useState(todayJst);
   const [stapleOpen, setStapleOpen] = useState(false);
@@ -182,9 +183,44 @@ export function TodayPanel({
     setBusy(label);
     setError(null);
     try {
-      onChange(await action());
+      const next = await action();
+      if (!chartOpen) {
+        onChange(next);
+        return;
+      }
+      try {
+        const chart = await getCalorieChart({ data: { dogId: next.dog.id } });
+        onChange({ ...next, trend: chart.trend, trends: chart.trends });
+      } catch {
+        onChange(next);
+        setChartOpen(false);
+        setError("グラフを更新できませんでした");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
+    } finally {
+      setPending(false);
+      setBusy(null);
+    }
+  }
+
+  useEffect(() => {
+    setChartOpen(false);
+  }, [state.dog.id]);
+
+  async function openChart() {
+    setChartOpen(true);
+    const loaded = state.trends?.day.length || state.trends?.week.length || state.trends?.month.length || state.trends?.year.length;
+    if (loaded) return;
+    setPending(true);
+    setBusy("読み込み中…");
+    setError(null);
+    try {
+      const chart = await getCalorieChart({ data: { dogId: state.dog.id } });
+      onChange({ ...state, trend: chart.trend, trends: chart.trends });
+    } catch (err) {
+      setChartOpen(false);
+      setError(err instanceof Error ? err.message : "グラフを読み込めませんでした");
     } finally {
       setPending(false);
       setBusy(null);
@@ -838,6 +874,7 @@ export function TodayPanel({
         </>
       )}
 
+      {chartOpen ? (
       <TrendChart
         grain={grain}
         days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}
@@ -853,6 +890,11 @@ export function TodayPanel({
         }}
         onShift={(direction) => void shiftChart(direction)}
       />
+      ) : (
+        <Button type="button" variant="outline" className="w-full" onClick={() => void openChart()}>
+          グラフを表示
+        </Button>
+      )}
 
       {error ? (
         <p className="text-sm text-danger" role="alert">
