@@ -30,15 +30,15 @@ function asBool(value: unknown, fallback: boolean): boolean {
 
 function mapRow(row: SettingsRow | undefined): DeskVisibility {
   if (!row) {
-    return { onThisDay: true, quote: true, story: true, dogFact: true, dogNews: true, fortune: true };
+    return { onThisDay: false, quote: false, story: false, dogFact: false, dogNews: false, fortune: false };
   }
   return {
-    onThisDay: asBool(row.show_on_this_day, true),
-    quote: asBool(row.show_quote, true),
-    story: asBool(row.show_story, true),
-    dogFact: asBool(row.show_dog_fact, true),
-    dogNews: asBool(row.show_dog_news, true),
-    fortune: asBool(row.show_fortune, true),
+    onThisDay: asBool(row.show_on_this_day, false),
+    quote: asBool(row.show_quote, false),
+    story: asBool(row.show_story, false),
+    dogFact: asBool(row.show_dog_fact, false),
+    dogNews: asBool(row.show_dog_news, false),
+    fortune: asBool(row.show_fortune, false),
   };
 }
 
