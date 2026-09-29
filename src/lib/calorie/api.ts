@@ -3,8 +3,8 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, shiftIsoDate, todayJst, truncKcal } from "./formula";
-import { attachGuides, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
-import type { CalorieLog, CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
+import { attachGuides, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
+import type { CalorieLog, CalorieState, DayTotal, DayTrend, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -130,7 +130,10 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const dogs = await ensureDogs(userId);
   const dog = pickDog(dogs, dogId);
   const seriesEnd = todayJst();
-  const from = shiftIsoDate(seriesEnd, -5 * 366);
+  const dayFrom = chartWindowStart("day", seriesEnd);
+  const weekFrom = chartWindowStart("week", seriesEnd);
+  const monthFrom = chartWindowStart("month", seriesEnd);
+  const yearFrom = chartWindowStart("year", seriesEnd);
 
   const [foods, staples, logs, maps, guideRows, statRows] = await Promise.all([
     sql<FoodRow>`
@@ -151,13 +154,17 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${date}
       order by id asc
     `,
-    loadDayMaps(sql, userId, dog.id, from, seriesEnd),
+    loadDayMaps(sql, userId, dog.id, dayFrom, seriesEnd),
     sql<{ period_type: string; period_start: unknown; guide_kcal: unknown }>`
       select period_type, period_start, guide_kcal
       from calorie_period_guides
       where dog_id = ${dog.id}
-        and period_start <= ${seriesEnd}
-        and period_end >= ${from}
+        and (
+          (period_type = 'day' and period_start >= ${dayFrom} and period_start <= ${seriesEnd})
+          or (period_type = 'week' and period_start >= ${weekFrom} and period_start <= ${seriesEnd})
+          or (period_type = 'month' and period_start >= ${monthFrom} and period_start <= ${seriesEnd})
+          or (period_type = 'year' and period_start >= ${yearFrom} and period_start <= ${seriesEnd})
+        )
     `,
     sql<{
       period_type: string;
@@ -165,22 +172,42 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       period_end: unknown;
       kcal_total: unknown;
       weight_kg: unknown;
+      computed_at: unknown;
     }>`
-      select period_type, period_start, period_end, kcal_total, weight_kg
+      select period_type, period_start, period_end, kcal_total, weight_kg, computed_at
       from calorie_period_stats
       where dog_id = ${dog.id}
-        and period_type in ('week', 'month', 'year')
-        and period_start <= ${seriesEnd}
-        and period_end >= ${from}
+        and (
+          (period_type = 'week' and period_start >= ${weekFrom} and period_start <= ${seriesEnd})
+          or (period_type = 'month' and period_start >= ${monthFrom} and period_start <= ${seriesEnd})
+          or (period_type = 'year' and period_start >= ${yearFrom} and period_start <= ${seriesEnd})
+        )
     `,
   ]);
 
+  const todayKcal =
+    date === seriesEnd
+      ? truncKcal(logs.reduce((sum, row) => sum + num(row.kcal), 0))
+      : truncKcal(
+          num(
+            (
+              await sql<{ total: unknown }>`
+                select coalesce(sum(kcal), 0) as total
+                from calorie_logs
+                where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${seriesEnd}
+              `
+            )[0]?.total,
+          ),
+        );
   const guideMap = new Map<string, number>();
   for (const row of guideRows) {
     const start = asDateKey(row.period_start);
     if (start) guideMap.set(`${row.period_type}:${start}`, truncKcal(num(row.guide_kcal)));
   }
-  const trends = attachGuides(trendsForDisplay(maps.kcal, maps.kg, statRows, seriesEnd, from), guideMap);
+  const trends = attachGuides(
+    trendsForDisplay(maps.kcal, maps.kg, statRows, seriesEnd, dayFrom, { todayKcal, mapsFrom: dayFrom }),
+    guideMap,
+  );
   const week: DayTotal[] = [];
   for (let offset = -6; offset <= 0; offset += 1) {
     const day = shiftIsoDate(date, offset);
@@ -306,6 +333,80 @@ export const getCalorieDay = createServerFn({ method: "GET" })
       logs: mapped,
       todayWeightKg: weights[0] ? num(weights[0].weight_kg, 2) : null,
     };
+  });
+
+const trendInput = z.object({
+  dogId: z.number().int().positive(),
+  grain: z.enum(["day", "week", "month", "year"]),
+  end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const getCalorieTrend = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(trendInput, input))
+  .handler(async ({ context, data }): Promise<DayTrend[]> => {
+    const today = todayJst();
+    const end = data.end > today ? today : data.end;
+    const start = chartWindowStart(data.grain, end);
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    const guides = await sql<{ period_start: unknown; guide_kcal: unknown }>`
+      select period_start, guide_kcal
+      from calorie_period_guides
+      where dog_id = ${dog.id}
+        and period_type = ${data.grain}
+        and period_start >= ${start}
+        and period_start <= ${end}
+    `;
+    const guideMap = new Map<string, number>();
+    for (const row of guides) {
+      const key = asDateKey(row.period_start);
+      if (key) guideMap.set(`${data.grain}:${key}`, truncKcal(num(row.guide_kcal)));
+    }
+    if (data.grain === "day") {
+      const maps = await loadDayMaps(sql, context.userId, dog.id, start, end);
+      const series = buildDaySeries(maps.kcal, maps.kg, end, start);
+      return attachGuides({ day: series, week: [], month: [], year: [] }, guideMap).day;
+    }
+    const stats = await sql<{
+      period_type: string;
+      period_start: unknown;
+      period_end: unknown;
+      kcal_total: unknown;
+      weight_kg: unknown;
+      computed_at: unknown;
+    }>`
+      select period_type, period_start, period_end, kcal_total, weight_kg, computed_at
+      from calorie_period_stats
+      where dog_id = ${dog.id}
+        and period_type = ${data.grain}
+        and period_start >= ${start}
+        and period_start <= ${end}
+    `;
+    const includeToday = end >= today;
+    const todayKcal = includeToday
+      ? truncKcal(
+          num(
+            (
+              await sql<{ total: unknown }>`
+                select coalesce(sum(kcal), 0) as total
+                from calorie_logs
+                where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${today}
+              `
+            )[0]?.total,
+          ),
+        )
+      : 0;
+    const maps =
+      data.grain === "week" && includeToday
+        ? await loadDayMaps(sql, context.userId, dog.id, start, today)
+        : { kcal: new Map<string, number>(), kg: new Map<string, number>() };
+    const trends = trendsForDisplay(maps.kcal, maps.kg, stats, today, start, {
+      todayKcal,
+      mapsFrom: data.grain === "week" && includeToday ? start : "9999-12-31",
+    });
+    const grain = data.grain as Exclude<TrendGrain, "day">;
+    return attachGuides(trends, guideMap)[grain].filter((point) => point.start >= start && point.start <= end);
   });
 
 export const saveDogProfile = createServerFn({ method: "POST" })

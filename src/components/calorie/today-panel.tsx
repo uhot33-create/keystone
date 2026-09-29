@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
+import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
+import { chartWindowStart } from "@/lib/calorie/summary";
 import {
   formatJaDayWeek,
   formatKcal,
@@ -28,6 +29,16 @@ function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): 
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
 }
 
+function historyFloor(today: string): string {
+  return shiftIsoDate(today, -5 * 366);
+}
+
+function mergeTrends(current: DayTrend[], extra: DayTrend[]): DayTrend[] {
+  const byStart = new Map<string, DayTrend>();
+  for (const point of current) byStart.set(point.start, point);
+  for (const point of extra) byStart.set(point.start, point);
+  return [...byStart.values()].sort((a, b) => a.start.localeCompare(b.start));
+}
 function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, today: string): string {
   let next = viewEnd;
   if (grain === "day") next = shiftIsoDate(viewEnd, direction * 14);
@@ -174,6 +185,34 @@ export function TodayPanel({
       onChange(await action());
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
+    } finally {
+      setPending(false);
+      setBusy(null);
+    }
+  }
+
+  async function shiftChart(direction: -1 | 1) {
+    const today = todayJst();
+    const next = shiftChartEnd(grain, chartEnd, direction, today);
+    setChartEnd(next);
+    if (direction > 0) return;
+    const start = chartWindowStart(grain, next);
+    const points = state.trends?.[grain] ?? [];
+    const oldest = points.reduce((min, point) => (point.start < min ? point.start : min), points[0]?.start ?? "9999-12-31");
+    if (points.length > 0 && oldest <= start) return;
+    setPending(true);
+    setBusy("読み込み中…");
+    setError(null);
+    try {
+      const more = await getCalorieTrend({ data: { dogId: state.dog.id, grain, end: next } });
+      const merged = mergeTrends(points, more);
+      onChange({
+        ...state,
+        trends: { ...state.trends, [grain]: merged },
+        trend: grain === "day" ? merged : state.trend,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "読み込みに失敗しました");
     } finally {
       setPending(false);
       setBusy(null);
@@ -804,7 +843,7 @@ export function TodayPanel({
         days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}
         activeDate={state.date}
         todayDate={todayJst()}
-        canOlder={windowedTrend(state.trends?.[grain] ?? [], grain, chartEnd)[0] !== (state.trends?.[grain] ?? [])[0]}
+        canOlder={(windowedTrend(state.trends?.[grain] ?? [], grain, chartEnd)[0]?.start ?? todayJst()) > historyFloor(todayJst())}
         canNewer={chartEnd < todayJst()}
         onGrain={setGrain}
         onSelect={(date) => void selectDate(date)}
@@ -812,7 +851,7 @@ export function TodayPanel({
           setChartEnd(todayJst());
           void selectDate(todayJst());
         }}
-        onShift={(direction) => setChartEnd((prev) => shiftChartEnd(grain, prev, direction, todayJst()))}
+        onShift={(direction) => void shiftChart(direction)}
       />
 
       {error ? (

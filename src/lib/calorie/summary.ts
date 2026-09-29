@@ -154,50 +154,69 @@ export function buildDaySeries(
   }));
 }
 
-function livePeriod(
-  grain: Exclude<TrendGrain, "day">,
-  asOf: string,
-  kcal: Map<string, number>,
-  weights: Map<string, number>,
-): DayTrend {
-  const period = describePeriod(grain, asOf);
-  const end = period.end > asOf ? asOf : period.end;
-  return {
-    date: end,
-    label: period.label,
-    start: period.start,
-    end: period.end,
-    kcal: kcalInRange(kcal, period.start, end),
-    guideKcal: null,
-    weightKg: weightOnEnd(weights, period.start, end),
-  };
-}
-
 type StatRow = {
   period_type: string;
   period_start: unknown;
   period_end: unknown;
   kcal_total: unknown;
   weight_kg: unknown;
+  computed_at?: unknown;
 };
+
+function jstDay(value: unknown): string {
+  if (value instanceof Date) {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(value);
+  }
+  return asDateKey(value);
+}
+
+export function chartWindowStart(grain: TrendGrain, viewEnd: string): string {
+  if (grain === "day") return shiftIsoDate(viewEnd, -(WINDOW.day - 1));
+  if (grain === "week") return mondayOf(shiftIsoDate(viewEnd, -(WINDOW.week - 1) * 7));
+  if (grain === "month") return monthStart(shiftPeriod("month", viewEnd, -(WINDOW.month - 1)));
+  return yearStart(shiftPeriod("year", viewEnd, -(WINDOW.year - 1)));
+}
 
 export function trendsForDisplay(
   kcal: Map<string, number>,
   weights: Map<string, number>,
   stats: StatRow[],
   asOf: string,
-  from: string,
+  dayFrom: string,
+  options?: { todayKcal?: number; mapsFrom?: string },
 ): Record<TrendGrain, DayTrend[]> {
-  const fallback = () => buildTrends(kcal, weights, asOf, from);
-  let built: Record<TrendGrain, DayTrend[]> | null = null;
-  function fromMaps(grain: Exclude<TrendGrain, "day">): DayTrend[] {
-    built ??= fallback();
-    return built[grain];
+  const todayKcal = options?.todayKcal ?? 0;
+  const mapsFrom = options?.mapsFrom ?? dayFrom;
+  function currentPoint(grain: Exclude<TrendGrain, "day">, rows: StatRow[]): DayTrend {
+    const period = describePeriod(grain, asOf);
+    const end = period.end > asOf ? asOf : period.end;
+    const row = rows.find((item) => asDateKey(item.period_start) === period.start);
+    let pointKcal = 0;
+    if (mapsFrom <= period.start) pointKcal = kcalInRange(kcal, period.start, end);
+    else if (row) {
+      pointKcal = truncKcal(num(row.kcal_total));
+      const computed = jstDay(row.computed_at);
+      if (!computed || computed < asOf) pointKcal = truncKcal(pointKcal + todayKcal);
+    } else pointKcal = todayKcal;
+    const weighed = weightOnEnd(weights, period.start, end);
+    return {
+      date: end,
+      label: period.label,
+      start: period.start,
+      end: period.end,
+      kcal: pointKcal,
+      guideKcal: null,
+      weightKg: weighed ?? (row?.weight_kg == null ? null : num(row.weight_kg, 2)),
+    };
   }
   function fromStats(grain: Exclude<TrendGrain, "day">): DayTrend[] {
     const rows = stats.filter((row) => row.period_type === grain);
-    if (rows.length === 0) return fromMaps(grain);
-    const current = livePeriod(grain, asOf, kcal, weights);
+    const current = currentPoint(grain, rows);
     const closed: DayTrend[] = [];
     for (const row of rows) {
       const start = asDateKey(row.period_start);
@@ -217,7 +236,7 @@ export function trendsForDisplay(
     return [...closed, current].sort((a, b) => a.start.localeCompare(b.start));
   }
   return {
-    day: buildDaySeries(kcal, weights, asOf, from),
+    day: buildDaySeries(kcal, weights, asOf, dayFrom),
     week: fromStats("week"),
     month: fromStats("month"),
     year: fromStats("year"),
