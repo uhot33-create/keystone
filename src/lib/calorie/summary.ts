@@ -137,6 +137,93 @@ export function kcalInRange(kcal: Map<string, number>, start: string, end: strin
   return truncKcal(total);
 }
 
+export function buildDaySeries(
+  kcal: Map<string, number>,
+  weights: Map<string, number>,
+  asOf: string,
+  from: string,
+): DayTrend[] {
+  return periodList("day", asOf, from).map((period) => ({
+    date: period.start,
+    label: period.label,
+    start: period.start,
+    end: period.end,
+    kcal: kcal.get(period.start) ?? 0,
+    guideKcal: null,
+    weightKg: weights.get(period.start) ?? null,
+  }));
+}
+
+function livePeriod(
+  grain: Exclude<TrendGrain, "day">,
+  asOf: string,
+  kcal: Map<string, number>,
+  weights: Map<string, number>,
+): DayTrend {
+  const period = describePeriod(grain, asOf);
+  const end = period.end > asOf ? asOf : period.end;
+  return {
+    date: end,
+    label: period.label,
+    start: period.start,
+    end: period.end,
+    kcal: kcalInRange(kcal, period.start, end),
+    guideKcal: null,
+    weightKg: weightOnEnd(weights, period.start, end),
+  };
+}
+
+type StatRow = {
+  period_type: string;
+  period_start: unknown;
+  period_end: unknown;
+  kcal_total: unknown;
+  weight_kg: unknown;
+};
+
+export function trendsForDisplay(
+  kcal: Map<string, number>,
+  weights: Map<string, number>,
+  stats: StatRow[],
+  asOf: string,
+  from: string,
+): Record<TrendGrain, DayTrend[]> {
+  const fallback = () => buildTrends(kcal, weights, asOf, from);
+  let built: Record<TrendGrain, DayTrend[]> | null = null;
+  function fromMaps(grain: Exclude<TrendGrain, "day">): DayTrend[] {
+    built ??= fallback();
+    return built[grain];
+  }
+  function fromStats(grain: Exclude<TrendGrain, "day">): DayTrend[] {
+    const rows = stats.filter((row) => row.period_type === grain);
+    if (rows.length === 0) return fromMaps(grain);
+    const current = livePeriod(grain, asOf, kcal, weights);
+    const closed: DayTrend[] = [];
+    for (const row of rows) {
+      const start = asDateKey(row.period_start);
+      const end = asDateKey(row.period_end);
+      if (!start || !end || end >= asOf || start === current.start) continue;
+      const period = describePeriod(grain, start);
+      closed.push({
+        date: end,
+        label: period.label,
+        start,
+        end: period.end,
+        kcal: truncKcal(num(row.kcal_total)),
+        guideKcal: null,
+        weightKg: row.weight_kg == null ? null : num(row.weight_kg, 2),
+      });
+    }
+    return [...closed, current].sort((a, b) => a.start.localeCompare(b.start));
+  }
+  return {
+    day: buildDaySeries(kcal, weights, asOf, from),
+    week: fromStats("week"),
+    month: fromStats("month"),
+    year: fromStats("year"),
+  };
+}
+
 export function buildTrends(
   kcal: Map<string, number>,
   weights: Map<string, number>,

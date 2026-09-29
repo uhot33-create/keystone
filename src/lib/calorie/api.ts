@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, shiftIsoDate, todayJst, truncKcal } from "./formula";
-import { attachGuides, buildTrends, loadDayMaps, refreshDogStats, storePeriodGuides } from "./summary";
+import { attachGuides, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
 import type { CalorieLog, CalorieState, DogProfile, DayTotal, FoodKind, LogKind } from "./types";
 
 function num(value: unknown, places = 1): number {
@@ -132,7 +132,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const seriesEnd = todayJst();
   const from = shiftIsoDate(seriesEnd, -5 * 366);
 
-  const [foods, staples, logs, maps, guideRows] = await Promise.all([
+  const [foods, staples, logs, maps, guideRows, statRows] = await Promise.all([
     sql<FoodRow>`
       select id, name, kind, kcal, amount, unit, usual_qty
       from dog_foods
@@ -159,6 +159,20 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
         and period_start <= ${seriesEnd}
         and period_end >= ${from}
     `,
+    sql<{
+      period_type: string;
+      period_start: unknown;
+      period_end: unknown;
+      kcal_total: unknown;
+      weight_kg: unknown;
+    }>`
+      select period_type, period_start, period_end, kcal_total, weight_kg
+      from calorie_period_stats
+      where dog_id = ${dog.id}
+        and period_type in ('week', 'month', 'year')
+        and period_start <= ${seriesEnd}
+        and period_end >= ${from}
+    `,
   ]);
 
   const guideMap = new Map<string, number>();
@@ -166,7 +180,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
     const start = asDateKey(row.period_start);
     if (start) guideMap.set(`${row.period_type}:${start}`, truncKcal(num(row.guide_kcal)));
   }
-  const trends = attachGuides(buildTrends(maps.kcal, maps.kg, seriesEnd, from), guideMap);
+  const trends = attachGuides(trendsForDisplay(maps.kcal, maps.kg, statRows, seriesEnd, from), guideMap);
   const week: DayTotal[] = [];
   for (let offset = -6; offset <= 0; offset += 1) {
     const day = shiftIsoDate(date, offset);
