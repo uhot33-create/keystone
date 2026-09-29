@@ -127,70 +127,140 @@ function measuredAt20(date: string): string {
 
 async function loadState(userId: string, date: string, dogId?: number): Promise<CalorieState> {
   const sql = await getSql();
-  const dogs = await ensureDogs(userId);
-  const dog = pickDog(dogs, dogId);
-  const [foods, staples, logs, weights] = await Promise.all([
-    sql<FoodRow>`
-      select id, name, kind, kcal, amount, unit, usual_qty
-      from dog_foods
-      where user_id = ${userId} and dog_id = ${dog.id}
-      order by kind asc, id asc
-    `,
-    sql<{ id: number; food_id: number; qty: unknown }>`
-      select id, food_id, qty
-      from calorie_staples
-      where user_id = ${userId} and dog_id = ${dog.id}
-      order by sort_order asc, id asc
-    `,
-    sql<LogRow>`
-      select id, log_date, label, kcal, kind, food_id, amount, unit
-      from calorie_logs
-      where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${date}
-      order by id asc
-    `,
-    sql<{ weight_kg: unknown }>`
-      select weight_kg
-      from dog_weight_logs
-      where user_id = ${userId} and dog_id = ${dog.id} and log_date = ${date}
+  const bundle = await sql<{
+    dogs: unknown;
+    foods: unknown;
+    staples: unknown;
+    logs: unknown;
+    today_weight: unknown;
+  }>`
+    with selected as (
+      select id
+      from dogs
+      where user_id = ${userId}
+      order by case when id = ${dogId ?? null} then 0 else 1 end, id
       limit 1
-    `,
-  ]);
-
+    )
+    select
+      coalesce((
+        select json_agg(json_build_object(
+          'id', d.id,
+          'name', d.name,
+          'current_weight_kg', d.current_weight_kg,
+          'ideal_weight_kg', d.ideal_weight_kg,
+          'life_stage', d.life_stage,
+          'treat_ratio', d.treat_ratio
+        ) order by d.id)
+        from dogs d
+        where d.user_id = ${userId}
+      ), '[]'::json) as dogs,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', f.id,
+          'name', f.name,
+          'kind', f.kind,
+          'kcal', f.kcal,
+          'amount', f.amount,
+          'unit', f.unit,
+          'usual_qty', f.usual_qty
+        ) order by f.kind, f.id)
+        from dog_foods f
+        where f.user_id = ${userId} and f.dog_id = (select id from selected)
+      ), '[]'::json) as foods,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', s.id,
+          'food_id', s.food_id,
+          'qty', s.qty
+        ) order by s.sort_order, s.id)
+        from calorie_staples s
+        where s.user_id = ${userId} and s.dog_id = (select id from selected)
+      ), '[]'::json) as staples,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', l.id,
+          'log_date', l.log_date,
+          'label', l.label,
+          'kcal', l.kcal,
+          'kind', l.kind,
+          'food_id', l.food_id,
+          'amount', l.amount,
+          'unit', l.unit
+        ) order by l.id)
+        from calorie_logs l
+        where l.user_id = ${userId}
+          and l.dog_id = (select id from selected)
+          and l.log_date = ${date}
+      ), '[]'::json) as logs,
+      (
+        select w.weight_kg
+        from dog_weight_logs w
+        where w.user_id = ${userId}
+          and w.dog_id = (select id from selected)
+          and w.log_date = ${date}
+        limit 1
+      ) as today_weight
+  `;
+  const row = bundle[0];
+  const dogs = asRows<DogRow>(row?.dogs).map(mapDog);
+  if (dogs.length === 0) {
+    await sql`
+      insert into dogs (user_id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio)
+      values (${userId}, ${"うちの子"}, 0, 0, ${"adult_neutered"}, 0.10)
+    `;
+    return loadState(userId, date, dogId);
+  }
+  const dog = pickDog(dogs, dogId);
+  const foods = asRows<FoodRow>(row?.foods);
+  const staples = asRows<{ id: number; food_id: number; qty: unknown }>(row?.staples);
+  const logs = asRows<LogRow>(row?.logs);
   const trends: Record<TrendGrain, DayTrend[]> = { day: [], week: [], month: [], year: [] };
-
   return {
     date,
     dog,
     dogs,
-    foods: foods.map((row) => ({
-      id: row.id,
-      name: row.name,
-      kind: asKind(row.kind),
-      kcal: num(row.kcal),
-      amount: num(row.amount),
-      unit: row.unit,
-      usualQty: num(row.usual_qty) || num(row.amount),
+    foods: foods.map((item) => ({
+      id: item.id,
+      name: item.name,
+      kind: asKind(item.kind),
+      kcal: num(item.kcal),
+      amount: num(item.amount),
+      unit: item.unit,
+      usualQty: num(item.usual_qty) || num(item.amount),
     })),
-    staples: staples.map((row) => ({
-      id: row.id,
-      foodId: row.food_id,
-      qty: num(row.qty),
+    staples: staples.map((item) => ({
+      id: item.id,
+      foodId: item.food_id,
+      qty: num(item.qty),
     })),
-    logs: logs.map((row) => ({
-      id: row.id,
-      date: asDateKey(row.log_date) || row.log_date,
-      label: row.label,
-      kcal: truncKcal(num(row.kcal)),
-      kind: asLogKind(row.kind),
-      foodId: row.food_id,
-      amount: row.amount == null ? null : num(row.amount),
-      unit: row.unit,
+    logs: logs.map((item) => ({
+      id: item.id,
+      date: asDateKey(item.log_date) || String(item.log_date).slice(0, 10),
+      label: item.label,
+      kcal: truncKcal(num(item.kcal)),
+      kind: asLogKind(item.kind),
+      foodId: item.food_id,
+      amount: item.amount == null ? null : num(item.amount),
+      unit: item.unit,
     })),
     week: [],
     trend: [],
     trends,
-    todayWeightKg: weights[0] ? num(weights[0].weight_kg, 2) : null,
+    todayWeightKg: row?.today_weight == null ? null : num(row.today_weight, 2),
   };
+}
+
+function asRows<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 }
 
 const dateInput = z.object({

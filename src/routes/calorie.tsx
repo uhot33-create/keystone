@@ -14,7 +14,13 @@ import { todayJst } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
-export const Route = createFileRoute("/calorie")({ component: CaloriePage });
+export const Route = createFileRoute("/calorie")({
+  loader: async ({ context }) => {
+    if (!context.sessionUser) return null;
+    return getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } });
+  },
+  component: CaloriePage,
+});
 
 type Tab = "today" | "plan" | "foods" | "profile";
 
@@ -27,26 +33,33 @@ function CaloriePage() {
 }
 
 function CalorieApp() {
+  const loaded = Route.useLoaderData();
   const [tab, setTab] = useState<Tab>("today");
-  const [state, setState] = useState<CalorieState | null>(null);
+  const [state, setState] = useState<CalorieState | null>(loaded);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
-      .then((next) => {
-        if (cancelled) return;
-        rememberDogId(next.dog.id);
-        setState(next);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!loaded) return;
+    const wanted = storedDogId();
+    if (wanted && wanted !== loaded.dog.id && loaded.dogs.some((dog) => dog.id === wanted)) {
+      let cancelled = false;
+      getCalorieState({ data: { date: todayJst(), dogId: wanted } })
+        .then((next) => {
+          if (cancelled) return;
+          rememberDogId(next.dog.id);
+          setState(next);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+    rememberDogId(loaded.dog.id);
+    setState(loaded);
+  }, [loaded]);
 
   function onChange(next: CalorieState) {
     rememberDogId(next.dog.id);
