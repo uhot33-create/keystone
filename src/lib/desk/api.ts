@@ -3,6 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { COUNTRY_TEMPLATES } from "./countries";
 import { loadDogFact } from "./dog-facts";
+import { loadDogNews } from "./dog-news";
 import type { DailyFortune, DailyQuote, DailyStory, FortuneKind, FortuneLine, OnThisDay } from "./types";
 import { BLOOD_OPTIONS, ETO_OPTIONS, FORTUNE_KINDS, ZODIAC_OPTIONS } from "./types";
 
@@ -394,24 +395,27 @@ export const getDesk = createServerFn({ method: "GET" })
     const key = options.some((item) => item.id === data.key) ? data.key : options[0]!.id;
     const title = options.find((item) => item.id === key)?.label ?? key;
     const errors: string[] = [];
-    const [dayRes, quoteRes, storyRes, dogRes, fortuneRes] = await Promise.allSettled([
+    const [dayRes, quoteRes, storyRes, dogRes, newsRes, fortuneRes] = await Promise.allSettled([
       loadOnThisDay(),
       loadQuote(),
       loadStory(),
       loadDogFact(context.userId, false),
+      loadDogNews(false),
       kind === "zodiac" ? loadZodiac(key) : loadAdviceFortune(kind, key, title),
     ]);
     const onThisDay = dayRes.status === "fulfilled" ? dayRes.value : null;
     const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
     const story = storyRes.status === "fulfilled" ? storyRes.value : null;
     const dogFact = dogRes.status === "fulfilled" ? dogRes.value : null;
+    const dogNews = newsRes.status === "fulfilled" ? newsRes.value : null;
     const fortune = fortuneRes.status === "fulfilled" ? fortuneRes.value : null;
     if (dayRes.status === "rejected") errors.push("今日は何の日を取得できませんでした");
     if (quoteRes.status === "rejected") errors.push("格言を取得できませんでした");
     if (storyRes.status === "rejected") errors.push("小話を取得できませんでした");
     if (dogRes.status === "rejected") errors.push("犬の豆知識を取得できませんでした");
+    if (newsRes.status === "rejected") errors.push("犬ネタを取得できませんでした");
     if (fortuneRes.status === "rejected") errors.push("占いを取得できませんでした");
-    return { onThisDay, quote, story, dogFact, fortune, errors };
+    return { onThisDay, quote, story, dogFact, dogNews, fortune, errors };
   });
 
 export const refreshQuote = createServerFn({ method: "POST" }).handler(async () => loadQuote(true));
@@ -421,3 +425,7 @@ export const refreshStory = createServerFn({ method: "POST" }).handler(async () 
 export const refreshDogFact = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => loadDogFact(context.userId, true));
+
+export const refreshDogNews = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async () => loadDogNews(true));

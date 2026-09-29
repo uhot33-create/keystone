@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { getDesk, refreshDogFact, refreshQuote, refreshStory } from "@/lib/desk/api";
+import { getDesk, refreshDogFact, refreshDogNews, refreshQuote, refreshStory } from "@/lib/desk/api";
 import { Button } from "@/components/ui/button";
 import {
   BLOOD_OPTIONS,
@@ -37,6 +37,16 @@ function optionsFor(kind: FortuneKind) {
   return ZODIAC_OPTIONS;
 }
 
+function formatNewsDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
 function Score({ value }: { value: number | null }) {
   if (value == null) return null;
   return (
@@ -54,13 +64,13 @@ function Score({ value }: { value: number | null }) {
 export function DeskPanel() {
   const visible = useDeskVisibility();
   const anyVisible =
-    visible.onThisDay || visible.quote || visible.story || visible.dogFact || visible.fortune;
+    visible.onThisDay || visible.quote || visible.story || visible.dogFact || visible.dogNews || visible.fortune;
   const initial = useMemo(readStored, []);
   const [kind, setKind] = useState<FortuneKind>(initial.kind);
   const [key, setKey] = useState(initial.key);
   const [desk, setDesk] = useState<DeskState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | null>(null);
+  const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | "dogNews" | null>(null);
 
   useEffect(() => {
     if (!anyVisible) return;
@@ -78,7 +88,7 @@ export function DeskPanel() {
     };
   }, [kind, key, anyVisible]);
 
-  async function onRefresh(part: "quote" | "story" | "dogFact") {
+  async function onRefresh(part: "quote" | "story" | "dogFact" | "dogNews") {
     setRefreshing(part);
     setError(null);
     try {
@@ -88,6 +98,9 @@ export function DeskPanel() {
       } else if (part === "story") {
         const story = await refreshStory();
         setDesk((current) => (current ? { ...current, story } : current));
+      } else if (part === "dogNews") {
+        const dogNews = await refreshDogNews();
+        setDesk((current) => (current ? { ...current, dogNews } : current));
       } else {
         const dogFact = await refreshDogFact();
         setDesk((current) => (current ? { ...current, dogFact } : current));
@@ -208,6 +221,43 @@ export function DeskPanel() {
           </>
         ) : (
           <p className="text-sm text-muted">犬の豆知識を表示できませんでした。</p>
+        )}
+      </DeskCard>
+      ) : null}
+
+      {visible.dogNews ? (
+      <DeskCard
+        title="最近の犬ネタ"
+        onRefresh={() => void onRefresh("dogNews")}
+        refreshing={refreshing === "dogNews"}
+        refreshDisabled={!desk || refreshing !== null}
+      >
+        {!desk ? (
+          <Skeleton className="h-24 w-full rounded-md" />
+        ) : desk.dogNews ? (
+          <>
+            <ul className="space-y-3">
+              {desk.dogNews.items.map((item) => (
+                <li key={item.url}>
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium leading-relaxed text-fg underline-offset-2 hover:underline"
+                  >
+                    {item.title}
+                  </a>
+                  <p className="mt-0.5 text-[11px] text-subtle">
+                    {item.source}
+                    {item.publishedAt ? ` · ${formatNewsDate(item.publishedAt)}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] text-subtle">出典 {desk.dogNews.source}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">犬ネタを表示できませんでした。</p>
         )}
       </DeskCard>
       ) : null}

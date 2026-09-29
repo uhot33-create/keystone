@@ -8,6 +8,7 @@ export type DeskVisibility = {
   quote: boolean;
   story: boolean;
   dogFact: boolean;
+  dogNews: boolean;
   fortune: boolean;
 };
 
@@ -16,6 +17,7 @@ type SettingsRow = {
   show_quote: unknown;
   show_story: unknown;
   show_dog_fact: unknown;
+  show_dog_news: unknown;
   show_fortune: unknown;
 };
 
@@ -28,13 +30,14 @@ function asBool(value: unknown, fallback: boolean): boolean {
 
 function mapRow(row: SettingsRow | undefined): DeskVisibility {
   if (!row) {
-    return { onThisDay: true, quote: true, story: true, dogFact: true, fortune: true };
+    return { onThisDay: true, quote: true, story: true, dogFact: true, dogNews: true, fortune: true };
   }
   return {
     onThisDay: asBool(row.show_on_this_day, true),
     quote: asBool(row.show_quote, true),
     story: asBool(row.show_story, true),
     dogFact: asBool(row.show_dog_fact, true),
+    dogNews: asBool(row.show_dog_news, true),
     fortune: asBool(row.show_fortune, true),
   };
 }
@@ -44,7 +47,7 @@ export const getUserSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const sql = await getSql();
     const rows = await sql<SettingsRow>`
-      select show_on_this_day, show_quote, show_story, show_dog_fact, show_fortune
+      select show_on_this_day, show_quote, show_story, show_dog_fact, show_dog_news, show_fortune
       from user_settings
       where user_id = ${context.userId}
       limit 1
@@ -57,6 +60,7 @@ const saveInput = z.object({
   quote: z.boolean(),
   story: z.boolean(),
   dogFact: z.boolean(),
+  dogNews: z.boolean(),
   fortune: z.boolean(),
 });
 
@@ -71,7 +75,7 @@ export const saveUserSettings = createServerFn({ method: "POST" })
     const sql = await getSql();
     await sql`
       insert into user_settings (
-        user_id, show_on_this_day, show_quote, show_story, show_dog_fact, show_fortune, updated_at
+        user_id, show_on_this_day, show_quote, show_story, show_dog_fact, show_dog_news, show_fortune, updated_at
       )
       values (
         ${context.userId},
@@ -79,6 +83,7 @@ export const saveUserSettings = createServerFn({ method: "POST" })
         ${data.quote},
         ${data.story},
         ${data.dogFact},
+        ${data.dogNews},
         ${data.fortune},
         now()
       )
@@ -87,6 +92,7 @@ export const saveUserSettings = createServerFn({ method: "POST" })
         show_quote = excluded.show_quote,
         show_story = excluded.show_story,
         show_dog_fact = excluded.show_dog_fact,
+        show_dog_news = excluded.show_dog_news,
         show_fortune = excluded.show_fortune,
         updated_at = now()
     `;

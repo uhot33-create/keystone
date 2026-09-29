@@ -62,6 +62,18 @@ export type DailyStory = {
   sourceUrl?: string;
 };
 
+export type DogNewsItem = {
+  title: string;
+  source: string;
+  url: string;
+  publishedAt: string | null;
+};
+
+export type DogNews = {
+  items: DogNewsItem[];
+  source: string;
+};
+
 export type FortuneLine = {
   label: string;
   score: number | null;
@@ -81,6 +93,7 @@ export type DeskState = {
   quote: DailyQuote | null;
   story: DailyStory | null;
   dogFact: DailyStory | null;
+  dogNews: DogNews | null;
   fortune: DailyFortune | null;
   errors: string[];
 };
