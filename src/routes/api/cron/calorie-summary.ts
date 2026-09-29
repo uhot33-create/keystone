@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { rebuildAllCalorieStats } from "@/lib/calorie/summary";
+import { finishCronRun, saveSmokingCron, startCronRun } from "@/lib/cron-log";
 import { resetSmokingIfDue } from "@/lib/smoking/api";
 
 function authorized(request: Request): boolean {
@@ -17,19 +18,25 @@ export const Route = createFileRoute("/api/cron/calorie-summary")({
         if (!authorized(request)) {
           return Response.json({ error: "unauthorized" }, { status: 401 });
         }
+        const sql = await getSql();
+        const runId = await startCronRun(sql);
+        let smoking: { users: number } | { error: string };
         try {
-          const sql = await getSql();
-          let smoking: { users: number } | { error: string };
-          try {
-            smoking = await resetSmokingIfDue(sql);
-          } catch (err) {
-            smoking = { error: err instanceof Error ? err.message : "喫煙のリセットに失敗しました" };
-          }
+          smoking = await resetSmokingIfDue(sql);
+          await saveSmokingCron(sql, runId, smoking.users, null);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "喫煙のリセットに失敗しました";
+          smoking = { error: message };
+          await saveSmokingCron(sql, runId, null, message);
+        }
+        try {
           const result = await rebuildAllCalorieStats(sql);
+          await finishCronRun(sql, runId, true, result.dogs, null);
           return Response.json({ ok: true, ...result, smoking });
         } catch (err) {
           const message = err instanceof Error ? err.message : "集計に失敗しました";
-          return Response.json({ error: message }, { status: 500 });
+          await finishCronRun(sql, runId, false, null, message);
+          return Response.json({ error: message, smoking }, { status: 500 });
         }
       },
     },

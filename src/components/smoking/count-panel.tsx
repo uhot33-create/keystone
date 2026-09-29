@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { getSmokingState, setRemaining, smokeOne } from "@/lib/smoking/api";
+import { getLatestCronRun, getSmokingState, setRemaining, smokeOne } from "@/lib/smoking/api";
+import type { CronRunLog } from "@/lib/cron-log";
 import { formatCountdown, formatJaDateTime } from "@/lib/smoking/period";
 import { saburoStage } from "@/lib/smoking/saburo";
 import type { SmokingState } from "@/lib/smoking/types";
@@ -7,6 +8,15 @@ import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+function cronRunNote(run: CronRunLog): string {
+  const when = formatJaDateTime(run.startedAt);
+  if (run.smokingError) return `${when} 上限のリセットに失敗`;
+  if (run.smokingUsers == null) return `${when} 0時処理を開始`;
+  if (run.smokingUsers > 0) return `${when} 上限を戻した`;
+  const calorie = run.calorieError ? "　集計は失敗" : "";
+  return `${when} 戻す対象なし${calorie}`;
+}
 
 export function CountPanel({
   state,
@@ -20,6 +30,22 @@ export function CountPanel({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(state.remaining));
   const [now, setNow] = useState(() => Date.now());
+  const [cronNote, setCronNote] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getLatestCronRun()
+      .then((run) => {
+        if (cancelled) return;
+        setCronNote(run ? cronRunNote(run) : "0時処理の記録はまだありません");
+      })
+      .catch(() => {
+        if (!cancelled) setCronNote(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.periodStartedAt]);
 
   useEffect(() => {
     setDraft(String(state.remaining));
@@ -108,6 +134,7 @@ export function CountPanel({
               {formatJaDateTime(state.resetsAt)}
               <span className="ml-1 text-subtle">（{formatCountdown(untilReset)}）</span>
             </p>
+            {cronNote ? <p className="mt-1 text-xs text-subtle">{cronNote}</p> : null}
           </div>
           {!editing ? (
             <Button
