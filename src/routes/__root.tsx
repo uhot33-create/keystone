@@ -4,6 +4,8 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-meta";
+import { getUserSettings } from "@/lib/desk/settings";
+import type { DeskVisibility } from "@/lib/desk/visibility";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import appCss from "../styles.css?url";
 
@@ -14,7 +16,15 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 });
 
 export const Route = createRootRoute({
-  beforeLoad: async () => ({ sessionUser: await fetchSessionUser() }),
+  beforeLoad: async () => {
+    const sessionUser = await fetchSessionUser();
+    if (!sessionUser) return { sessionUser, desk: null as DeskVisibility | null };
+    try {
+      return { sessionUser, desk: await getUserSettings() };
+    } catch {
+      return { sessionUser, desk: null as DeskVisibility | null };
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

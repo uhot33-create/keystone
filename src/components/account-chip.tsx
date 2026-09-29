@@ -5,14 +5,14 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeSettings } from "@/components/theme-settings";
-import { DESK_ITEMS, setDeskItemVisible, useDeskVisibility } from "@/lib/desk/visibility";
+import { DESK_ITEMS, setDeskItemVisible, useResolvedDeskVisibility } from "@/lib/desk/visibility";
 import { setMenuLayout, useMenuLayout } from "@/lib/menu-layout";
 
 export function AccountChip() {
   const user = useCurrentUser();
   const [signingOut, setSigningOut] = useState(false);
   const [open, setOpen] = useState(false);
-  const deskVisible = useDeskVisibility();
+  const deskVisible = useResolvedDeskVisibility();
   const menuLayout = useMenuLayout();
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
@@ -99,8 +99,12 @@ export function AccountChip() {
                   <input
                     type="checkbox"
                     className="size-4 accent-primary"
-                    checked={deskVisible[item.id]}
-                    onChange={(event) => setDeskItemVisible(item.id, event.target.checked)}
+                    checked={deskVisible ? deskVisible[item.id] : false}
+                    disabled={!deskVisible}
+                    onChange={(event) => {
+                      if (!deskVisible) return;
+                      setDeskItemVisible(item.id, event.target.checked, deskVisible);
+                    }}
                   />
                 </label>
               </li>

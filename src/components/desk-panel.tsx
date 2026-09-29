@@ -9,7 +9,7 @@ import {
   type DeskState,
   type FortuneKind,
 } from "@/lib/desk/types";
-import { useDeskSettingsReady, useDeskVisibility, type DeskVisibility } from "@/lib/desk/visibility";
+import { useResolvedDeskVisibility, type DeskVisibility } from "@/lib/desk/visibility";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -75,10 +75,10 @@ function Score({ value }: { value: number | null }) {
 }
 
 export function DeskPanel() {
-  const visible = useDeskVisibility();
-  const ready = useDeskSettingsReady();
-  const anyVisible =
-    visible.onThisDay || visible.quote || visible.story || visible.dogFact || visible.dogNews || visible.fortune;
+  const visible = useResolvedDeskVisibility();
+  const anyVisible = visible
+    ? visible.onThisDay || visible.quote || visible.story || visible.dogFact || visible.dogNews || visible.fortune
+    : false;
   const initial = useMemo(readStored, []);
   const [kind, setKind] = useState<FortuneKind>(initial.kind);
   const [key, setKey] = useState(initial.key);
@@ -87,7 +87,7 @@ export function DeskPanel() {
   const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | "dogNews" | null>(null);
 
   useEffect(() => {
-    if (!ready || !anyVisible) return;
+    if (!visible || !anyVisible) return;
     let cancelled = false;
     getDesk({
       data: {
@@ -110,19 +110,7 @@ export function DeskPanel() {
     return () => {
       cancelled = true;
     };
-  }, [
-    ready,
-    anyVisible,
-    kind,
-    key,
-    visible.onThisDay,
-    visible.quote,
-    visible.story,
-    visible.dogFact,
-    visible.dogNews,
-    visible.fortune,
-    visible,
-  ]);
+  }, [anyVisible, kind, key, visible]);
 
   async function onRefresh(part: "quote" | "story" | "dogFact" | "dogNews") {
     setRefreshing(part);
@@ -160,7 +148,7 @@ export function DeskPanel() {
   }
 
   const options = optionsFor(kind);
-  if (!ready || !anyVisible) return null;
+  if (!visible || !anyVisible) return null;
 
   return (
     <div className="flex flex-col gap-4">
