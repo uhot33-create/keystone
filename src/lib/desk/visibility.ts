@@ -26,6 +26,7 @@ export const DEFAULT_VISIBILITY: DeskVisibility = {
 const listeners = new Set<() => void>();
 let snapshot: DeskVisibility = DEFAULT_VISIBILITY;
 let hydrated = false;
+let settingsReady = false;
 
 function emit(next: DeskVisibility) {
   snapshot = next;
@@ -51,14 +52,27 @@ export function useDeskVisibility(): DeskVisibility {
   );
 }
 
+export function useDeskSettingsReady(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    () => settingsReady,
+    () => false,
+  );
+}
+
 export function useHydrateDeskVisibility() {
   useEffect(() => {
     if (hydrated) return;
     hydrated = true;
     getUserSettings()
       .then((next) => emit(next))
-      .catch(() => {
-        hydrated = false;
+      .catch(() => undefined)
+      .finally(() => {
+        settingsReady = true;
+        emit(snapshot);
       });
   }, []);
 }

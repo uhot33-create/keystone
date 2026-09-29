@@ -377,31 +377,52 @@ function isKind(value: string): value is FortuneKind {
   return FORTUNE_KINDS.some((item) => item.id === value);
 }
 
-const fortuneInput = z.object({
-  kind: z.string(),
-  key: z.string(),
+const deskInput = z.object({
+  kind: z.string().optional(),
+  key: z.string().optional(),
+  onThisDay: z.boolean().optional(),
+  quote: z.boolean().optional(),
+  story: z.boolean().optional(),
+  dogFact: z.boolean().optional(),
+  dogNews: z.boolean().optional(),
+  fortune: z.boolean().optional(),
 });
 
 export const getDesk = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
-    const parsed = fortuneInput.safeParse(input ?? {});
-    if (!parsed.success) return { kind: "zodiac", key: "aries" };
+    const parsed = deskInput.safeParse(input ?? {});
+    if (!parsed.success) {
+      return {
+        kind: "zodiac",
+        key: "aries",
+        onThisDay: false,
+        quote: false,
+        story: false,
+        dogFact: false,
+        dogNews: false,
+        fortune: false,
+      };
+    }
     return parsed.data;
   })
   .handler(async ({ data, context }) => {
-    const kind: FortuneKind = isKind(data.kind) ? data.kind : "zodiac";
+    const kind: FortuneKind = data.kind && isKind(data.kind) ? data.kind : "zodiac";
     const options = optionsFor(kind);
-    const key = options.some((item) => item.id === data.key) ? data.key : options[0]!.id;
+    const key = options.some((item) => item.id === data.key) ? data.key! : options[0]!.id;
     const title = options.find((item) => item.id === key)?.label ?? key;
     const errors: string[] = [];
     const [dayRes, quoteRes, storyRes, dogRes, newsRes, fortuneRes] = await Promise.allSettled([
-      loadOnThisDay(),
-      loadQuote(),
-      loadStory(),
-      loadDogFact(context.userId, false),
-      loadDogNews(false),
-      kind === "zodiac" ? loadZodiac(key) : loadAdviceFortune(kind, key, title),
+      data.onThisDay ? loadOnThisDay() : Promise.resolve(null),
+      data.quote ? loadQuote() : Promise.resolve(null),
+      data.story ? loadStory() : Promise.resolve(null),
+      data.dogFact ? loadDogFact(context.userId, false) : Promise.resolve(null),
+      data.dogNews ? loadDogNews(false) : Promise.resolve(null),
+      data.fortune
+        ? kind === "zodiac"
+          ? loadZodiac(key)
+          : loadAdviceFortune(kind, key, title)
+        : Promise.resolve(null),
     ]);
     const onThisDay = dayRes.status === "fulfilled" ? dayRes.value : null;
     const quote = quoteRes.status === "fulfilled" ? quoteRes.value : null;
@@ -409,12 +430,12 @@ export const getDesk = createServerFn({ method: "GET" })
     const dogFact = dogRes.status === "fulfilled" ? dogRes.value : null;
     const dogNews = newsRes.status === "fulfilled" ? newsRes.value : null;
     const fortune = fortuneRes.status === "fulfilled" ? fortuneRes.value : null;
-    if (dayRes.status === "rejected") errors.push("今日は何の日を取得できませんでした");
-    if (quoteRes.status === "rejected") errors.push("格言を取得できませんでした");
-    if (storyRes.status === "rejected") errors.push("小話を取得できませんでした");
-    if (dogRes.status === "rejected") errors.push("犬の豆知識を取得できませんでした");
-    if (newsRes.status === "rejected") errors.push("犬ネタを取得できませんでした");
-    if (fortuneRes.status === "rejected") errors.push("占いを取得できませんでした");
+    if (data.onThisDay && dayRes.status === "rejected") errors.push("今日は何の日を取得できませんでした");
+    if (data.quote && quoteRes.status === "rejected") errors.push("格言を取得できませんでした");
+    if (data.story && storyRes.status === "rejected") errors.push("小話を取得できませんでした");
+    if (data.dogFact && dogRes.status === "rejected") errors.push("犬の豆知識を取得できませんでした");
+    if (data.dogNews && newsRes.status === "rejected") errors.push("犬ネタを取得できませんでした");
+    if (data.fortune && fortuneRes.status === "rejected") errors.push("占いを取得できませんでした");
     return { onThisDay, quote, story, dogFact, dogNews, fortune, errors };
   });
 

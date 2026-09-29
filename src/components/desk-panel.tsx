@@ -9,7 +9,7 @@ import {
   type DeskState,
   type FortuneKind,
 } from "@/lib/desk/types";
-import { useDeskVisibility } from "@/lib/desk/visibility";
+import { useDeskSettingsReady, useDeskVisibility, type DeskVisibility } from "@/lib/desk/visibility";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +35,19 @@ function optionsFor(kind: FortuneKind) {
   if (kind === "blood") return BLOOD_OPTIONS;
   if (kind === "eto") return ETO_OPTIONS;
   return ZODIAC_OPTIONS;
+}
+
+function applyDesk(current: DeskState | null, next: DeskState, shown: DeskVisibility): DeskState {
+  if (!current) return next;
+  return {
+    onThisDay: shown.onThisDay ? next.onThisDay : current.onThisDay,
+    quote: shown.quote ? next.quote : current.quote,
+    story: shown.story ? next.story : current.story,
+    dogFact: shown.dogFact ? next.dogFact : current.dogFact,
+    dogNews: shown.dogNews ? next.dogNews : current.dogNews,
+    fortune: shown.fortune ? next.fortune : current.fortune,
+    errors: next.errors,
+  };
 }
 
 function formatNewsDate(value: string): string {
@@ -63,6 +76,7 @@ function Score({ value }: { value: number | null }) {
 
 export function DeskPanel() {
   const visible = useDeskVisibility();
+  const ready = useDeskSettingsReady();
   const anyVisible =
     visible.onThisDay || visible.quote || visible.story || visible.dogFact || visible.dogNews || visible.fortune;
   const initial = useMemo(readStored, []);
@@ -73,12 +87,22 @@ export function DeskPanel() {
   const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | "dogNews" | null>(null);
 
   useEffect(() => {
-    if (!anyVisible) return;
+    if (!ready || !anyVisible) return;
     let cancelled = false;
-    setDesk(null);
-    getDesk({ data: { kind, key } })
+    getDesk({
+      data: {
+        kind,
+        key,
+        onThisDay: visible.onThisDay,
+        quote: visible.quote,
+        story: visible.story,
+        dogFact: visible.dogFact,
+        dogNews: visible.dogNews,
+        fortune: visible.fortune,
+      },
+    })
       .then((next) => {
-        if (!cancelled) setDesk(next);
+        if (!cancelled) setDesk((current) => applyDesk(current, next, visible));
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "取得できませんでした");
@@ -86,7 +110,19 @@ export function DeskPanel() {
     return () => {
       cancelled = true;
     };
-  }, [kind, key, anyVisible]);
+  }, [
+    ready,
+    anyVisible,
+    kind,
+    key,
+    visible.onThisDay,
+    visible.quote,
+    visible.story,
+    visible.dogFact,
+    visible.dogNews,
+    visible.fortune,
+    visible,
+  ]);
 
   async function onRefresh(part: "quote" | "story" | "dogFact" | "dogNews") {
     setRefreshing(part);
@@ -124,7 +160,7 @@ export function DeskPanel() {
   }
 
   const options = optionsFor(kind);
-  if (!anyVisible) return null;
+  if (!ready || !anyVisible) return null;
 
   return (
     <div className="flex flex-col gap-4">
