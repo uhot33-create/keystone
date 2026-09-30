@@ -45,7 +45,6 @@ export function DoctorMemoCard() {
   return (
     <section className="rounded-xl border border-border bg-surface px-4 py-3 shadow-card">
       <p className="text-xs font-medium tracking-widest text-subtle">次回、先生に伝えること</p>
-      <p className="mt-1 text-xs text-muted">今のメモだけを残します。過去の分は保存しません。</p>
       <Textarea
         className="mt-2"
         value={body}

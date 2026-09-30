@@ -77,7 +77,6 @@ function VetIndex() {
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-semibold text-fg">通院履歴</h1>
-          <p className="mt-1 text-sm text-muted">予定を残し、行ったら同じカードを履歴にします。</p>
         </div>
         <div className="flex shrink-0 gap-2">
           <Button asChild variant="outline">
