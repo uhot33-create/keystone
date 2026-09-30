@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -53,6 +54,13 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  useEffect(() => {
+    if (!window.matchMedia("(pointer: coarse)").matches) return;
+    const block = (event: Event) => event.preventDefault();
+    document.addEventListener("contextmenu", block);
+    return () => document.removeEventListener("contextmenu", block);
+  }, []);
+
   return (
     <html lang="ja" suppressHydrationWarning>
       <head>
