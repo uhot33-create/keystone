@@ -249,3 +249,27 @@ export const deleteVetVisit = createServerFn({ method: "POST" })
     if (!deleted[0]) throw new Error("記録が見つかりません");
     return { ok: true as const };
   });
+
+export const getDoctorMemo = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const sql = await getSql();
+    const rows = await sql<{ body: string }>`
+      select body from vet_doctor_memo where user_id = ${context.userId} limit 1
+    `;
+    return { body: rows[0]?.body ?? "" };
+  });
+
+export const saveDoctorMemo = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(z.object({ body: z.string().trim().max(1000, "1000文字以内で入力してください") }), input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await sql`
+      insert into vet_doctor_memo (user_id, body, updated_at)
+      values (${context.userId}, ${data.body}, now())
+      on conflict (user_id) do update set body = ${data.body}, updated_at = now()
+    `;
+    return { body: data.body };
+  });
+

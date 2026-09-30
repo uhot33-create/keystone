@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DoctorMemoCopy } from "@/components/vet/doctor-memo";
 
 export function VisitForm({
   visit,
@@ -195,6 +196,7 @@ export function VisitForm({
           </div>
         </>
       ) : null}
+      <DoctorMemoCopy />
       <div className="space-y-1.5">
         <Label htmlFor="visit-note">メモ</Label>
         <Textarea

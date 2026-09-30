@@ -7,6 +7,7 @@ import { todayJst } from "@/lib/walk/age";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DoctorMemoCard } from "@/components/vet/doctor-memo";
 
 const PAGE_SIZE = 10;
 
@@ -97,6 +98,8 @@ function VetIndex() {
           {error}
         </p>
       ) : null}
+
+      <DoctorMemoCard />
 
       {upcoming.length > 0 ? (
         <div className="rounded-xl border border-border bg-surface px-4 py-3 shadow-card">
