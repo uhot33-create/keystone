@@ -185,6 +185,7 @@
   a,
   img {
     -webkit-touch-callout: none;
+    -webkit-user-drag: none;
   }
 
   button:not(:disabled),

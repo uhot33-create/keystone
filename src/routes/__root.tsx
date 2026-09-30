@@ -58,7 +58,11 @@ function RootDocument() {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const block = (event: Event) => event.preventDefault();
     document.addEventListener("contextmenu", block);
-    return () => document.removeEventListener("contextmenu", block);
+    document.addEventListener("dragstart", block);
+    return () => {
+      document.removeEventListener("contextmenu", block);
+      document.removeEventListener("dragstart", block);
+    };
   }, []);
 
   return (
