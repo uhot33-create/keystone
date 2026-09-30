@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ClipboardEvent, type FormEvent } from "react";
 import { todayJst } from "@/lib/calorie/formula";
 import {
   addCupItem,
@@ -12,7 +12,7 @@ import {
   type CupItem,
   type CupStock,
 } from "@/lib/cup/api";
-import { prepareImageFile } from "@/lib/walk/image";
+import { fileFromImageSrc, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
@@ -473,10 +473,7 @@ function ItemsTab({
           <span>品名</span>
           <Input value={name} maxLength={100} required disabled={disabled} onChange={(event) => setName(event.target.value)} />
         </Label>
-        <Label className="block space-y-1">
-          <span>画像（任意）</span>
-          <Input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={disabled} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-        </Label>
+        <ImageField file={file} disabled={disabled} onFile={setFile} />
         <Button type="submit" disabled={disabled}>
           品名を追加
         </Button>
@@ -540,13 +537,10 @@ function ItemEditor({
     >
       <p className="text-sm font-semibold text-fg">品名を編集</p>
       <Input value={name} maxLength={100} required disabled={disabled} onChange={(event) => setName(event.target.value)} />
-      {item.hasImage && !clearImage ? (
+      {item.hasImage && !clearImage && !file ? (
         <img src={`/api/cup/image?id=${encodeURIComponent(item.id)}`} alt="" className="h-24 rounded-md object-cover" />
       ) : null}
-      <Label className="block space-y-1">
-        <span>画像を差し替える</span>
-        <Input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" disabled={disabled} onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-      </Label>
+      <ImageField file={file} disabled={disabled} onFile={setFile} label="画像を貼り付け・差し替え" />
       {item.hasImage ? (
         <label className="flex items-center gap-2 text-sm text-fg">
           <input type="checkbox" checked={clearImage} disabled={disabled} onChange={(event) => setClearImage(event.target.checked)} />
@@ -562,5 +556,113 @@ function ItemEditor({
         </Button>
       </div>
     </form>
+  );
+}
+
+function ImageField({
+  file,
+  disabled,
+  onFile,
+  label = "画像（任意）",
+}: {
+  file: File | null;
+  disabled: boolean;
+  onFile: (file: File | null) => void;
+  label?: string;
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [pasteError, setPasteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  function take(pasted: File | null) {
+    if (!pasted || disabled) return;
+    setPasteError(null);
+    onFile(pasted);
+  }
+
+  function onZonePaste(event: ClipboardEvent<HTMLDivElement>) {
+    const pasted = imageFileFromClipboard(event.clipboardData);
+    if (!pasted) return;
+    event.preventDefault();
+    take(pasted);
+  }
+
+  function onZoneInput(event: FormEvent<HTMLDivElement>) {
+    const root = event.currentTarget;
+    const img = root.querySelector("img");
+    const src = img?.getAttribute("src") ?? "";
+    root.innerHTML = "";
+    if (!src) return;
+    void fileFromImageSrc(src)
+      .then((pasted) => {
+        if (pasted) take(pasted);
+        else setPasteError("画像を貼り付けできませんでした");
+      })
+      .catch(() => setPasteError("画像を貼り付けできませんでした"));
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm text-fg">{label}</p>
+      <div className="relative min-h-40 overflow-hidden rounded-md bg-surface-2">
+        {preview ? (
+          <img src={preview} alt="" className="max-h-48 w-full object-contain" />
+        ) : (
+          <>
+            <div className="grid min-h-40 place-items-center px-3 text-center text-sm text-subtle">長押しでペースト</div>
+            <div
+              data-image-paste
+              contentEditable
+              suppressContentEditableWarning
+              role="textbox"
+              aria-label="画像を貼り付け"
+              className="absolute inset-0 z-10 caret-transparent text-transparent outline-none"
+              onPaste={onZonePaste}
+              onInput={onZoneInput}
+              onKeyDown={(event) => {
+                if (event.metaKey || event.ctrlKey) return;
+                event.preventDefault();
+              }}
+            />
+          </>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Label className="inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-surface px-4 text-sm font-medium shadow-card">
+          選択
+          <input
+            type="file"
+            accept="image/*,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+            className="sr-only"
+            disabled={disabled}
+            onChange={(event) => {
+              const picked = event.target.files?.[0];
+              if (picked) take(picked);
+              event.target.value = "";
+            }}
+          />
+        </Label>
+        {file ? (
+          <Button type="button" variant="outline" disabled={disabled} onClick={() => onFile(null)}>
+            クリア
+          </Button>
+        ) : null}
+      </div>
+      {pasteError ? (
+        <p className="text-sm text-danger" role="alert">
+          {pasteError}
+        </p>
+      ) : null}
+      <p className="text-xs text-muted">枠を長押ししてペーストするか、選択からファイルを選べます。</p>
+    </div>
   );
 }
