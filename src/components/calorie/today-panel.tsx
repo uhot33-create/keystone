@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import { chartWindowStart } from "@/lib/calorie/summary";
 import {
@@ -209,12 +210,16 @@ export function TodayPanel({
   }, [state.dog.id]);
 
   async function openChart() {
-    setChartOpen(true);
     const loaded = state.trends?.day.length || state.trends?.week.length || state.trends?.month.length || state.trends?.year.length;
+    if (!loaded) {
+      flushSync(() => {
+        setPending(true);
+        setBusy("読み込み中…");
+        setError(null);
+      });
+    }
+    setChartOpen(true);
     if (loaded) return;
-    setPending(true);
-    setBusy("読み込み中…");
-    setError(null);
     try {
       const chart = await getCalorieChart({ data: { dogId: state.dog.id } });
       onChange({ ...state, trend: chart.trend, trends: chart.trends });
@@ -230,15 +235,19 @@ export function TodayPanel({
   async function shiftChart(direction: -1 | 1) {
     const today = todayJst();
     const next = shiftChartEnd(grain, chartEnd, direction, today);
-    setChartEnd(next);
-    if (direction > 0) return;
     const start = chartWindowStart(grain, next);
     const points = state.trends?.[grain] ?? [];
     const oldest = points.reduce((min, point) => (point.start < min ? point.start : min), points[0]?.start ?? "9999-12-31");
-    if (points.length > 0 && oldest <= start) return;
-    setPending(true);
-    setBusy("読み込み中…");
-    setError(null);
+    const willFetch = direction < 0 && !(points.length > 0 && oldest <= start);
+    if (willFetch) {
+      flushSync(() => {
+        setPending(true);
+        setBusy("読み込み中…");
+        setError(null);
+      });
+    }
+    setChartEnd(next);
+    if (!willFetch) return;
     try {
       const more = await getCalorieTrend({ data: { dogId: state.dog.id, grain, end: next } });
       const merged = mergeTrends(points, more);
@@ -257,9 +266,11 @@ export function TodayPanel({
 
   async function selectDate(date: string) {
     if (date === state.date) return;
-    setPending(true);
-    setBusy("読み込み中…");
-    setError(null);
+    flushSync(() => {
+      setPending(true);
+      setBusy("読み込み中…");
+      setError(null);
+    });
     try {
       const next = await getCalorieDay({ data: { date, dogId: state.dog.id } });
       onChange({
