@@ -1,4 +1,4 @@
-import { useEffect, useState, type ClipboardEvent, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { todayJst } from "@/lib/calorie/formula";
 import {
   addCupItem,
@@ -460,6 +460,17 @@ function ItemsTab({
 
   return (
     <div className="space-y-3">
+      {editing ? (
+        <ItemEditor
+          item={editing}
+          disabled={disabled}
+          onClose={() => setEditing(null)}
+          onSave={(input) => {
+            onUpdate(input);
+            setEditing(null);
+          }}
+        />
+      ) : null}
       <form
         className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-card"
         onSubmit={(event) => {
@@ -497,17 +508,6 @@ function ItemsTab({
           </li>
         ))}
       </ul>
-      {editing ? (
-        <ItemEditor
-          item={editing}
-          disabled={disabled}
-          onClose={() => setEditing(null)}
-          onSave={(input) => {
-            onUpdate(input);
-            setEditing(null);
-          }}
-        />
-      ) : null}
     </div>
   );
 }
@@ -526,6 +526,11 @@ function ItemEditor({
   const [name, setName] = useState(item.name);
   const [file, setFile] = useState<File | null>(null);
   const [clearImage, setClearImage] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    titleRef.current?.scrollIntoView({ block: "start" });
+  }, [item.id]);
 
   return (
     <form
@@ -535,7 +540,9 @@ function ItemEditor({
         onSave({ id: item.id, name, file, clearImage });
       }}
     >
-      <p className="text-sm font-semibold text-fg">品名を編集</p>
+      <h2 ref={titleRef} className="font-display text-2xl font-semibold text-fg">
+        品名を編集
+      </h2>
       <Input value={name} maxLength={100} required disabled={disabled} onChange={(event) => setName(event.target.value)} />
       {item.hasImage && !clearImage && !file ? (
         <img src={`/api/cup/image?id=${encodeURIComponent(item.id)}`} alt="" className="h-24 rounded-md object-cover" />
