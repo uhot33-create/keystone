@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalorieRouteImport } from './routes/calorie'
+import { Route as CupRouteImport } from './routes/cup'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PasswordRouteImport } from './routes/password'
@@ -26,6 +27,7 @@ import { Route as WalkNewRouteImport } from './routes/walk.new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob/upload'
 import { Route as ApiCronCalorieSummaryRouteImport } from './routes/api/cron/calorie-summary'
+import { Route as ApiCupImageRouteImport } from './routes/api/cup/image'
 import { Route as ApiWalkImageRouteImport } from './routes/api/walk/image'
 import { Route as VetIdEditRouteImport } from './routes/vet.$id.edit'
 import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
@@ -40,6 +42,11 @@ const IndexRoute = IndexRouteImport.update({
 const CalorieRoute = CalorieRouteImport.update({
   id: '/calorie',
   path: '/calorie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CupRoute = CupRouteImport.update({
+  id: '/cup',
+  path: '/cup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -117,6 +124,11 @@ const ApiCronCalorieSummaryRoute = ApiCronCalorieSummaryRouteImport.update({
   path: '/api/cron/calorie-summary',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCupImageRoute = ApiCupImageRouteImport.update({
+  id: '/api/cup/image',
+  path: '/api/cup/image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWalkImageRoute = ApiWalkImageRouteImport.update({
   id: '/api/walk/image',
   path: '/api/walk/image',
@@ -146,6 +158,7 @@ const WalkLogsIdRoute = WalkLogsIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/cup': typeof CupRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/password': typeof PasswordRoute
@@ -161,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
+  '/api/cup/image': typeof ApiCupImageRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
@@ -170,6 +184,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/cup': typeof CupRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/password': typeof PasswordRoute
@@ -182,6 +197,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
+  '/api/cup/image': typeof ApiCupImageRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
@@ -192,6 +208,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/cup': typeof CupRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/password': typeof PasswordRoute
@@ -207,6 +224,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
+  '/api/cup/image': typeof ApiCupImageRoute
   '/api/walk/image': typeof ApiWalkImageRoute
   '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
@@ -218,6 +236,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calorie'
+    | '/cup'
     | '/forgot-password'
     | '/login'
     | '/password'
@@ -233,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
+    | '/api/cup/image'
     | '/api/walk/image'
     | '/vet/$id/edit'
     | '/walk/$id/edit'
@@ -242,6 +262,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calorie'
+    | '/cup'
     | '/forgot-password'
     | '/login'
     | '/password'
@@ -254,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
+    | '/api/cup/image'
     | '/api/walk/image'
     | '/vet/$id/edit'
     | '/walk/$id/edit'
@@ -263,6 +285,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calorie'
+    | '/cup'
     | '/forgot-password'
     | '/login'
     | '/password'
@@ -278,6 +301,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
+    | '/api/cup/image'
     | '/api/walk/image'
     | '/vet/$id/edit'
     | '/walk/$id/edit'
@@ -288,6 +312,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalorieRoute: typeof CalorieRoute
+  CupRoute: typeof CupRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PasswordRoute: typeof PasswordRoute
@@ -298,6 +323,7 @@ export interface RootRouteChildren {
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
   ApiCronCalorieSummaryRoute: typeof ApiCronCalorieSummaryRoute
+  ApiCupImageRoute: typeof ApiCupImageRoute
   ApiWalkImageRoute: typeof ApiWalkImageRoute
 }
 
@@ -315,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/calorie'
       fullPath: '/calorie'
       preLoaderRoute: typeof CalorieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cup': {
+      id: '/cup'
+      path: '/cup'
+      fullPath: '/cup'
+      preLoaderRoute: typeof CupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -422,6 +455,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronCalorieSummaryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cup/image': {
+      id: '/api/cup/image'
+      path: '/api/cup/image'
+      fullPath: '/api/cup/image'
+      preLoaderRoute: typeof ApiCupImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/walk/image': {
       id: '/api/walk/image'
       path: '/api/walk/image'
@@ -507,6 +547,7 @@ const WalkRouteWithChildren = WalkRoute._addFileChildren(WalkRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalorieRoute: CalorieRoute,
+  CupRoute: CupRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PasswordRoute: PasswordRoute,
@@ -517,6 +558,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,
   ApiCronCalorieSummaryRoute: ApiCronCalorieSummaryRoute,
+  ApiCupImageRoute: ApiCupImageRoute,
   ApiWalkImageRoute: ApiWalkImageRoute,
 }
 export const routeTree = rootRouteImport

@@ -26,4 +26,10 @@ export const MENUS = [
     title: "通院履歴",
     description: "病院の予定と記録を残す",
   },
+  {
+    to: "/cup",
+    index: "05",
+    title: "カップ麺",
+    description: "期限と個数を管理する",
+  },
 ] as const;
