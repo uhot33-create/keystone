@@ -1,12 +1,11 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
-import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteWalkLog, getWalkLogs, saveWalkLog, type WalkLog, type WalkLogList } from "@/lib/walk-log/api";
-import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
+import { getWalkLogs, saveWalkLog, type WalkLog, type WalkLogList, type WalkMonthSummary } from "@/lib/walk-log/api";
+import { formatDuration, formatKm } from "@/lib/walk-log/format";
 import { parseGpxFile } from "@/lib/walk-log/gpx";
 
 export const Route = createFileRoute("/walk/logs/")({
@@ -16,6 +15,7 @@ export const Route = createFileRoute("/walk/logs/")({
 function WalkLogsPage() {
   const [logs, setLogs] = useState<WalkLogList | null>(null);
   const [openYears, setOpenYears] = useState<number[]>(() => [jstYear()]);
+  const [openMonths, setOpenMonths] = useState<string[]>(() => [jstYearMonth()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [showTop, setShowTop] = useState(false);
@@ -51,18 +51,6 @@ function WalkLogsPage() {
       setLogs(await saveWalkLog({ data: parsed }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "取り込みできませんでした");
-    } finally {
-      setPending(false);
-    }
-  }
-
-  async function onDelete(id: string, name: string) {
-    if (!confirm(`「${name}」を削除しますか？`)) return;
-    setPending(true);
-    try {
-      setLogs(await deleteWalkLog({ data: { id } }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "削除できませんでした");
     } finally {
       setPending(false);
     }
@@ -129,26 +117,21 @@ function WalkLogsPage() {
                   <span className="text-xs font-medium text-muted">{open ? "閉じる" : "開く"}</span>
                 </button>
                 {open ? (
-                  <div className="mt-2 flex flex-col gap-4">
+                  <div className="mt-2 flex flex-col gap-2">
                     {year.months.map((month) => (
-                      <div key={month.yearMonth}>
-                        <Link
-                          to="/walk/logs/month/$yearMonth"
-                          params={{ yearMonth: month.yearMonth }}
-                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-primary px-4 py-3 text-primary-fg shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-                        >
-                          <span className="font-display text-base font-semibold">{month.month}月の合計</span>
-                          <span className="text-right">
-                            <span className="block tabular-nums text-sm">{formatKm(month.distanceM)}</span>
-                            <span className="block text-xs opacity-80">{formatDuration(month.elapsedSec)}</span>
-                          </span>
-                        </Link>
-                        <ul className="mt-2 flex flex-col gap-2">
-                          {month.logs.map((log) => (
-                            <LogRow key={log.id} log={log} pending={pending} onDelete={onDelete} />
-                          ))}
-                        </ul>
-                      </div>
+                      <MonthBlock
+                        key={month.yearMonth}
+                        month={month}
+                        maxDistance={Math.max(...year.months.map((item) => item.distanceM), 0)}
+                        open={openMonths.includes(month.yearMonth)}
+                        onToggle={() =>
+                          setOpenMonths((current) =>
+                            current.includes(month.yearMonth)
+                              ? current.filter((item) => item !== month.yearMonth)
+                              : [...current, month.yearMonth],
+                          )
+                        }
+                      />
                     ))}
                   </div>
                 ) : null}
@@ -158,9 +141,9 @@ function WalkLogsPage() {
           {logs.undated.length > 0 ? (
             <section>
               <h2 className="font-display text-lg font-semibold text-fg">日時なし</h2>
-              <ul className="mt-2 flex flex-col gap-2">
+              <ul className="mt-2 flex flex-col">
                 {logs.undated.map((log) => (
-                  <LogRow key={log.id} log={log} pending={pending} onDelete={onDelete} />
+                  <LogRow key={log.id} log={log} maxDistance={Math.max(...logs.undated.map((item) => item.distanceM), 0)} />
                 ))}
               </ul>
             </section>
@@ -184,34 +167,94 @@ function jstYear(): number {
   return Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric" }).format(new Date()));
 }
 
-function LogRow({
-  log,
-  pending,
-  onDelete,
+function jstYearMonth(): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  return `${year}-${month}`;
+}
+
+function MonthBlock({
+  month,
+  maxDistance,
+  open,
+  onToggle,
 }: {
-  log: WalkLog;
-  pending: boolean;
-  onDelete: (id: string, name: string) => void;
+  month: WalkMonthSummary;
+  maxDistance: number;
+  open: boolean;
+  onToggle: () => void;
 }) {
+  const dayMax = Math.max(...month.logs.map((log) => log.distanceM), 0);
   return (
-    <li className="flex items-stretch gap-2">
+    <div className="rounded-xl border border-border bg-surface px-3 py-2.5 shadow-card">
+      <div className="flex items-start gap-3">
+        <button type="button" aria-expanded={open} onClick={onToggle} className="min-w-0 flex-1 text-left">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="font-display text-base font-semibold text-fg">{month.month}月</span>
+            <span className="tabular-nums text-sm text-fg">{formatKm(month.distanceM)}</span>
+          </span>
+          <DistanceBar value={month.distanceM} max={maxDistance} />
+          <span className="mt-1 block text-xs text-muted">
+            {formatDuration(month.elapsedSec)} · {month.logs.length}件 · {open ? "閉じる" : "日別"}
+          </span>
+        </button>
+        <Link
+          to="/walk/logs/month/$yearMonth"
+          params={{ yearMonth: month.yearMonth }}
+          className="shrink-0 pt-0.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
+        >
+          地図
+        </Link>
+      </div>
+      {open ? (
+        <ul className="mt-2 border-t border-border pt-1">
+          {month.logs.map((log) => (
+            <LogRow key={log.id} log={log} maxDistance={dayMax} />
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function DistanceBar({ value, max }: { value: number; max: number }) {
+  const width = max > 0 && value > 0 ? Math.max(6, Math.round((value / max) * 100)) : 0;
+  return (
+    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+      <span className="block h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
+    </span>
+  );
+}
+
+function formatDay(iso: string | null): string {
+  if (!iso) return "日時なし";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "日時なし";
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).format(date);
+}
+
+function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
+  return (
+    <li>
       <Link
         to="/walk/logs/$id"
         params={{ id: log.id }}
-        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-card outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
+        className="block py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-base font-semibold text-fg">{log.name}</p>
-          <p className="mt-0.5 text-xs text-muted">{formatLogWhen(log.startedAt)}</p>
-        </div>
-        <div className="text-right">
-          <p className="tabular-nums text-sm text-fg">{formatKm(log.distanceM)}</p>
-          <p className="text-xs text-subtle">{formatDuration(log.elapsedSec)}</p>
-        </div>
+        <span className="flex items-baseline justify-between gap-3">
+          <span className="text-sm text-fg">{formatDay(log.startedAt)}</span>
+          <span className="shrink-0 text-xs text-muted">
+            <span className="tabular-nums text-fg">{formatKm(log.distanceM)}</span>
+            <span className="ml-2">{formatDuration(log.elapsedSec)}</span>
+          </span>
+        </span>
+        <DistanceBar value={log.distanceM} max={maxDistance} />
       </Link>
-      <Button type="button" variant="outline" className="self-center" disabled={pending} onClick={() => onDelete(log.id, log.name)}>
-        削除
-      </Button>
     </li>
   );
 }
