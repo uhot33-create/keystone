@@ -2,14 +2,14 @@ import { useEffect, useRef } from "react";
 import { decodePolyline } from "@/lib/walk-log/gpx";
 import "leaflet/dist/leaflet.css";
 
-export function TrackMap({ encoded }: { encoded: string | null }) {
+export function TrackMap({ encoded, tracks }: { encoded?: string | null; tracks?: string[] }) {
   const el = useRef<HTMLDivElement>(null);
+  const lines = (tracks ?? (encoded ? [encoded] : [])).filter((line) => line.length > 0);
+  const key = lines.join("\n");
 
   useEffect(() => {
     const node = el.current;
-    if (!node || !encoded) return;
-    const points = decodePolyline(encoded);
-    if (points.length < 2) return;
+    if (!node || lines.length === 0) return;
     let map: { remove: () => void } | null = null;
     let cancelled = false;
     void import("leaflet").then((L) => {
@@ -23,17 +23,26 @@ export function TrackMap({ encoded }: { encoded: string | null }) {
         .addTo(instance);
       const color =
         getComputedStyle(document.documentElement).getPropertyValue("--color-primary").trim() || "#2f3a32";
-      const line = leaflet.polyline(points, { color, weight: 4, opacity: 0.9 }).addTo(instance);
-      instance.fitBounds(line.getBounds(), { padding: [16, 16] });
+      const drawn = lines.flatMap((line) => {
+        const points = decodePolyline(line);
+        if (points.length < 2) return [];
+        return [leaflet.polyline(points, { color, weight: 4, opacity: 0.9 })];
+      });
+      if (drawn.length === 0) {
+        instance.remove();
+        return;
+      }
+      const group = leaflet.featureGroup(drawn).addTo(instance);
+      instance.fitBounds(group.getBounds(), { padding: [16, 16] });
       map = instance;
     });
     return () => {
       cancelled = true;
       map?.remove();
     };
-  }, [encoded]);
+  }, [key]);
 
-  if (!encoded) {
+  if (lines.length === 0) {
     return (
       <div className="grid h-64 place-items-center rounded-xl border border-border bg-surface-2 text-sm text-muted">
         この記録には軌跡がありません

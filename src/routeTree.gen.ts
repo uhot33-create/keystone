@@ -33,6 +33,7 @@ import { Route as VetIdEditRouteImport } from './routes/vet.$id.edit'
 import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
 import { Route as WalkLogsIndexRouteImport } from './routes/walk.logs.index'
 import { Route as WalkLogsIdRouteImport } from './routes/walk.logs.$id'
+import { Route as WalkLogsMonthYearMonthRouteImport } from './routes/walk.logs.month.$yearMonth'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -154,6 +155,11 @@ const WalkLogsIdRoute = WalkLogsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => WalkLogsRoute,
 } as any)
+const WalkLogsMonthYearMonthRoute = WalkLogsMonthYearMonthRouteImport.update({
+  id: '/month/$yearMonth',
+  path: '/month/$yearMonth',
+  getParentRoute: () => WalkLogsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
+  '/walk/logs/month/$yearMonth': typeof WalkLogsMonthYearMonthRoute
   '/walk/logs/': typeof WalkLogsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
+  '/walk/logs/month/$yearMonth': typeof WalkLogsMonthYearMonthRoute
   '/walk/logs': typeof WalkLogsIndexRoute
 }
 export interface FileRoutesById {
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/vet/$id/edit': typeof VetIdEditRoute
   '/walk/$id/edit': typeof WalkIdEditRoute
   '/walk/logs/$id': typeof WalkLogsIdRoute
+  '/walk/logs/month/$yearMonth': typeof WalkLogsMonthYearMonthRoute
   '/walk/logs/': typeof WalkLogsIndexRoute
 }
 export interface FileRouteTypes {
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/vet/$id/edit'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
+    | '/walk/logs/month/$yearMonth'
     | '/walk/logs/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/vet/$id/edit'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
+    | '/walk/logs/month/$yearMonth'
     | '/walk/logs'
   id:
     | '__root__'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/vet/$id/edit'
     | '/walk/$id/edit'
     | '/walk/logs/$id'
+    | '/walk/logs/month/$yearMonth'
     | '/walk/logs/'
   fileRoutesById: FileRoutesById
 }
@@ -497,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WalkLogsIdRouteImport
       parentRoute: typeof WalkLogsRoute
     }
+    '/walk/logs/month/$yearMonth': {
+      id: '/walk/logs/month/$yearMonth'
+      path: '/month/$yearMonth'
+      fullPath: '/walk/logs/month/$yearMonth'
+      preLoaderRoute: typeof WalkLogsMonthYearMonthRouteImport
+      parentRoute: typeof WalkLogsRoute
+    }
   }
 }
 
@@ -515,11 +534,13 @@ const VetRouteChildren: VetRouteChildren = {
 const VetRouteWithChildren = VetRoute._addFileChildren(VetRouteChildren)
 
 interface WalkLogsRouteChildren {
+  WalkLogsMonthYearMonthRoute: typeof WalkLogsMonthYearMonthRoute
   WalkLogsIdRoute: typeof WalkLogsIdRoute
   WalkLogsIndexRoute: typeof WalkLogsIndexRoute
 }
 
 const WalkLogsRouteChildren: WalkLogsRouteChildren = {
+  WalkLogsMonthYearMonthRoute: WalkLogsMonthYearMonthRoute,
   WalkLogsIdRoute: WalkLogsIdRoute,
   WalkLogsIndexRoute: WalkLogsIndexRoute,
 }

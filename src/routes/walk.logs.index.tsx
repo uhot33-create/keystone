@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteWalkLog, getWalkLogs, saveWalkLog, type WalkLog } from "@/lib/walk-log/api";
+import { deleteWalkLog, getWalkLogs, saveWalkLog, type WalkLog, type WalkLogList } from "@/lib/walk-log/api";
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
 import { parseGpxFile } from "@/lib/walk-log/gpx";
 
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/walk/logs/")({
 });
 
 function WalkLogsPage() {
-  const [logs, setLogs] = useState<WalkLog[] | null>(null);
+  const [logs, setLogs] = useState<WalkLogList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -98,39 +98,81 @@ function WalkLogsPage() {
 
       {!logs ? (
         <Skeleton className="h-40 w-full rounded-xl" />
-      ) : logs.length === 0 ? (
+      ) : logs.years.length === 0 && logs.undated.length === 0 ? (
         <p className="text-sm text-muted">まだログがありません。GPX を取り込んでください。</p>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {logs.map((log) => (
-            <li key={log.id} className="flex items-stretch gap-2">
-              <Link
-                to="/walk/logs/$id"
-                params={{ id: log.id }}
-                className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-card outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-base font-semibold text-fg">{log.name}</p>
-                  <p className="mt-0.5 text-xs text-muted">{formatLogWhen(log.startedAt)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="tabular-nums text-sm text-fg">{formatKm(log.distanceM)}</p>
-                  <p className="text-xs text-subtle">{formatDuration(log.elapsedSec)}</p>
-                </div>
-              </Link>
-              <Button
-                type="button"
-                variant="outline"
-                className="self-center"
-                disabled={pending}
-                onClick={() => void onDelete(log.id, log.name)}
-              >
-                削除
-              </Button>
-            </li>
+        <div className="flex flex-col gap-6">
+          {logs.years.map((year) => (
+            <section key={year.year}>
+              <h2 className="font-display text-lg font-semibold text-fg">{year.year}年</h2>
+              <div className="mt-2 flex flex-col gap-4">
+                {year.months.map((month) => (
+                  <div key={month.yearMonth}>
+                    <Link
+                      to="/walk/logs/month/$yearMonth"
+                      params={{ yearMonth: month.yearMonth }}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-primary px-4 py-3 text-primary-fg shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+                    >
+                      <span className="font-display text-base font-semibold">{month.month}月の合計</span>
+                      <span className="text-right">
+                        <span className="block tabular-nums text-sm">{formatKm(month.distanceM)}</span>
+                        <span className="block text-xs opacity-80">{formatDuration(month.elapsedSec)}</span>
+                      </span>
+                    </Link>
+                    <ul className="mt-2 flex flex-col gap-2">
+                      {month.logs.map((log) => (
+                        <LogRow key={log.id} log={log} pending={pending} onDelete={onDelete} />
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
-        </ul>
+          {logs.undated.length > 0 ? (
+            <section>
+              <h2 className="font-display text-lg font-semibold text-fg">日時なし</h2>
+              <ul className="mt-2 flex flex-col gap-2">
+                {logs.undated.map((log) => (
+                  <LogRow key={log.id} log={log} pending={pending} onDelete={onDelete} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </div>
       )}
     </div>
+  );
+}
+
+function LogRow({
+  log,
+  pending,
+  onDelete,
+}: {
+  log: WalkLog;
+  pending: boolean;
+  onDelete: (id: string, name: string) => void;
+}) {
+  return (
+    <li className="flex items-stretch gap-2">
+      <Link
+        to="/walk/logs/$id"
+        params={{ id: log.id }}
+        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 shadow-card outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-base font-semibold text-fg">{log.name}</p>
+          <p className="mt-0.5 text-xs text-muted">{formatLogWhen(log.startedAt)}</p>
+        </div>
+        <div className="text-right">
+          <p className="tabular-nums text-sm text-fg">{formatKm(log.distanceM)}</p>
+          <p className="text-xs text-subtle">{formatDuration(log.elapsedSec)}</p>
+        </div>
+      </Link>
+      <Button type="button" variant="outline" className="self-center" disabled={pending} onClick={() => onDelete(log.id, log.name)}>
+        削除
+      </Button>
+    </li>
   );
 }

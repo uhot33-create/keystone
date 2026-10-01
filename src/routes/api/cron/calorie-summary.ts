@@ -3,6 +3,7 @@ import { getSql } from "@/lib/db";
 import { rebuildAllCalorieStats } from "@/lib/calorie/summary";
 import { appendCronLog, finishCronRun, startCronRun } from "@/lib/cron-log";
 import { resetSmokingIfDue } from "@/lib/smoking/api";
+import { rebuildAllWalkMonths } from "@/lib/walk-log/merge";
 
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
@@ -35,16 +36,25 @@ export const Route = createFileRoute("/api/cron/calorie-summary")({
           smoking = { error: message };
           await write(`[cron] smoking error ${message}`);
         }
+        let walks: { months: number; users: number } | { error: string };
+        try {
+          walks = await rebuildAllWalkMonths(sql);
+          await write(`[cron] walk ${JSON.stringify(walks)}`);
+        } catch (err) {
+          const message = errorText(err, "散歩ログの月次マージに失敗しました");
+          walks = { error: message };
+          await write(`[cron] walk error ${message}`);
+        }
         try {
           const result = await rebuildAllCalorieStats(sql);
           await write(`[cron] calorie ${JSON.stringify(result)}`);
           await finishCronRun(sql, runId, true);
-          return Response.json({ ok: true, ...result, smoking });
+          return Response.json({ ok: true, ...result, smoking, walks });
         } catch (err) {
           const message = errorText(err, "集計に失敗しました");
           await write(`[cron] calorie error ${message}`);
           await finishCronRun(sql, runId, false);
-          return Response.json({ error: message, smoking }, { status: 500 });
+          return Response.json({ error: message, smoking, walks }, { status: 500 });
         }
       },
     },
