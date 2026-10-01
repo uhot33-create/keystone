@@ -191,22 +191,18 @@ function MonthBlock({
 }) {
   const dayMax = Math.max(...month.logs.map((log) => log.distanceM), 0);
   return (
-    <div className="rounded-xl border border-border bg-surface px-3 py-2.5 shadow-card">
-      <div className="flex items-start gap-3">
-        <button type="button" aria-expanded={open} onClick={onToggle} className="min-w-0 flex-1 text-left">
-          <span className="flex items-baseline justify-between gap-3">
-            <span className="font-display text-base font-semibold text-fg">{month.month}月</span>
-            <span className="tabular-nums text-sm text-fg">{formatKm(month.distanceM)}</span>
-          </span>
+    <div className="rounded-xl border border-border bg-surface px-3 py-2 shadow-card">
+      <div className="flex items-center gap-2">
+        <button type="button" aria-expanded={open} onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+          <span className="shrink-0 font-display text-sm font-semibold text-fg">{month.month}月</span>
+          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">{formatDuration(month.elapsedSec)}</span>
+          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatKm(month.distanceM)}</span>
           <DistanceBar value={month.distanceM} max={maxDistance} />
-          <span className="mt-1 block text-xs text-muted">
-            {formatDuration(month.elapsedSec)} · {month.logs.length}件 · {open ? "閉じる" : "日別"}
-          </span>
         </button>
         <Link
           to="/walk/logs/month/$yearMonth"
           params={{ yearMonth: month.yearMonth }}
-          className="shrink-0 pt-0.5 text-xs font-medium text-primary underline-offset-4 hover:underline"
+          className="shrink-0 text-xs font-medium text-primary underline-offset-4 hover:underline"
         >
           地図
         </Link>
@@ -225,17 +221,28 @@ function MonthBlock({
 function DistanceBar({ value, max }: { value: number; max: number }) {
   const width = max > 0 && value > 0 ? Math.max(6, Math.round((value / max) * 100)) : 0;
   return (
-    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+    <span className="block h-2 min-w-8 flex-1 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
       <span className="block h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
     </span>
   );
 }
 
-function formatDay(iso: string | null): string {
+function formatDayTime(iso: string | null): string {
   if (!iso) return "日時なし";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "日時なし";
-  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).format(date);
+  const parts = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const day = parts.find((part) => part.type === "day")?.value;
+  const hour = parts.find((part) => part.type === "hour")?.value;
+  const minute = parts.find((part) => part.type === "minute")?.value;
+  if (!day || !hour || !minute) return "日時なし";
+  return `${day}日 ${hour}:${minute}`;
 }
 
 function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
@@ -244,15 +251,12 @@ function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
       <Link
         to="/walk/logs/$id"
         params={{ id: log.id }}
-        className="block py-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+        className="flex items-center gap-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >
-        <span className="flex items-baseline justify-between gap-3">
-          <span className="text-sm text-fg">{formatDay(log.startedAt)}</span>
-          <span className="shrink-0 text-xs text-muted">
-            <span className="tabular-nums text-fg">{formatKm(log.distanceM)}</span>
-            <span className="ml-2">{formatDuration(log.elapsedSec)}</span>
-          </span>
-        </span>
+        <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatDayTime(log.startedAt)}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-fg">{log.name}</span>
+        <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">{formatDuration(log.elapsedSec)}</span>
+        <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatKm(log.distanceM)}</span>
         <DistanceBar value={log.distanceM} max={maxDistance} />
       </Link>
     </li>
