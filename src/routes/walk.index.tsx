@@ -27,7 +27,15 @@ function WalkIndex() {
   const [breeds, setBreeds] = useState<DogBreed[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [showTop, setShowTop] = useState(false);
   const thumbsFetchStarted = useRef(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 240);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +144,15 @@ function WalkIndex() {
           ))}
         </div>
       )}
+      {showTop ? (
+        <button
+          type="button"
+          className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-30 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium text-fg shadow-card"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        >
+          TOP
+        </button>
+      ) : null}
     </div>
   );
 }
