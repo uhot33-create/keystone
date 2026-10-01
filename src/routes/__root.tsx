@@ -3,6 +3,7 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { NavBusy } from "@/components/nav-busy";
 import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-meta";
 import { getUserSettings } from "@/lib/desk/settings";
@@ -75,6 +76,7 @@ function RootDocument() {
         <PreviewHostBridge />
         <ThemeProvider>
           <AuthProvider>
+            <NavBusy />
             <Outlet />
           </AuthProvider>
         </ThemeProvider>
