@@ -59,10 +59,25 @@ function WalkMonthPage() {
             <p className="mt-2 font-display text-2xl font-semibold tabular-nums text-fg">{formatKm(month.distanceM)}</p>
             <p className="mt-1 text-sm text-muted">{formatDuration(month.elapsedSec)}</p>
             <p className="mt-3 text-xs leading-relaxed text-subtle">
-              各散歩の軌跡をそのまま重ねています。前後の散歩は線でつなぎません。
+              近い場所だけを同じ地図に重ねています。離れた地域は別の地図です。前後の散歩は線でつなぎません。
             </p>
           </div>
-          <TrackMap tracks={month.polylines} />
+          {month.regions.length > 0 ? (
+            month.regions.map((region) => (
+              <section key={region.label} className="flex flex-col gap-3">
+                <div className="flex items-end justify-between gap-3">
+                  <h2 className="font-display text-lg font-semibold text-fg">{region.label}</h2>
+                  <p className="text-right text-sm text-muted">
+                    <span className="tabular-nums text-fg">{formatKm(region.distanceM)}</span>
+                    <span className="mt-0.5 block text-xs">{formatDuration(region.elapsedSec)}</span>
+                  </p>
+                </div>
+                <TrackMap tracks={region.polylines} />
+              </section>
+            ))
+          ) : (
+            <TrackMap tracks={month.polylines} />
+          )}
         </>
       )}
     </div>

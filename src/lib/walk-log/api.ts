@@ -32,12 +32,21 @@ export type WalkLogList = {
   undated: WalkLog[];
 };
 
+export type WalkMonthRegion = {
+  label: string;
+  distanceM: number;
+  elapsedSec: number;
+  logCount: number;
+  polylines: string[];
+};
+
 export type WalkMonthTrack = {
   yearMonth: string;
   distanceM: number;
   elapsedSec: number;
   logCount: number;
   polylines: string[];
+  regions: WalkMonthRegion[];
 };
 
 export type WalkLogDetail = WalkLog & {
@@ -126,6 +135,25 @@ export function groupWalkLogs(logs: WalkLog[]): WalkLogList {
     else years.push({ year, months: [summary] });
   }
   return { years, undated };
+}
+
+function asRegions(value: unknown): WalkMonthRegion[] {
+  const list = Array.isArray(value) ? value : typeof value === "string" ? safeJson(value) : [];
+  return list.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const row = item as Record<string, unknown>;
+    const polylines = asTracks(row.polylines);
+    if (polylines.length === 0) return [];
+    return [
+      {
+        label: typeof row.label === "string" && row.label ? row.label : "地域",
+        distanceM: Number(row.distanceM) || 0,
+        elapsedSec: Number(row.elapsedSec) || 0,
+        logCount: Number(row.logCount) || polylines.length,
+        polylines,
+      },
+    ];
+  });
 }
 
 function asTracks(value: unknown): string[] {
@@ -242,12 +270,19 @@ export const getWalkMonth = createServerFn({ method: "GET" })
       elapsedSec: Number(row.elapsed_sec) || 0,
       logCount: Number(row.log_count) || 0,
       polylines: asTracks(row.polylines),
+      regions: asRegions(row.regions),
     } satisfies WalkMonthTrack;
   });
 
 async function loadMonth(sql: Sql, userId: string, yearMonth: string) {
-  return sql<{ distance_m: unknown; elapsed_sec: unknown; log_count: unknown; polylines: unknown }>`
-    select distance_m, elapsed_sec, log_count, polylines
+  return sql<{
+    distance_m: unknown;
+    elapsed_sec: unknown;
+    log_count: unknown;
+    polylines: unknown;
+    regions: unknown;
+  }>`
+    select distance_m, elapsed_sec, log_count, polylines, regions
     from walk_month_tracks
     where user_id = ${userId} and year_month = ${yearMonth}
     limit 1
