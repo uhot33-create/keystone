@@ -59,7 +59,7 @@ function WalkMonthPage() {
             <p className="mt-2 font-display text-2xl font-semibold tabular-nums text-fg">{formatKm(month.distanceM)}</p>
             <p className="mt-1 text-sm text-muted">{formatDuration(month.elapsedSec)}</p>
             <p className="mt-3 text-xs leading-relaxed text-subtle">
-              中心が同じ500m四方の散歩だけを同じ地図に重ねています。離れた場所は別の地図です。前後の散歩は線でつなぎません。
+              中心が同じ700m四方の散歩だけを同じ地図に重ねています。離れた場所は別の地図です。前後の散歩は線でつなぎません。
             </p>
           </div>
           {month.regions.length > 0 ? (
