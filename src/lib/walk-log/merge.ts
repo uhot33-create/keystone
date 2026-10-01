@@ -1,8 +1,8 @@
 import type { Sql } from "@/lib/db";
 import { decodePolyline } from "@/lib/walk-log/gpx";
 
-/** 軌跡の範囲がこの距離より離れていたら、別の地域にする。 */
-const REGION_GAP_M = 40_000;
+/** 軌跡の中心が同じ10km四方なら、同じ地図に載せる。 */
+const REGION_CELL_M = 10_000;
 
 const PREFECTURES: ReadonlyArray<readonly [string, number, number]> = [
   ["北海道", 43.06, 141.35],
@@ -133,30 +133,13 @@ export function bucketMonthTracks(rows: TrackRow[]): Bucket[] {
 }
 
 function clusterPieces(pieces: Piece[]): Array<MonthRegion & { box: Box }> {
-  const parent = pieces.map((_, index) => index);
-  const find = (index: number): number => {
-    let root = index;
-    while (parent[root] !== root) root = parent[root]!;
-    parent[index] = root;
-    return root;
-  };
-  const union = (a: number, b: number) => {
-    const ra = find(a);
-    const rb = find(b);
-    if (ra !== rb) parent[rb] = ra;
-  };
-  for (let i = 0; i < pieces.length; i += 1) {
-    for (let j = i + 1; j < pieces.length; j += 1) {
-      if (boxGapMeters(pieces[i]!.box, pieces[j]!.box) <= REGION_GAP_M) union(i, j);
-    }
-  }
-  const groups = new Map<number, Piece[]>();
-  pieces.forEach((piece, index) => {
-    const root = find(index);
-    const list = groups.get(root) ?? [];
+  const groups = new Map<string, Piece[]>();
+  for (const piece of pieces) {
+    const key = cellKey(piece.box);
+    const list = groups.get(key) ?? [];
     list.push(piece);
-    groups.set(root, list);
-  });
+    groups.set(key, list);
+  }
   return [...groups.values()].map((group) => ({
     label: "",
     distanceM: Math.round(group.reduce((sum, piece) => sum + piece.distanceM, 0) * 10) / 10,
@@ -165,6 +148,14 @@ function clusterPieces(pieces: Piece[]): Array<MonthRegion & { box: Box }> {
     polylines: group.map((piece) => piece.polyline),
     box: group.reduce((box, piece) => unite(box, piece.box), group[0]!.box),
   }));
+}
+
+function cellKey(box: Box): string {
+  const lat = (box.minLat + box.maxLat) / 2;
+  const lng = (box.minLng + box.maxLng) / 2;
+  const latM = lat * 111_320;
+  const lngM = lng * 111_320 * Math.cos((lat * Math.PI) / 180);
+  return `${Math.floor(latM / REGION_CELL_M)}:${Math.floor(lngM / REGION_CELL_M)}`;
 }
 
 function labelRegions(regions: Array<MonthRegion & { box: Box }>): MonthRegion[] {
