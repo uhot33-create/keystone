@@ -37,19 +37,7 @@ export function bucketMonthTracks(rows: TrackRow[]): Bucket[] {
   return [...map.values()];
 }
 
-async function loadTracks(sql: Sql, userId?: string): Promise<TrackRow[]> {
-  if (userId) {
-    return sql<TrackRow>`
-      select user_id,
-        to_char(started_at at time zone 'Asia/Tokyo', 'YYYY-MM') as year_month,
-        distance_m,
-        elapsed_sec,
-        summary_polyline
-      from walk_logs
-      where user_id = ${userId} and started_at is not null
-      order by started_at
-    `;
-  }
+async function loadTracks(sql: Sql): Promise<TrackRow[]> {
   return sql<TrackRow>`
     select user_id,
       to_char(started_at at time zone 'Asia/Tokyo', 'YYYY-MM') as year_month,
@@ -62,12 +50,8 @@ async function loadTracks(sql: Sql, userId?: string): Promise<TrackRow[]> {
   `;
 }
 
-async function writeBuckets(sql: Sql, userId: string | undefined, buckets: Bucket[]) {
-  if (userId) {
-    await sql`delete from walk_month_tracks where user_id = ${userId}`;
-  } else {
-    await sql`delete from walk_month_tracks`;
-  }
+async function writeBuckets(sql: Sql, buckets: Bucket[]) {
+  await sql`delete from walk_month_tracks`;
   for (const bucket of buckets) {
     await sql`
       insert into walk_month_tracks (
@@ -86,15 +70,9 @@ async function writeBuckets(sql: Sql, userId: string | undefined, buckets: Bucke
   }
 }
 
-export async function rebuildUserWalkMonths(sql: Sql, userId: string): Promise<number> {
-  const buckets = bucketMonthTracks(await loadTracks(sql, userId));
-  await writeBuckets(sql, userId, buckets);
-  return buckets.length;
-}
-
 export async function rebuildAllWalkMonths(sql: Sql): Promise<{ months: number; users: number }> {
   const buckets = bucketMonthTracks(await loadTracks(sql));
-  await writeBuckets(sql, undefined, buckets);
+  await writeBuckets(sql, buckets);
   return {
     months: buckets.length,
     users: new Set(buckets.map((bucket) => bucket.userId)).size,
