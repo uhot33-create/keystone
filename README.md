@@ -34,6 +34,7 @@ npm run dev
 ## カロリー集計バッチ
 
 毎日 0:00 JST（UTC 15:00）に Vercel Cron が `/api/cron/calorie-summary` を呼び、週・月・年のカロリー合計と期末体重を Neon に保存します。Hobby は1日1回・前後最大59分です。`CRON_SECRET` を Vercel に入れると、その値で保護されます。
+処理実行日時を列「compute_at」に設定します。UTC時刻なので実際の日本時刻(+9)とは異なります。
 
 
 ## Neon
@@ -64,13 +65,4 @@ npm run dev
 
 お散歩メモ → 散歩ログ から、GPS アプリが書き出した `.gpx` を取り込みます。距離・時間・地図の軌跡を保存します。無料アプリなら Open GPX Tracker などが使えます。
 
-## ディレクトリ（お散歩メモ）
 
-```
-src/routes/walk*.tsx          一覧・追加・編集
-src/routes/api/blob/upload.ts Blob クライアントアップロード
-src/lib/walk/                 API・年齢・画像・フィルタ
-src/components/walk/          カード・フォーム・ツールバー
-migrations/0004_walk.sql      テーブルと犬種初期データ
-scripts/seed-breeds.sql       犬種の再投入用
-```
