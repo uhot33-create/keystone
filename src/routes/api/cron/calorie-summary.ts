@@ -48,6 +48,7 @@ export const Route = createFileRoute("/api/cron/calorie-summary")({
         try {
           const result = await rebuildAllCalorieStats(sql);
           await write(`[cron] calorie ${JSON.stringify(result)}`);
+          await write("処理を完了しました。");
           await finishCronRun(sql, runId, true);
           return Response.json({ ok: true, ...result, smoking, walks });
         } catch (err) {
