@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
-import { rebuildUserWalkMonths } from "@/lib/walk-log/merge";
 
 export type WalkLog = {
   id: string;
@@ -215,7 +214,6 @@ export const saveWalkLog = createServerFn({ method: "POST" })
         ${data.sourceName || null}
       )
     `;
-    await rebuildUserWalkMonths(sql, context.userId);
     return listLogs(context.userId);
   });
 
@@ -225,7 +223,6 @@ export const deleteWalkLog = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     await sql`delete from walk_logs where id = ${data.id} and user_id = ${context.userId}`;
-    await rebuildUserWalkMonths(sql, context.userId);
     return listLogs(context.userId);
   });
 
@@ -236,13 +233,9 @@ export const getWalkMonth = createServerFn({ method: "GET" })
   )
   .handler(async ({ context, data }) => {
     const sql = await getSql();
-    let rows = await loadMonth(sql, context.userId, data.yearMonth);
-    if (!rows[0]) {
-      await rebuildUserWalkMonths(sql, context.userId);
-      rows = await loadMonth(sql, context.userId, data.yearMonth);
-    }
+    const rows = await loadMonth(sql, context.userId, data.yearMonth);
     const row = rows[0];
-    if (!row) throw new Error("この月の記録がありません");
+    if (!row) throw new Error("この月の地図は、毎日0時の集計のあと表示されます");
     return {
       yearMonth: data.yearMonth,
       distanceM: Number(row.distance_m) || 0,
