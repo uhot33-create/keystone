@@ -1,8 +1,8 @@
 import type { Sql } from "@/lib/db";
 import { decodePolyline } from "@/lib/walk-log/gpx";
 
-/** 軌跡の中心が同じ5km四方なら、同じ地図に載せる。 */
-const REGION_CELL_M = 5_000;
+/** 軌跡の中心が同じ2km四方なら、同じ地図に載せる。 */
+const REGION_CELL_M = 2_000;
 
 const PREFECTURES: ReadonlyArray<readonly [string, number, number]> = [
   ["北海道", 43.06, 141.35],
