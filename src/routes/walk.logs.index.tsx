@@ -218,10 +218,10 @@ function MonthBlock({
   );
 }
 
-function DistanceBar({ value, max }: { value: number; max: number }) {
+function DistanceBar({ value, max, className = "min-w-8 flex-1" }: { value: number; max: number; className?: string }) {
   const width = max > 0 && value > 0 ? Math.max(6, Math.round((value / max) * 100)) : 0;
   return (
-    <span className="block h-2 min-w-8 flex-1 overflow-hidden rounded-full bg-surface-2" aria-hidden="true">
+    <span className={`block h-2 overflow-hidden rounded-full bg-surface-2 ${className}`} aria-hidden="true">
       <span className="block h-full rounded-full bg-primary" style={{ width: `${width}%` }} />
     </span>
   );
@@ -253,11 +253,11 @@ function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
         params={{ id: log.id }}
         className="block py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >
-        <span className="flex items-center gap-2">
-          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatDayTime(log.startedAt)}</span>
-          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">{formatDuration(log.elapsedSec)}</span>
-          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatKm(log.distanceM)}</span>
-          <DistanceBar value={log.distanceM} max={maxDistance} />
+        <span className="grid grid-cols-[5.75rem_5.5rem_4.5rem_minmax(0,1fr)] items-center gap-x-2">
+          <span className="whitespace-nowrap text-xs tabular-nums text-fg">{formatDayTime(log.startedAt)}</span>
+          <span className="whitespace-nowrap text-right text-xs tabular-nums text-muted">{formatDuration(log.elapsedSec)}</span>
+          <span className="whitespace-nowrap text-right text-xs tabular-nums text-fg">{formatKm(log.distanceM)}</span>
+          <DistanceBar value={log.distanceM} max={maxDistance} className="w-full" />
         </span>
         <span className="mt-0.5 block truncate text-sm text-fg">{log.name}</span>
       </Link>
