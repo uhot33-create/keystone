@@ -225,25 +225,66 @@ function boxGapMeters(a: Box, b: Box): number {
   return Math.hypot(dx, dy);
 }
 
-async function loadTracks(sql: Sql): Promise<TrackRow[]> {
+type MonthKey = { userId: string; yearMonth: string };
+
+async function dirtyMonths(sql: Sql): Promise<MonthKey[]> {
+  const rows = await sql<{ user_id: string; year_month: string }>`
+    with live as (
+      select user_id,
+        to_char(started_at at time zone 'Asia/Tokyo', 'YYYY-MM') as year_month,
+        count(*)::int as log_count,
+        max(created_at) as latest_at
+      from walk_logs
+      where started_at is not null
+      group by 1, 2
+    )
+    select
+      coalesce(live.user_id, t.user_id) as user_id,
+      coalesce(live.year_month, t.year_month) as year_month
+    from live
+    full outer join walk_month_tracks t
+      on t.user_id = live.user_id and t.year_month = live.year_month
+    where live.user_id is null
+      or t.user_id is null
+      or t.log_count is distinct from live.log_count
+      or t.cell_m is distinct from ${REGION_CELL_M}
+      or live.latest_at > t.computed_at
+  `;
+  return rows.map((row) => ({ userId: String(row.user_id), yearMonth: String(row.year_month) }));
+}
+
+async function loadTracks(sql: Sql, keys: MonthKey[]): Promise<TrackRow[]> {
+  if (keys.length === 0) return [];
+  const userIds = keys.map((key) => key.userId);
+  const yearMonths = keys.map((key) => key.yearMonth);
   return sql<TrackRow>`
-    select user_id,
-      to_char(started_at at time zone 'Asia/Tokyo', 'YYYY-MM') as year_month,
-      distance_m,
-      elapsed_sec,
-      summary_polyline
-    from walk_logs
-    where started_at is not null
-    order by user_id, started_at
+    select l.user_id,
+      to_char(l.started_at at time zone 'Asia/Tokyo', 'YYYY-MM') as year_month,
+      l.distance_m,
+      l.elapsed_sec,
+      l.summary_polyline
+    from walk_logs l
+    join unnest(${userIds}::text[], ${yearMonths}::text[]) as dirty(user_id, year_month)
+      on l.user_id = dirty.user_id
+     and to_char(l.started_at at time zone 'Asia/Tokyo', 'YYYY-MM') = dirty.year_month
+    where l.started_at is not null
+    order by l.user_id, l.started_at
   `;
 }
 
-async function writeBuckets(sql: Sql, buckets: Bucket[]) {
-  await sql`delete from walk_month_tracks`;
+async function writeBuckets(sql: Sql, keys: MonthKey[], buckets: Bucket[]) {
+  if (keys.length === 0) return;
+  const userIds = keys.map((key) => key.userId);
+  const yearMonths = keys.map((key) => key.yearMonth);
+  await sql`
+    delete from walk_month_tracks as t
+    using unnest(${userIds}::text[], ${yearMonths}::text[]) as dirty(user_id, year_month)
+    where t.user_id = dirty.user_id and t.year_month = dirty.year_month
+  `;
   for (const bucket of buckets) {
     await sql`
       insert into walk_month_tracks (
-        user_id, year_month, distance_m, elapsed_sec, log_count, polylines, regions, computed_at
+        user_id, year_month, distance_m, elapsed_sec, log_count, polylines, regions, cell_m, computed_at
       )
       values (
         ${bucket.userId},
@@ -253,6 +294,7 @@ async function writeBuckets(sql: Sql, buckets: Bucket[]) {
         ${bucket.logCount},
         ${JSON.stringify(bucket.polylines)}::jsonb,
         ${JSON.stringify(bucket.regions)}::jsonb,
+        ${REGION_CELL_M},
         now()
       )
     `;
@@ -260,10 +302,12 @@ async function writeBuckets(sql: Sql, buckets: Bucket[]) {
 }
 
 export async function rebuildAllWalkMonths(sql: Sql): Promise<{ months: number; users: number }> {
-  const buckets = bucketMonthTracks(await loadTracks(sql));
-  await writeBuckets(sql, buckets);
+  const dirty = await dirtyMonths(sql);
+  if (dirty.length === 0) return { months: 0, users: 0 };
+  const buckets = bucketMonthTracks(await loadTracks(sql, dirty));
+  await writeBuckets(sql, dirty, buckets);
   return {
-    months: buckets.length,
-    users: new Set(buckets.map((bucket) => bucket.userId)).size,
+    months: dirty.length,
+    users: new Set(dirty.map((key) => key.userId)).size,
   };
 }

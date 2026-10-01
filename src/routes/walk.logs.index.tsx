@@ -15,6 +15,7 @@ export const Route = createFileRoute("/walk/logs/")({
 
 function WalkLogsPage() {
   const [logs, setLogs] = useState<WalkLogList | null>(null);
+  const [openYears, setOpenYears] = useState<number[]>(() => [jstYear()]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -102,33 +103,50 @@ function WalkLogsPage() {
         <p className="text-sm text-muted">まだログがありません。GPX を取り込んでください。</p>
       ) : (
         <div className="flex flex-col gap-6">
-          {logs.years.map((year) => (
-            <section key={year.year}>
-              <h2 className="font-display text-lg font-semibold text-fg">{year.year}年</h2>
-              <div className="mt-2 flex flex-col gap-4">
-                {year.months.map((month) => (
-                  <div key={month.yearMonth}>
-                    <Link
-                      to="/walk/logs/month/$yearMonth"
-                      params={{ yearMonth: month.yearMonth }}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border bg-primary px-4 py-3 text-primary-fg shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-                    >
-                      <span className="font-display text-base font-semibold">{month.month}月の合計</span>
-                      <span className="text-right">
-                        <span className="block tabular-nums text-sm">{formatKm(month.distanceM)}</span>
-                        <span className="block text-xs opacity-80">{formatDuration(month.elapsedSec)}</span>
-                      </span>
-                    </Link>
-                    <ul className="mt-2 flex flex-col gap-2">
-                      {month.logs.map((log) => (
-                        <LogRow key={log.id} log={log} pending={pending} onDelete={onDelete} />
-                      ))}
-                    </ul>
+          {logs.years.map((year) => {
+            const open = openYears.includes(year.year);
+            return (
+              <section key={year.year}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() =>
+                    setOpenYears((current) =>
+                      current.includes(year.year) ? current.filter((item) => item !== year.year) : [...current, year.year],
+                    )
+                  }
+                  className="flex w-full items-baseline justify-between gap-3 py-1 text-left"
+                >
+                  <h2 className="font-display text-lg font-semibold text-fg">{year.year}年</h2>
+                  <span className="text-xs font-medium text-muted">{open ? "閉じる" : "開く"}</span>
+                </button>
+                {open ? (
+                  <div className="mt-2 flex flex-col gap-4">
+                    {year.months.map((month) => (
+                      <div key={month.yearMonth}>
+                        <Link
+                          to="/walk/logs/month/$yearMonth"
+                          params={{ yearMonth: month.yearMonth }}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-border bg-primary px-4 py-3 text-primary-fg shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+                        >
+                          <span className="font-display text-base font-semibold">{month.month}月の合計</span>
+                          <span className="text-right">
+                            <span className="block tabular-nums text-sm">{formatKm(month.distanceM)}</span>
+                            <span className="block text-xs opacity-80">{formatDuration(month.elapsedSec)}</span>
+                          </span>
+                        </Link>
+                        <ul className="mt-2 flex flex-col gap-2">
+                          {month.logs.map((log) => (
+                            <LogRow key={log.id} log={log} pending={pending} onDelete={onDelete} />
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </section>
-          ))}
+                ) : null}
+              </section>
+            );
+          })}
           {logs.undated.length > 0 ? (
             <section>
               <h2 className="font-display text-lg font-semibold text-fg">日時なし</h2>
@@ -143,6 +161,10 @@ function WalkLogsPage() {
       )}
     </div>
   );
+}
+
+function jstYear(): number {
+  return Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric" }).format(new Date()));
 }
 
 function LogRow({
