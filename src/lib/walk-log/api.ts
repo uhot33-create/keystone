@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql, type Sql } from "@/lib/db";
+import { addressAtCenter } from "@/lib/walk-log/address.server";
 
 export type WalkLog = {
   id: string;
@@ -227,6 +228,7 @@ export const saveWalkLog = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const id = crypto.randomUUID();
+    const named = await addressAtCenter(data.summaryPolyline).catch(() => null);
     await sql`
       insert into walk_logs (
         id, user_id, name, started_at, elapsed_sec, distance_m, summary_polyline, source_name
@@ -234,7 +236,7 @@ export const saveWalkLog = createServerFn({ method: "POST" })
       values (
         ${id},
         ${context.userId},
-        ${data.name},
+        ${named || data.name},
         ${data.startedAt},
         ${data.elapsedSec},
         ${data.distanceM},
