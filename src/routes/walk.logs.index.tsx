@@ -251,13 +251,15 @@ function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
       <Link
         to="/walk/logs/$id"
         params={{ id: log.id }}
-        className="flex items-center gap-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+        className="block py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >
-        <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatDayTime(log.startedAt)}</span>
-        <span className="min-w-0 flex-1 truncate text-sm text-fg">{log.name}</span>
-        <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">{formatDuration(log.elapsedSec)}</span>
-        <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatKm(log.distanceM)}</span>
-        <DistanceBar value={log.distanceM} max={maxDistance} />
+        <span className="flex items-center gap-2">
+          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatDayTime(log.startedAt)}</span>
+          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">{formatDuration(log.elapsedSec)}</span>
+          <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-fg">{formatKm(log.distanceM)}</span>
+          <DistanceBar value={log.distanceM} max={maxDistance} />
+        </span>
+        <span className="mt-0.5 block truncate text-sm text-fg">{log.name}</span>
       </Link>
     </li>
   );
