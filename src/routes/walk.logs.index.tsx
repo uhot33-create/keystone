@@ -191,8 +191,8 @@ function MonthBlock({
 }) {
   const dayMax = Math.max(...month.logs.map((log) => log.distanceM), 0);
   return (
-    <div className="rounded-xl border border-border bg-surface px-3 py-2 shadow-card">
-      <div className="flex items-center gap-2">
+    <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-card">
+      <div className="flex items-center gap-2 bg-primary/15 px-3 py-2">
         <button type="button" aria-expanded={open} onClick={onToggle} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <span className="shrink-0 font-display text-sm font-semibold text-fg">{month.month}月</span>
           <span className="shrink-0 whitespace-nowrap text-xs tabular-nums text-muted">{formatDuration(month.elapsedSec)}</span>
@@ -208,7 +208,7 @@ function MonthBlock({
         </Link>
       </div>
       {open ? (
-        <ul className="mt-2 border-t border-border pt-1">
+        <ul className="mt-2 border-t border-border px-3 pt-1">
           {month.logs.map((log) => (
             <LogRow key={log.id} log={log} maxDistance={dayMax} />
           ))}
