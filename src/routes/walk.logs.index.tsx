@@ -73,7 +73,7 @@ function WalkLogsPage() {
           {pending ? "取り込み中…" : "GPX を取り込む"}
           <input
             type="file"
-            accept="*/*,.gpx,.xml,application/gpx+xml,text/xml,application/octet-stream"
+            accept=".gpx,.xml,application/gpx+xml,application/xml,text/xml"
             className="sr-only"
             disabled={pending}
             onChange={(event) => {
