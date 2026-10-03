@@ -130,7 +130,7 @@ async function findByDateClinic(
 async function upsertPlanned(
   sql: Sql,
   userId: string,
-  data: { visitOn: string; visitTime: string | null; clinicName: string | null; kind: string; title: string },
+  data: { visitOn: string; visitTime: string | null; clinicName: string | null; kind: string; title: string; bookingStatus: string | null },
 ) {
   const today = todayJst();
   if (data.visitOn < today) return;
@@ -138,14 +138,14 @@ async function upsertPlanned(
   if (existing) {
     await sql`
       update vet_visits
-      set visit_time = ${data.visitTime}, updated_at = now()
+      set visit_time = ${data.visitTime}, next_visit_status = ${data.bookingStatus}, updated_at = now()
       where id = ${existing} and user_id = ${userId} and status = 'planned'
     `;
     return;
   }
   await sql`
     insert into vet_visits (
-      id, user_id, visit_on, visit_time, clinic_name, kind, title, status
+      id, user_id, visit_on, visit_time, clinic_name, kind, title, status, next_visit_status
     )
     values (
       ${crypto.randomUUID()},
@@ -155,7 +155,8 @@ async function upsertPlanned(
       ${data.clinicName},
       ${data.kind},
       ${data.title},
-      'planned'
+      'planned',
+      ${data.bookingStatus}
     )
   `;
 }
@@ -210,13 +211,14 @@ export const saveVetVisit = createServerFn({ method: "POST" })
     const treatment = status === "planned" ? null : data.treatment?.trim() || null;
     const note = data.note?.trim() || null;
     const visitTime = status === "planned" ? data.visitTime : null;
-    let nextVisitStatus = status === "planned" ? null : data.nextVisitStatus;
-    let nextVisitOn = status === "planned" || !nextVisitStatus ? null : data.nextVisitOn;
+    const planBooking = status === "planned" ? data.nextVisitStatus : null;
+    let nextVisitStatus = status === "planned" ? planBooking : data.nextVisitStatus;
+    let nextVisitOn = status === "planned" || !data.nextVisitStatus ? null : data.nextVisitOn;
     let nextVisitTime = nextVisitOn ? data.nextVisitTime : null;
-    if (nextVisitStatus === "booked" && !nextVisitOn) {
+    if (status === "done" && nextVisitStatus === "booked" && !nextVisitOn) {
       throw new Error("予約済のときは日付を入力してください");
     }
-    if (nextVisitStatus === "need" && !nextVisitOn) nextVisitTime = null;
+    if (status === "done" && nextVisitStatus === "need" && !nextVisitOn) nextVisitTime = null;
     const costYen = status === "planned" ? null : data.costYen;
     let id = data.id ?? null;
     if (!id && status === "done") {
@@ -278,6 +280,7 @@ export const saveVetVisit = createServerFn({ method: "POST" })
           clinicName: clinic,
           kind: data.kind,
           title: data.title,
+          bookingStatus: nextVisitStatus,
         });
       }
     }

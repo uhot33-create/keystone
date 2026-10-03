@@ -28,7 +28,10 @@ export function VisitForm({
   const [title, setTitle] = useState(visit?.title ?? "");
   const [diagnosis, setDiagnosis] = useState(visit?.diagnosis ?? "");
   const [treatment, setTreatment] = useState(visit?.treatment ?? "");
-  const [booking, setBooking] = useState<NextVisitStatus | "">(visit?.nextVisitStatus ?? "");
+  const [booking, setBooking] = useState<NextVisitStatus | "">(visit?.status === "done" ? (visit.nextVisitStatus ?? "") : "");
+  const [planBooking, setPlanBooking] = useState<NextVisitStatus | "">(
+    visit?.status === "planned" ? (visit.nextVisitStatus ?? "") : "",
+  );
   const [nextVisitOn, setNextVisitOn] = useState(visit?.nextVisitOn ?? "");
   const [nextVisitTime, setNextVisitTime] = useState(visit?.nextVisitTime ?? "");
   const [costYen, setCostYen] = useState(visit?.costYen != null ? String(visit.costYen) : "");
@@ -62,7 +65,7 @@ export function VisitForm({
           treatment: treatment.trim() || null,
           nextVisitOn: nextStatus === "done" && booking && nextVisitOn ? nextVisitOn : null,
           nextVisitTime: nextStatus === "done" && booking && nextVisitOn && nextVisitTime ? nextVisitTime : null,
-          nextVisitStatus: nextStatus === "done" && booking ? booking : null,
+          nextVisitStatus: nextStatus === "planned" ? planBooking || null : nextStatus === "done" && booking ? booking : null,
           costYen: nextStatus === "done" ? cost : null,
           note: note.trim() || null,
           status: nextStatus,
@@ -162,6 +165,23 @@ export function VisitForm({
           onChange={(e) => setClinicName(e.target.value)}
         />
       </div>
+      {planned ? (
+        <div className="space-y-1.5">
+          <Label>予約ステータス</Label>
+          <div className="grid grid-cols-2 rounded-md bg-surface-2 p-1">
+            {NEXT_VISIT_STATUSES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                className={`h-9 rounded-sm text-sm font-medium ${planBooking === item ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+                onClick={() => setPlanBooking(item)}
+              >
+                {NEXT_VISIT_STATUS_LABEL[item]}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {!planned ? (
         <>
           <div className="space-y-1.5">

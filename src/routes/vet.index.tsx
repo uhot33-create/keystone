@@ -132,6 +132,11 @@ function VetIndex() {
                   <p className="text-sm text-fg">
                     {formatJaDate(item.visitOn)}
                     {item.visitTime ? ` ${item.visitTime}` : ""}
+                    {item.nextVisitStatus ? (
+                      <span className="ml-2 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">
+                        {NEXT_VISIT_STATUS_LABEL[item.nextVisitStatus]}
+                      </span>
+                    ) : null}
                     {item.visitOn < today ? <span className="ml-2 text-xs text-danger">予定日を過ぎています</span> : null}
                   </p>
                   <p className="text-sm text-muted">
