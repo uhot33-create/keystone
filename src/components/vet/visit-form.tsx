@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { deleteVetVisit, saveVetVisit } from "@/lib/vet/api";
-import { VISIT_KINDS, type VetVisit, type VisitKind, type VisitStatus } from "@/lib/vet/types";
+import { NEXT_VISIT_STATUSES, NEXT_VISIT_STATUS_LABEL, VISIT_KINDS, type NextVisitStatus, type VetVisit, type VisitKind, type VisitStatus } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -22,12 +22,15 @@ export function VisitForm({
   const today = todayJst();
   const [status, setStatus] = useState<VisitStatus>(visit?.status ?? initialStatus);
   const [visitOn, setVisitOn] = useState(visit?.visitOn ?? today);
+  const [visitTime, setVisitTime] = useState(visit?.visitTime ?? "");
   const [clinicName, setClinicName] = useState(visit?.clinicName ?? "");
   const [kind, setKind] = useState<VisitKind>(visit?.kind ?? "定期健診");
   const [title, setTitle] = useState(visit?.title ?? "");
   const [diagnosis, setDiagnosis] = useState(visit?.diagnosis ?? "");
   const [treatment, setTreatment] = useState(visit?.treatment ?? "");
+  const [booking, setBooking] = useState<NextVisitStatus | "">(visit?.nextVisitStatus ?? "");
   const [nextVisitOn, setNextVisitOn] = useState(visit?.nextVisitOn ?? "");
+  const [nextVisitTime, setNextVisitTime] = useState(visit?.nextVisitTime ?? "");
   const [costYen, setCostYen] = useState(visit?.costYen != null ? String(visit.costYen) : "");
   const [note, setNote] = useState(visit?.note ?? "");
   const [pending, setPending] = useState(false);
@@ -40,6 +43,10 @@ export function VisitForm({
       setError("費用は0以上の整数で入力してください");
       return;
     }
+    if (nextStatus === "done" && booking === "booked" && !nextVisitOn) {
+      setError("予約済のときは日付を入力してください");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -47,12 +54,15 @@ export function VisitForm({
         data: {
           id: visit?.id,
           visitOn,
+          visitTime: nextStatus === "planned" && visitTime ? visitTime : null,
           clinicName: clinicName.trim() || null,
           kind,
           title: title.trim(),
           diagnosis: diagnosis.trim() || null,
           treatment: treatment.trim() || null,
-          nextVisitOn: nextStatus === "done" && nextVisitOn ? nextVisitOn : null,
+          nextVisitOn: nextStatus === "done" && booking && nextVisitOn ? nextVisitOn : null,
+          nextVisitTime: nextStatus === "done" && booking && nextVisitOn && nextVisitTime ? nextVisitTime : null,
+          nextVisitStatus: nextStatus === "done" && booking ? booking : null,
           costYen: nextStatus === "done" ? cost : null,
           note: note.trim() || null,
           status: nextStatus,
@@ -107,7 +117,18 @@ export function VisitForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="visit-on">{planned ? "予定日" : "通院日"}</Label>
-          <Input id="visit-on" type="date" value={visitOn} required onChange={(e) => setVisitOn(e.target.value)} />
+          <div className="flex gap-2">
+            <Input id="visit-on" type="date" value={visitOn} required onChange={(e) => setVisitOn(e.target.value)} />
+            {planned ? (
+              <Input
+                id="visit-time"
+                type="time"
+                value={visitTime}
+                aria-label="予定時刻"
+                onChange={(e) => setVisitTime(e.target.value)}
+              />
+            ) : null}
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="visit-kind">種類</Label>
@@ -165,20 +186,58 @@ export function VisitForm({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="visit-next">次回予約</Label>
-              <div className="flex gap-2">
-                <Input id="visit-next" type="date" min={today} value={nextVisitOn} onChange={(e) => setNextVisitOn(e.target.value)} />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="shrink-0"
-                  disabled={!nextVisitOn}
-                  onClick={() => setNextVisitOn("")}
-                >
-                  クリア
-                </Button>
+              <Label>次回予約</Label>
+              <div className="grid grid-cols-2 rounded-md bg-surface-2 p-1">
+                {NEXT_VISIT_STATUSES.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={`h-9 rounded-sm text-sm font-medium ${booking === item ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+                    onClick={() => setBooking(item)}
+                  >
+                    {NEXT_VISIT_STATUS_LABEL[item]}
+                  </button>
+                ))}
               </div>
-              <p className="text-xs text-subtle">保存すると、次の予定カードができます。</p>
+              {booking ? (
+                <div className="flex gap-2">
+                  <Input
+                    id="visit-next"
+                    type="date"
+                    min={today}
+                    aria-label="次回の日付"
+                    required={booking === "booked"}
+                    value={nextVisitOn}
+                    onChange={(e) => setNextVisitOn(e.target.value)}
+                  />
+                  <Input
+                    id="visit-next-time"
+                    type="time"
+                    aria-label="次回の時刻"
+                    value={nextVisitTime}
+                    onChange={(e) => setNextVisitTime(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      setBooking("");
+                      setNextVisitOn("");
+                      setNextVisitTime("");
+                    }}
+                  >
+                    クリア
+                  </Button>
+                </div>
+              ) : null}
+              <p className="text-xs text-subtle">
+                {booking === "booked"
+                  ? "日付を入れると、次の予定カードができます。時刻は任意です。"
+                  : booking === "need"
+                    ? "要予約は日付がなくても保存できます。時刻は日付があるときだけ保存します。"
+                    : "要予約か予約済を選ぶと、日付と時刻を入れられます。"}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="visit-cost">費用（円）</Label>

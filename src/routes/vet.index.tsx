@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJaDate } from "@/lib/calorie/formula";
+import { NEXT_VISIT_STATUS_LABEL } from "@/lib/vet/types";
 import { listVetVisits } from "@/lib/vet/api";
 import type { VetVisit } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
@@ -10,6 +11,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DoctorMemoCard } from "@/components/vet/doctor-memo";
 
 const PAGE_SIZE = 10;
+
+function formatNextVisit(visit: VetVisit): string {
+  if (!visit.nextVisitStatus && !visit.nextVisitOn) return "";
+  const when = visit.nextVisitOn
+    ? `${formatJaDate(visit.nextVisitOn)}${visit.nextVisitTime ? ` ${visit.nextVisitTime}` : ""}`
+    : "";
+  const label = visit.nextVisitStatus ? NEXT_VISIT_STATUS_LABEL[visit.nextVisitStatus] : "";
+  return `　次回 ${[when, label].filter(Boolean).join(" ")}`;
+}
 
 export const Route = createFileRoute("/vet/")({ component: VetIndex });
 
@@ -121,6 +131,7 @@ function VetIndex() {
                 >
                   <p className="text-sm text-fg">
                     {formatJaDate(item.visitOn)}
+                    {item.visitTime ? ` ${item.visitTime}` : ""}
                     {item.visitOn < today ? <span className="ml-2 text-xs text-danger">予定日を過ぎています</span> : null}
                   </p>
                   <p className="text-sm text-muted">
@@ -164,7 +175,7 @@ function VetIndex() {
                       <p className="mt-1 truncate font-display text-base font-semibold text-fg">{visit.title}</p>
                       <p className="mt-0.5 text-xs text-muted">
                         {visit.clinicName || "病院未記入"}
-                        {visit.nextVisitOn ? `　次回 ${formatJaDate(visit.nextVisitOn)}` : ""}
+                        {formatNextVisit(visit)}
                       </p>
                     </Link>
                   </li>
