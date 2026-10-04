@@ -1,7 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJaDate } from "@/lib/calorie/formula";
-import { NEXT_VISIT_STATUS_LABEL } from "@/lib/vet/types";
 import { listVetVisits } from "@/lib/vet/api";
 import type { VetVisit } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
@@ -12,21 +11,13 @@ import { DoctorMemoCard } from "@/components/vet/doctor-memo";
 
 const PAGE_SIZE = 10;
 
-function formatNextVisit(visit: VetVisit): string {
-  if (!visit.nextVisitStatus && !visit.nextVisitOn) return "";
-  const when = visit.nextVisitOn
-    ? `${formatJaDate(visit.nextVisitOn)}${visit.nextVisitTime ? ` ${visit.nextVisitTime}` : ""}`
-    : "";
-  const label = visit.nextVisitStatus ? NEXT_VISIT_STATUS_LABEL[visit.nextVisitStatus] : "";
-  return `　次回 ${[when, label].filter(Boolean).join(" ")}`;
-}
-
 export const Route = createFileRoute("/vet/")({ component: VetIndex });
 
 function VetIndex() {
   const [visits, setVisits] = useState<VetVisit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE_SIZE);
+  const [openYears, setOpenYears] = useState<string[]>(() => [todayJst().slice(0, 4)]);
   const [showTop, setShowTop] = useState(false);
   const sentinel = useRef<HTMLDivElement>(null);
   const today = todayJst();
@@ -161,34 +152,35 @@ function VetIndex() {
           <p className="mt-2 text-sm text-muted">予定を入れておくか、ワクチンや健診の通院を残してください。</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
-          {historyByYear.map((group) => (
-            <section key={group.year}>
-              <h2 className="font-display text-lg font-semibold text-fg">{group.year}年</h2>
-              <ul className="mt-2 flex flex-col gap-2">
-                {group.items.map((visit) => (
-                  <li key={visit.id}>
-                    <Link
-                      to="/vet/$id/edit"
-                      params={{ id: visit.id }}
-                      className="block rounded-xl border border-border bg-surface px-4 py-3 shadow-card outline-none transition-colors hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-fg">{formatJaDate(visit.visitOn)}</p>
-                        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">{visit.kind}</span>
-                      </div>
-                      <p className="mt-1 truncate font-display text-base font-semibold text-fg">{visit.title}</p>
-                      <p className="mt-0.5 text-xs text-muted">
-                        {visit.clinicName || "病院未記入"}
-                        {formatNextVisit(visit)}
-                      </p>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-          {hasMore ? <div ref={sentinel} className="h-8" aria-hidden /> : null}
+        <div className="flex flex-col gap-3">
+          {historyByYear.map((group) => {
+            const open = openYears.includes(group.year);
+            return (
+              <section key={group.year}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() =>
+                    setOpenYears((current) =>
+                      current.includes(group.year) ? current.filter((year) => year !== group.year) : [...current, group.year],
+                    )
+                  }
+                  className="flex w-full items-baseline justify-between gap-3 py-0.5 text-left"
+                >
+                  <h2 className="font-display text-base font-semibold text-fg">{group.year}年</h2>
+                  <span className="text-xs font-medium text-muted">{open ? "閉じる" : "開く"}</span>
+                </button>
+                {open ? (
+                  <ul className="mt-1 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+                    {group.items.map((visit) => (
+                      <HistoryRow key={visit.id} visit={visit} />
+                    ))}
+                  </ul>
+                ) : null}
+              </section>
+            );
+          })}
+          {hasMore ? <div ref={sentinel} className="h-4" aria-hidden /> : null}
         </div>
       )}
       {showTop ? (
@@ -201,5 +193,31 @@ function VetIndex() {
         </button>
       ) : null}
     </div>
+  );
+}
+
+function formatMonthDay(iso: string): string {
+  const parts = iso.split("-");
+  return `${Number(parts[1])}月${Number(parts[2])}日`;
+}
+
+function HistoryRow({ visit }: { visit: VetVisit }) {
+  const detail = [visit.treatment, visit.note].map((value) => value?.trim()).filter(Boolean).join("　");
+  return (
+    <li>
+      <Link
+        to="/vet/$id/edit"
+        params={{ id: visit.id }}
+        className="block px-3 py-2 outline-none hover:bg-surface-2 focus-visible:ring-2 focus-visible:ring-ring/35"
+      >
+        <p className="flex items-baseline gap-2 text-sm text-fg">
+          <span className="shrink-0 tabular-nums">{formatMonthDay(visit.visitOn)}</span>
+          {visit.clinicName ? <span className="min-w-0 flex-1 truncate text-muted">{visit.clinicName}</span> : <span className="flex-1" />}
+          <span className="shrink-0 text-xs text-muted">{visit.kind}</span>
+        </p>
+        <p className="truncate text-sm font-medium text-fg">{visit.title}</p>
+        {detail ? <p className="truncate text-xs text-muted">{detail}</p> : null}
+      </Link>
+    </li>
   );
 }
