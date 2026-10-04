@@ -2,7 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJaDate } from "@/lib/calorie/formula";
 import { listVetVisits } from "@/lib/vet/api";
-import type { VetVisit } from "@/lib/vet/types";
+import { NEXT_VISIT_STATUS_LABEL, type VetVisit } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
