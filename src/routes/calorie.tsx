@@ -68,14 +68,12 @@ function CalorieApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="stagger-in flex flex-1 flex-col gap-4 pb-24">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-fg">わんカロリー</h1>
-              <p className="truncate text-xs text-muted">{state?.dog.name || "うちの子"}</p>
-            </div>
-              <div className="flex shrink-0 gap-2">
+      <div className="stagger-in flex flex-1 flex-col gap-6 pb-24">
+        <div className="flex flex-col gap-3">
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="font-display text-3xl font-semibold text-fg">わんカロリー</h1>
+              <div className="flex shrink-0 gap-2 pt-1">
                 <Link
                   to="/walk"
                   search={DEFAULT_WALK_SEARCH}
@@ -98,6 +96,8 @@ function CalorieApp() {
                   </span>
                 </Link>
               </div>
+            </div>
+            <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
           </div>
           {state ? (
             <DogSwitcher state={state} onChange={onChange} onBusy={setBusy} onError={setError} />

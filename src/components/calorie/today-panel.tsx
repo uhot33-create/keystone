@@ -71,7 +71,6 @@ function DateBar({
   onToday,
   onChart,
   onBack,
-  title,
 }: {
   date: string;
   chartOpen: boolean;
@@ -80,7 +79,6 @@ function DateBar({
   onToday: () => void;
   onChart: () => void;
   onBack?: () => void;
-  title?: string;
 }) {
   const startX = useRef(0);
   return (
@@ -101,9 +99,8 @@ function DateBar({
             戻る
           </button>
         ) : null}
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
-          {title ? <span className="shrink-0 text-xs text-muted">{title}</span> : null}
-          <p className="truncate font-display text-sm font-semibold text-fg">{formatJaDayWeek(date)}</p>
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
+          <p className="truncate font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
           <Button
             type="button"
             variant="ghost"
@@ -424,7 +421,6 @@ export function TodayPanel({
           }}
           onChart={() => void openChart()}
           onBack={() => setView("home")}
-          title={view === "weight" ? "体重" : "カロリー"}
         />
       ) : null}
 
@@ -549,7 +545,8 @@ export function TodayPanel({
 
       {view === "weight" ? (
       <form className="rounded-lg border border-border bg-surface px-3 py-2 shadow-card" onSubmit={onSaveWeight}>
-        <div className="flex items-center gap-2">
+        <p className="text-sm font-medium text-fg">体重（20時計測）</p>
+        <div className="mt-2 flex items-center gap-2">
           <Input
             type="number"
             inputMode="decimal"
@@ -568,9 +565,9 @@ export function TodayPanel({
           </Button>
         </div>
         {state.todayWeightKg != null ? (
-          <p className="mt-1.5 text-xs text-subtle">この日 {state.todayWeightKg.toFixed(2)} kg</p>
+          <p className="mt-2 text-xs text-subtle">この日 {state.todayWeightKg.toFixed(2)} kg（20時計測）</p>
         ) : (
-          <p className="mt-1.5 text-xs text-subtle">まだ記録がありません</p>
+          <p className="mt-2 text-xs text-subtle">まだ記録がありません</p>
         )}
       </form>
       ) : null}
@@ -578,7 +575,9 @@ export function TodayPanel({
       {view === "add" ? (
       <div className="flex flex-col gap-3">
       <form className="rounded-lg border border-border bg-surface p-3 shadow-card" onSubmit={onAdd}>
-        <div className="flex items-center justify-between gap-2">
+        <p className="font-display text-base font-semibold text-fg">カロリーを足す</p>
+
+        <div className="mt-2 flex items-center justify-between gap-2">
           <p className="text-xs font-medium text-subtle">定番</p>
           <button
             type="button"
