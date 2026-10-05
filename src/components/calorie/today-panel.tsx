@@ -430,7 +430,7 @@ export function TodayPanel({
           <div className="flex items-end justify-center gap-2">
             <div className="relative size-[9.2rem] shrink-0">
               <div className="absolute inset-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
-                <img src={saburo.src} alt={saburo.label} className="h-full w-full origin-center scale-[1.55] object-cover" />
+                <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
               </div>
               {(
                 [
@@ -468,31 +468,13 @@ export function TodayPanel({
               })}
             </div>
             <div className="flex shrink-0 flex-col items-center">
-            <div className="flex items-end justify-center gap-3 pr-6">
-            <div className="flex h-full flex-col items-center">
+            <div className="grid grid-cols-2 grid-rows-[auto_1rem_7rem_auto] justify-items-center gap-x-3 gap-y-1 pr-6">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
-              <p className="mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
+              <p className="text-[11px] leading-none text-muted">体重</p>
+              <p className="flex items-end text-xs font-semibold tabular-nums leading-none text-fg">
                 {target > 0 ? formatKcal(target) : "—"}
               </p>
-              <button
-                type="button"
-                className={`relative mt-1 h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "kcal" ? "ring-2 ring-ring/40" : ""}`}
-                aria-pressed={barTip === "kcal"}
-                aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
-                onClick={() => setBarTip((current) => (current === "kcal" ? null : "kcal"))}
-              >
-                <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
-                  <span className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
-                  <span className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
-                </span>
-              </button>
-              <p className={`mt-1 text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
-                {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
-              </p>
-            </div>
-            <div className="flex h-full flex-col items-center">
-              <p className="text-[11px] leading-none text-muted">体重</p>
-              <p className={`mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
+              <p className={`flex items-end text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
                 {latestWeight != null ? (
                   <>
                     {latestWeight.toFixed(2)}
@@ -504,7 +486,19 @@ export function TodayPanel({
               </p>
               <button
                 type="button"
-                className={`relative mt-1 h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "weight" ? "ring-2 ring-ring/40" : ""}`}
+                className={`relative h-full w-8 self-stretch rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "kcal" ? "ring-2 ring-ring/40" : ""}`}
+                aria-pressed={barTip === "kcal"}
+                aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
+                onClick={() => setBarTip((current) => (current === "kcal" ? null : "kcal"))}
+              >
+                <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
+                  <span className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
+                  <span className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`relative h-full w-8 self-stretch rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "weight" ? "ring-2 ring-ring/40" : ""}`}
                 aria-pressed={barTip === "weight"}
                 aria-label={
                   latestWeight != null
@@ -531,7 +525,12 @@ export function TodayPanel({
                   </>
                 ) : null}
               </button>
-            </div>
+              <p className={`text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
+                {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
+              </p>
+              <p className="text-[11px] leading-none text-transparent" aria-hidden>
+                —
+              </p>
             </div>
             <p className="mt-1 w-full max-w-36 min-h-4 text-center text-[11px] leading-snug text-muted">
               {barTip === "kcal"
