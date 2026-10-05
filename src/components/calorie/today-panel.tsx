@@ -1,4 +1,5 @@
-import { ChartLine, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ChartLine, Footprints, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -426,31 +427,46 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <div className="flex items-center gap-3">
-            <div className="flex shrink-0 flex-col gap-2">
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative size-64">
+              <div className="absolute left-1/2 top-1/2 size-36 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
+                <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
+              </div>
               {(
                 [
-                  { id: "add", label: "餌箱", Icon: Utensils },
-                  { id: "weight", label: "体重計", Icon: Scale },
+                  { key: "food", label: "餌", angle: 315, Icon: Utensils, view: "add" as const },
+                  { key: "weight", label: "体重", angle: 45, Icon: Scale, view: "weight" as const },
+                  { key: "walk", label: "お散歩ログ", angle: 225, Icon: Footprints, to: "/walk/logs" as const },
+                  { key: "vet", label: "通院履歴", angle: 135, Icon: Stethoscope, to: "/vet" as const },
                 ] as const
-              ).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-label={item.label}
-                  onClick={() => setView(item.id)}
-                  className="grid size-12 place-items-center rounded-xl border border-border bg-surface shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-                >
-                  <span className="grid size-9 place-items-center rounded-full bg-surface-2 text-fg">
-                    <item.Icon className="size-4" strokeWidth={1.75} />
-                  </span>
-                </button>
-              ))}
+              ).map((item) => {
+                const upper = item.angle === 315 || item.angle === 45;
+                const face = (
+                  <>
+                    {upper ? <span className="text-[10px] leading-none text-muted">{item.label}</span> : null}
+                    <span className="grid size-10 place-items-center rounded-full border border-border bg-surface text-fg shadow-card">
+                      <item.Icon className="size-4" strokeWidth={1.75} />
+                    </span>
+                    {upper ? null : <span className="text-[10px] leading-none text-muted">{item.label}</span>}
+                  </>
+                );
+                const className = "absolute flex flex-col items-center gap-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
+                const style = {
+                  left: "50%",
+                  top: "50%",
+                  transform: `translate(-50%, -50%) rotate(${item.angle}deg) translateY(-6.55rem) rotate(-${item.angle}deg)`,
+                };
+                return "to" in item ? (
+                  <Link key={item.key} to={item.to} aria-label={item.label} className={className} style={style}>
+                    {face}
+                  </Link>
+                ) : (
+                  <button key={item.key} type="button" aria-label={item.label} className={className} style={style} onClick={() => setView(item.view)}>
+                    {face}
+                  </button>
+                );
+              })}
             </div>
-            <div className="size-36 shrink-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card sm:size-44">
-              <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col items-center">
             <div className="flex items-start justify-center gap-4">
             <div className="flex flex-col items-center">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
@@ -525,7 +541,6 @@ export function TodayPanel({
                     : `最新 ${latestWeight.toFixed(2)} kg${idealWeight > 0 ? `　差 ${(latestWeight - idealWeight).toFixed(2)} kg` : ""}`
                   : "棒をタップすると内訳"}
             </p>
-            </div>
           </div>
 
           <DateBar

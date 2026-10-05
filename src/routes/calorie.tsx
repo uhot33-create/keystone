@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Bone, CalendarDays, Footprints, PawPrint, Stethoscope, Utensils } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { DogSwitcher, rememberDogId, storedDogId } from "@/components/calorie/dog-switcher";
 import { FoodsPanel } from "@/components/calorie/foods-panel";
@@ -12,7 +12,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCalorieState } from "@/lib/calorie/api";
 import { todayJst } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
-import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 export const Route = createFileRoute("/calorie")({
   loader: async ({ context }) => {
@@ -73,29 +72,6 @@ function CalorieApp() {
           <div>
             <div className="flex items-start justify-between gap-3">
               <h1 className="font-display text-3xl font-semibold text-fg">わんカロリー</h1>
-              <div className="flex shrink-0 gap-2 pt-1">
-                <Link
-                  to="/walk"
-                  search={DEFAULT_WALK_SEARCH}
-                  aria-label="お散歩メモ"
-                  title="お散歩メモ"
-                  className="grid size-12 place-items-center rounded-xl border border-border bg-surface shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-                >
-                  <span className="grid size-9 place-items-center rounded-full bg-surface-2 text-fg">
-                    <Footprints className="size-4" strokeWidth={1.75} />
-                  </span>
-                </Link>
-                <Link
-                  to="/vet"
-                  aria-label="通院履歴"
-                  title="通院履歴"
-                  className="grid size-12 place-items-center rounded-xl border border-border bg-surface shadow-card outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
-                >
-                  <span className="grid size-9 place-items-center rounded-full bg-surface-2 text-fg">
-                    <Stethoscope className="size-4" strokeWidth={1.75} />
-                  </span>
-                </Link>
-              </div>
             </div>
             <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
           </div>
