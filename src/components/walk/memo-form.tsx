@@ -154,6 +154,7 @@ export function MemoForm({
   function onPasteImage(event: ClipboardEvent) {
     const target = event.target;
     if (target instanceof HTMLElement) {
+      if (target.closest("[data-image-paste]")) return;
       const tag = target.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
     }
@@ -170,6 +171,7 @@ export function MemoForm({
     const pasted = imageFileFromClipboard(event.clipboardData);
     if (!pasted) return;
     event.preventDefault();
+    event.stopPropagation();
     setError(null);
     void applyFile(pasted, slotIndex).catch((err: unknown) => {
       setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
