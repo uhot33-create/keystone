@@ -428,7 +428,7 @@ export function TodayPanel({
       {view === "home" ? (
         <>
           <div className="flex flex-col items-center gap-3">
-            <div className="relative size-64">
+            <div className="relative size-56">
               <div className="absolute left-1/2 top-1/2 size-36 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
                 <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
               </div>
@@ -454,7 +454,7 @@ export function TodayPanel({
                 const style = {
                   left: "50%",
                   top: "50%",
-                  transform: `translate(-50%, -50%) rotate(${item.angle}deg) translateY(-6.55rem) rotate(-${item.angle}deg)`,
+                  transform: `translate(-50%, -50%) rotate(${item.angle}deg) translateY(-4.5rem) rotate(-${item.angle}deg)`,
                 };
                 return "to" in item ? (
                   <Link key={item.key} to={item.to} aria-label={item.label} className={className} style={style}>
