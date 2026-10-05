@@ -21,14 +21,14 @@ function Home() {
   const { sessionUser } = useRouteContext({ from: "__root__" });
   const { user, isPending } = useCurrentUserState();
 
-  if (user) {
+  if (user || sessionUser) {
     return (
       <AppShell>
         <MenuScreen />
       </AppShell>
     );
   }
-  if (isPending && sessionUser) return <AuthSplash />;
+  if (isPending) return <AuthSplash />;
   return <LoginScreen />;
 }
 

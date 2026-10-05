@@ -19,12 +19,16 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 
 export const Route = createRootRoute({
   beforeLoad: async () => {
-    const sessionUser = await fetchSessionUser();
-    if (!sessionUser) return { sessionUser, desk: null as DeskVisibility | null };
     try {
-      return { sessionUser, desk: await getUserSettings() };
+      const sessionUser = await fetchSessionUser();
+      if (!sessionUser) return { sessionUser, desk: null as DeskVisibility | null };
+      try {
+        return { sessionUser, desk: await getUserSettings() };
+      } catch {
+        return { sessionUser, desk: null as DeskVisibility | null };
+      }
     } catch {
-      return { sessionUser, desk: null as DeskVisibility | null };
+      return { sessionUser: null, desk: null as DeskVisibility | null };
     }
   },
   head: () => ({

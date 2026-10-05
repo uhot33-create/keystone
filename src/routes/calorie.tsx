@@ -39,10 +39,23 @@ function CalorieApp() {
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loaded) return;
+    let cancelled = false;
+    if (!loaded) {
+      getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
+        .then((next) => {
+          if (cancelled) return;
+          rememberDogId(next.dog.id);
+          setState(next);
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     const wanted = storedDogId();
     if (wanted && wanted !== loaded.dog.id && loaded.dogs.some((dog) => dog.id === wanted)) {
-      let cancelled = false;
       getCalorieState({ data: { date: todayJst(), dogId: wanted } })
         .then((next) => {
           if (cancelled) return;
@@ -58,6 +71,9 @@ function CalorieApp() {
     }
     rememberDogId(loaded.dog.id);
     setState(loaded);
+    return () => {
+      cancelled = true;
+    };
   }, [loaded]);
 
   function onChange(next: CalorieState) {
@@ -88,7 +104,7 @@ function CalorieApp() {
 
         {!state ? (
           <div className="space-y-3">
-            <BusyOverlay show label="読み込み中…" />
+            {error ? null : <BusyOverlay show label="読み込み中…" />}
             <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-48 w-full rounded-xl" />
           </div>

@@ -102,6 +102,8 @@ function createNeonSql(): Promise<Sql> {
       // One client per instance. The default of 10 fills Supabase's session cap.
       max: supabase ? 1 : undefined,
       idleTimeoutMillis: supabase ? 5000 : undefined,
+      connectionTimeoutMillis: 8000,
+      query_timeout: 12000,
       // Supabase's pooler presents a chain Node does not verify as public.
       ssl: supabase ? { rejectUnauthorized: false } : undefined,
     });
