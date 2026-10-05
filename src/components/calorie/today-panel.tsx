@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { ChartLine, ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -364,6 +364,7 @@ export function TodayPanel({
           <ChevronRight />
         </Button>
       </div>
+      <div className="flex items-center gap-1">
       <Button
         type="button"
         variant="ghost"
@@ -376,6 +377,12 @@ export function TodayPanel({
       >
         今日
       </Button>
+      {chartOpen ? null : (
+        <Button type="button" variant="ghost" size="icon" aria-label="グラフを表示" onClick={() => void openChart()}>
+          <ChartLine className="size-5" strokeWidth={1.75} />
+        </Button>
+      )}
+      </div>
       {locked ? (
         <p className="text-xs text-muted">2週間以上前の記録は閲覧のみです</p>
       ) : null}
@@ -508,6 +515,7 @@ export function TodayPanel({
                 <ChevronRight />
               </Button>
             </div>
+            <div className="flex items-center gap-1">
             <Button
               type="button"
               variant="ghost"
@@ -520,6 +528,12 @@ export function TodayPanel({
             >
               今日
             </Button>
+            {chartOpen ? null : (
+              <Button type="button" variant="ghost" size="icon" aria-label="グラフを表示" onClick={() => void openChart()}>
+                <ChartLine className="size-5" strokeWidth={1.75} />
+              </Button>
+            )}
+            </div>
           </div>
           {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
         </>
@@ -930,11 +944,7 @@ export function TodayPanel({
         }}
         onShift={(direction) => void shiftChart(direction)}
       />
-      ) : (
-        <Button type="button" variant="outline" className="w-full" onClick={() => void openChart()}>
-          グラフを表示
-        </Button>
-      )}
+      ) : null}
 
       {error ? (
         <p className="text-sm text-danger" role="alert">
