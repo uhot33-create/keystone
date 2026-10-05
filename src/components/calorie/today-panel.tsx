@@ -571,14 +571,11 @@ export function TodayPanel({
       ) : null}
 
       {view === "add" ? (
-      <>
-      <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onAdd}>
-        <div className="flex items-center justify-between gap-2">
-          <p className="font-display text-lg font-semibold text-fg">カロリーを足す</p>
-          <p className="text-xs text-muted">名前は省略できます</p>
-        </div>
+      <div className="flex flex-col gap-3">
+      <form className="rounded-lg border border-border bg-surface p-3 shadow-card" onSubmit={onAdd}>
+        <p className="font-display text-base font-semibold text-fg">カロリーを足す</p>
 
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="mt-2 flex items-center justify-between gap-2">
           <p className="text-xs font-medium text-subtle">定番</p>
           <button
             type="button"
@@ -594,7 +591,7 @@ export function TodayPanel({
             {stapleOpen ? "閉じる" : "管理"}
           </button>
         </div>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           {state.staples.map((item) => {
             const food = state.foods.find((entry) => entry.id === item.foodId);
             if (!food) return null;
@@ -603,7 +600,7 @@ export function TodayPanel({
                 key={item.id}
                 type="button"
                 disabled={pending || locked}
-                className="rounded-full border border-border bg-surface-2 px-3 py-2 text-xs font-medium text-fg disabled:opacity-50"
+                className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium text-fg disabled:opacity-50"
                 onClick={() => {
                   const kcal = kcalForQuantity(food.kcal, food.amount, item.qty);
                   if (!(kcal > 0)) return;
@@ -630,7 +627,7 @@ export function TodayPanel({
           {state.staples.length === 0 ? <p className="text-xs text-muted">まだありません。管理から追加できます。</p> : null}
         </div>
         {stapleOpen ? (
-          <div className="mt-3 space-y-3">
+          <div className="mt-2 space-y-2">
             <div className="grid grid-cols-[1fr_5.5rem] gap-2">
               <Select
                 aria-label="定番のフード"
@@ -661,6 +658,7 @@ export function TodayPanel({
             <div className="flex gap-2">
               <Button
                 type="button"
+                size="sm"
                 className="flex-1"
                 disabled={pending || locked || !stapleFoodId || !(Number(stapleQty) > 0)}
                 onClick={() =>
@@ -687,6 +685,7 @@ export function TodayPanel({
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   disabled={pending}
                   onClick={() => {
                     setStapleId(null);
@@ -705,8 +704,8 @@ export function TodayPanel({
                   const food = state.foods.find((entry) => entry.id === item.foodId);
                   const label = food ? `${food.name} ${formatQuantity(item.qty, food.unit)}` : "フードがありません";
                   return (
-                    <li key={item.id} className="flex items-center gap-2 py-2">
-                      <p className="min-w-0 flex-1 truncate text-sm text-fg">{label}</p>
+                    <li key={item.id} className="flex items-center gap-2 py-1">
+                      <p className="min-w-0 flex-1 truncate text-xs text-fg">{label}</p>
                       <button
                         type="button"
                         className="shrink-0 text-xs font-medium text-primary"
@@ -723,7 +722,7 @@ export function TodayPanel({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="size-9 min-h-9 text-muted"
+                        className="size-8 text-muted"
                         aria-label={`${label}を削除`}
                         disabled={pending || locked}
                         onClick={() =>
@@ -740,10 +739,10 @@ export function TodayPanel({
           </div>
         ) : null}
 
-        <div className="mt-3 grid grid-cols-2 rounded-md bg-surface-2 p-1">
+        <div className="mt-2 grid grid-cols-2 rounded-md bg-surface-2 p-0.5">
           <button
             type="button"
-            className={`h-11 rounded-sm text-sm font-medium ${kind === "food" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+            className={`h-8 rounded-sm text-xs font-medium ${kind === "food" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
             onClick={() => switchKind("food")}
             disabled={locked}
           >
@@ -751,7 +750,7 @@ export function TodayPanel({
           </button>
           <button
             type="button"
-            className={`h-11 rounded-sm text-sm font-medium ${kind === "treat" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+            className={`h-8 rounded-sm text-xs font-medium ${kind === "treat" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
             onClick={() => switchKind("treat")}
             disabled={locked}
           >
@@ -760,7 +759,7 @@ export function TodayPanel({
         </div>
 
         {foods.length > 0 ? (
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          <div className="mt-2 flex gap-1.5 overflow-x-auto">
             {foods.map((food) => {
               const active = food.id === foodId;
               return (
@@ -770,7 +769,7 @@ export function TodayPanel({
                   onClick={() => pickFood(food)}
                   disabled={locked}
                   className={[
-                    "shrink-0 rounded-full border px-3 py-2 text-xs font-medium",
+                    "shrink-0 rounded-full border px-2.5 py-1 text-xs font-medium",
                     active ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface text-fg",
                   ].join(" ")}
                 >
@@ -780,20 +779,31 @@ export function TodayPanel({
             })}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted">
+          <p className="mt-2 text-xs text-muted">
             登録した{kindLabel(kind)}がありません。
-            <button type="button" className="ml-1 font-medium text-primary underline-offset-4 hover:underline" onClick={onOpenFoods}>
+            <button type="button" className="ml-1 font-medium text-primary" onClick={onOpenFoods}>
               フードへ
             </button>
           </p>
         )}
 
-        <div className="mt-3 grid grid-cols-[1fr_7rem] gap-2">
+        <div className="mt-2 grid grid-cols-[1fr_5.5rem_4.5rem] gap-1.5">
           <Input
             value={name}
             maxLength={40}
             placeholder={kindLabel(kind)}
+            aria-label="名前"
             onChange={(event) => setName(event.target.value)}
+            disabled={locked}
+          />
+          <Input
+            type="text"
+            inputMode="decimal"
+            placeholder={`数量(${unit})`}
+            aria-label="数量"
+            value={qty}
+            onChange={(event) => onQty(event.target.value)}
+            onFocus={(event) => event.currentTarget.select()}
             disabled={locked}
           />
           <Input
@@ -802,6 +812,7 @@ export function TodayPanel({
             min={0}
             step="any"
             placeholder="kcal"
+            aria-label="カロリー"
             value={kcalTouched ? kcalText : computed > 0 ? String(computed) : kcalText}
             onChange={(event) => {
               setKcalTouched(true);
@@ -811,70 +822,47 @@ export function TodayPanel({
           />
         </div>
 
-        <div className="mt-2 flex items-center gap-2">
-          <Input
-            type="text"
-            inputMode="decimal"
-            min={0}
-            step="any"
-            placeholder="数量"
-            value={qty}
-            onChange={(event) => onQty(event.target.value)}
-            onFocus={(event) => event.currentTarget.select()}
-            disabled={locked}
-          />
-          <span className="w-8 shrink-0 text-sm text-muted">{unit}</span>
-        </div>
-
-        <div className="mt-2 grid grid-cols-3 gap-2">
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
           {QTY_STEPS.map((step) => (
             <button
               key={step}
               type="button"
-              className="h-11 rounded-md bg-surface-2 text-sm font-medium text-fg"
+              className="h-9 rounded-md bg-surface-2 text-sm font-medium text-fg"
               onClick={() => bumpQty(step)}
               disabled={locked}
             >
               +{step}
             </button>
           ))}
+          <Button type="submit" size="sm" className="h-9 min-h-9" disabled={pending || locked}>
+            <Plus />
+            足す
+          </Button>
         </div>
-
-        <Button type="submit" className="mt-3 w-full" disabled={pending || locked}>
-          <Plus />
-          足す
-        </Button>
       </form>
 
-      <div>
-        <div className="flex items-end justify-between">
-          <p className="font-display text-lg font-semibold text-fg">今日の記録</p>
-          <p className="text-xs text-muted">{state.logs.length}件</p>
+      <section className="rounded-lg border border-border bg-surface px-3 py-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="text-xs font-medium text-subtle">今日の記録</p>
+          {state.logs.length > 0 ? <p className="text-xs tabular-nums text-muted">{state.logs.length}件</p> : null}
         </div>
         {state.logs.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">まだ記録がありません。</p>
+          <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
         ) : (
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-1">
             {state.logs.map((log) => (
-              <li
-                key={log.id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-3 shadow-card"
-              >
-                <span className="rounded-full bg-surface-2 px-2 py-1 text-[11px] font-medium text-muted">
-                  {kindLabel(log.kind)}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-fg">{log.label}</p>
-                  {log.amount && log.unit ? (
-                    <p className="text-xs text-subtle">{formatQuantity(log.amount, log.unit)}</p>
-                  ) : null}
-                </div>
-                <span className="tabular-nums text-sm text-fg">{formatKcal(log.kcal)} kcal</span>
+              <li key={log.id} className="flex items-center gap-2 border-t border-border py-1 text-xs first:border-t-0">
+                <span className="w-10 shrink-0 text-muted">{kindLabel(log.kind)}</span>
+                <span className="min-w-0 flex-1 truncate text-fg">{log.label}</span>
+                {log.amount != null && log.unit ? (
+                  <span className="shrink-0 tabular-nums text-subtle">{formatQuantity(log.amount, log.unit)}</span>
+                ) : null}
+                <span className="w-12 shrink-0 text-right tabular-nums text-fg">{formatKcal(log.kcal)}</span>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="size-10 min-h-10 text-muted"
+                  className="size-7 text-muted"
                   aria-label={`${log.label}を削除`}
                   disabled={pending || locked}
                   onClick={() => void run(() => deleteCalorieLog({ data: { date: state.date, dogId: state.dog.id, id: log.id } }))}
@@ -885,8 +873,8 @@ export function TodayPanel({
             ))}
           </ul>
         )}
+      </section>
       </div>
-      </>
       ) : null}
         </>
       )}
