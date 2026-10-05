@@ -430,7 +430,7 @@ export function TodayPanel({
           <div className="flex items-stretch justify-center gap-2">
             <div className="relative size-52 shrink-0">
               <div className="absolute inset-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
-                <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
+                <img src={saburo.src} alt={saburo.label} className="h-full w-full origin-center scale-[1.55] object-cover" />
               </div>
               {(
                 [
