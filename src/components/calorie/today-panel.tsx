@@ -427,10 +427,9 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center justify-center gap-2">
-            <div className="relative size-56 shrink-0">
-              <div className="absolute left-1/2 top-1/2 size-36 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
+          <div className="flex items-stretch justify-center gap-2">
+            <div className="relative size-52 shrink-0">
+              <div className="absolute inset-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
                 <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
               </div>
               {(
@@ -455,7 +454,7 @@ export function TodayPanel({
                 const style = {
                   left: "50%",
                   top: "50%",
-                  transform: `translate(-50%, -50%) rotate(${item.angle}deg) translateY(-4.5rem) rotate(-${item.angle}deg)`,
+                  transform: `translate(-50%, -50%) rotate(${item.angle}deg) translateY(-6.5rem) rotate(-${item.angle}deg)`,
                 };
                 return "to" in item ? (
                   <Link key={item.key} to={item.to} aria-label={item.label} className={className} style={style}>
@@ -468,15 +467,16 @@ export function TodayPanel({
                 );
               })}
             </div>
-            <div className="flex shrink-0 items-start justify-center gap-3">
-            <div className="flex flex-col items-center">
+            <div className="flex h-full shrink-0 flex-col items-center">
+            <div className="flex min-h-0 flex-1 items-stretch justify-center gap-3 pr-6">
+            <div className="flex h-full flex-col items-center">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
               <p className="mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
                 {target > 0 ? formatKcal(target) : "—"}
               </p>
               <button
                 type="button"
-                className={`relative mt-1 h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "kcal" ? "ring-2 ring-ring/40" : ""}`}
+                className={`relative mt-1 w-8 min-h-16 flex-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "kcal" ? "ring-2 ring-ring/40" : ""}`}
                 aria-pressed={barTip === "kcal"}
                 aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
                 onClick={() => setBarTip((current) => (current === "kcal" ? null : "kcal"))}
@@ -490,7 +490,7 @@ export function TodayPanel({
                 {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
               </p>
             </div>
-            <div className="flex flex-col items-center pr-7">
+            <div className="flex h-full flex-col items-center">
               <p className="text-[11px] leading-none text-muted">体重</p>
               <p className={`mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
                 {latestWeight != null ? (
@@ -504,7 +504,7 @@ export function TodayPanel({
               </p>
               <button
                 type="button"
-                className={`relative mt-1 h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "weight" ? "ring-2 ring-ring/40" : ""}`}
+                className={`relative mt-1 w-8 min-h-16 flex-1 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "weight" ? "ring-2 ring-ring/40" : ""}`}
                 aria-pressed={barTip === "weight"}
                 aria-label={
                   latestWeight != null
@@ -533,8 +533,7 @@ export function TodayPanel({
               </button>
             </div>
             </div>
-            </div>
-            <p className="mt-2 min-h-4 text-center text-[11px] leading-none text-muted">
+            <p className="mt-1 w-full max-w-36 min-h-4 text-center text-[11px] leading-snug text-muted">
               {barTip === "kcal"
                 ? `ごはん ${formatKcal(mealEaten)}　おやつ ${formatKcal(treatEaten)}`
                 : barTip === "weight"
@@ -543,6 +542,7 @@ export function TodayPanel({
                     : `最新 ${latestWeight.toFixed(2)} kg${idealWeight > 0 ? `　差 ${(latestWeight - idealWeight).toFixed(2)} kg` : ""}`
                   : "棒をタップすると内訳"}
             </p>
+            </div>
           </div>
 
           <DateBar
