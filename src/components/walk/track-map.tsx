@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { decodePolyline } from "@/lib/walk-log/gpx";
+import { decodePolyline, splitTrack } from "@/lib/walk-log/gpx";
 import "leaflet/dist/leaflet.css";
 
 export function TrackMap({ encoded, tracks }: { encoded?: string | null; tracks?: string[] }) {
@@ -23,11 +23,9 @@ export function TrackMap({ encoded, tracks }: { encoded?: string | null; tracks?
         .addTo(instance);
       const color =
         getComputedStyle(document.documentElement).getPropertyValue("--color-primary").trim() || "#2f3a32";
-      const drawn = lines.flatMap((line) => {
-        const points = decodePolyline(line);
-        if (points.length < 2) return [];
-        return [leaflet.polyline(points, { color, weight: 4, opacity: 0.9 })];
-      });
+      const drawn = lines.flatMap((line) =>
+        splitTrack(decodePolyline(line)).map((segment) => leaflet.polyline(segment, { color, weight: 4, opacity: 0.9 })),
+      );
       if (drawn.length === 0) {
         instance.remove();
         return;

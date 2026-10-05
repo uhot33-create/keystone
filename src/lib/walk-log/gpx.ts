@@ -114,6 +114,25 @@ export function decodePolyline(encoded: string): [number, number][] {
   }
 }
 
+/** 隣り合う点がこの距離を超えたら、地図では線を切る。 */
+export const TRACK_GAP_M = 200;
+
+export function splitTrack(points: [number, number][], gapM = TRACK_GAP_M): [number, number][][] {
+  const segments: [number, number][][] = [];
+  let current: [number, number][] = [];
+  for (const point of points) {
+    const prev = current[current.length - 1];
+    if (prev && haversine(prev, point) > gapM) {
+      if (current.length >= 2) segments.push(current);
+      current = [point];
+      continue;
+    }
+    current.push(point);
+  }
+  if (current.length >= 2) segments.push(current);
+  return segments;
+}
+
 function encodePolyline(points: [number, number][]): string {
   let prevLat = 0;
   let prevLng = 0;
