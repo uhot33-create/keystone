@@ -1,4 +1,4 @@
-import { ChartLine, ChevronLeft, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { ChartLine, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -70,6 +70,7 @@ function DateBar({
   onShift,
   onToday,
   onChart,
+  onBack,
 }: {
   date: string;
   chartOpen: boolean;
@@ -77,12 +78,13 @@ function DateBar({
   onShift: (days: -1 | 1) => void;
   onToday: () => void;
   onChart: () => void;
+  onBack?: () => void;
 }) {
   const startX = useRef(0);
   return (
     <div>
       <div
-        className="flex touch-pan-y items-center justify-center gap-0.5"
+        className="flex touch-pan-y items-center gap-1"
         onPointerDown={(event) => {
           startX.current = event.clientX;
         }}
@@ -92,29 +94,37 @@ function DateBar({
           onShift(dx < 0 ? 1 : -1);
         }}
       >
-        <p className="px-1 font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 min-h-8 px-2"
-          disabled={date === todayJst()}
-          onClick={onToday}
-        >
-          今日
-        </Button>
-        {chartOpen ? null : (
+        {onBack ? (
+          <button type="button" onClick={onBack} className="w-10 shrink-0 text-left text-xs font-medium text-primary">
+            戻る
+          </button>
+        ) : null}
+        <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
+          <p className="truncate font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="size-8"
-            aria-label="グラフを表示"
-            onClick={onChart}
+            size="sm"
+            className="h-8 min-h-8 px-2"
+            disabled={date === todayJst()}
+            onClick={onToday}
           >
-            <ChartLine className="size-4" strokeWidth={1.75} />
+            今日
           </Button>
-        )}
+          {chartOpen ? null : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label="グラフを表示"
+              onClick={onChart}
+            >
+              <ChartLine className="size-4" strokeWidth={1.75} />
+            </Button>
+          )}
+        </div>
+        {onBack ? <span className="w-10 shrink-0" aria-hidden /> : null}
       </div>
       {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
     </div>
@@ -397,7 +407,7 @@ export function TodayPanel({
   const locked = isCalorieLocked(state.date);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className={`flex flex-col ${view === "home" ? "gap-5" : "gap-2"}`}>
       <BusyOverlay show={Boolean(busy)} label={busy ?? "処理中…"} />
       {view !== "home" ? (
         <DateBar
@@ -410,6 +420,7 @@ export function TodayPanel({
             void selectDate(todayJst());
           }}
           onChart={() => void openChart()}
+          onBack={() => setView("home")}
         />
       ) : null}
 
@@ -531,20 +542,11 @@ export function TodayPanel({
         </>
       ) : (
         <>
-          <button
-            type="button"
-            onClick={() => setView("home")}
-            className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-medium text-primary"
-          >
-            <ChevronLeft className="size-4" strokeWidth={1.75} />
-            戻る
-          </button>
 
       {view === "weight" ? (
-      <form className="rounded-xl border border-border bg-surface p-4 shadow-card" onSubmit={onSaveWeight}>
-        <p className="font-display text-lg font-semibold text-fg">体重（20時計測）</p>
-        <p className="mt-1 text-sm text-muted">毎日20時に測り、1日1回記録します。同じ日は上書きされます。</p>
-        <div className="mt-3 flex items-center gap-2">
+      <form className="rounded-lg border border-border bg-surface px-3 py-2 shadow-card" onSubmit={onSaveWeight}>
+        <p className="text-sm font-medium text-fg">体重（20時計測）</p>
+        <div className="mt-2 flex items-center gap-2">
           <Input
             type="number"
             inputMode="decimal"
