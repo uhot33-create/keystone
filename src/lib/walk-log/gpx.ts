@@ -115,7 +115,7 @@ export function decodePolyline(encoded: string): [number, number][] {
 }
 
 /** 隣り合う点がこの距離を超えたら、地図では線を切る。 */
-export const TRACK_GAP_M = 200;
+export const TRACK_GAP_M = 100;
 
 export function splitTrack(points: [number, number][], gapM = TRACK_GAP_M): [number, number][][] {
   const segments: [number, number][][] = [];
