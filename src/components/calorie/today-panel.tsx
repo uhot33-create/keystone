@@ -885,6 +885,35 @@ export function TodayPanel({
         </>
       )}
 
+      {view !== "add" ? (
+        <section className="rounded-lg border border-border bg-surface px-3 py-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-xs font-medium text-subtle">
+              {state.date === todayJst() ? "今日の記録" : formatJaDayWeek(state.date)}
+            </p>
+            {state.logs.length > 0 ? (
+              <p className="text-xs tabular-nums text-muted">{formatKcal(total)} kcal</p>
+            ) : null}
+          </div>
+          {state.logs.length === 0 ? (
+            <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
+          ) : (
+            <ul className="mt-1">
+              {state.logs.map((log) => (
+                <li key={log.id} className="flex items-baseline gap-2 border-t border-border py-1 text-xs first:border-t-0">
+                  <span className="w-10 shrink-0 text-muted">{kindLabel(log.kind)}</span>
+                  <span className="min-w-0 flex-1 truncate text-fg">{log.label}</span>
+                  {log.amount != null && log.unit ? (
+                    <span className="shrink-0 tabular-nums text-subtle">{formatQuantity(log.amount, log.unit)}</span>
+                  ) : null}
+                  <span className="w-12 shrink-0 text-right tabular-nums text-fg">{formatKcal(log.kcal)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
+
       {chartOpen ? (
       <TrendChart
         grain={grain}
