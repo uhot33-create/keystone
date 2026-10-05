@@ -112,20 +112,15 @@ export function MemoForm({
     });
   }
 
-  async function applyFile(picked: File, slotIndex?: number) {
+  async function applyFile(picked: File, slotIndex: number) {
+    if (slotIndex < 0 || slotIndex >= MAX_MEMO_IMAGES) return;
     const prepared = await prepareImageFile(picked);
-    let assigned = -1;
     setSlots((prev) => {
       const next = prev.map((slot) => ({ ...slot }));
-      const target =
-        slotIndex != null && slotIndex >= 0 && slotIndex < MAX_MEMO_IMAGES
-          ? slotIndex
-          : next.findIndex((slot) => !slot.preview);
-      assigned = target;
-      if (target < 0) return prev;
-      const current = next[target]!;
+      const current = next[slotIndex];
+      if (!current) return prev;
       if (current.preview?.startsWith("blob:")) URL.revokeObjectURL(current.preview);
-      next[target] = {
+      next[slotIndex] = {
         preview: URL.createObjectURL(prepared),
         file: prepared,
         url: null,
@@ -137,7 +132,6 @@ export function MemoForm({
       };
       return next;
     });
-    if (assigned < 0) throw new Error("画像は3枚までです");
   }
 
   async function onPick(list: FileList | null, slotIndex: number) {
@@ -149,22 +143,6 @@ export function MemoForm({
     } catch (err) {
       setError(err instanceof Error ? err.message : "画像を選べませんでした");
     }
-  }
-
-  function onPasteImage(event: ClipboardEvent) {
-    const target = event.target;
-    if (target instanceof HTMLElement) {
-      if (target.closest("[data-image-paste]")) return;
-      const tag = target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-    }
-    const pasted = imageFileFromClipboard(event.clipboardData);
-    if (!pasted) return;
-    event.preventDefault();
-    setError(null);
-    void applyFile(pasted).catch((err: unknown) => {
-      setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
-    });
   }
 
   function onZonePaste(event: ClipboardEvent<HTMLDivElement>, slotIndex: number) {
@@ -192,25 +170,6 @@ export function MemoForm({
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "画像を貼り付けできませんでした");
       });
-  }
-
-  async function onPasteButton() {
-    setError(null);
-    try {
-      if (navigator.clipboard && "read" in navigator.clipboard) {
-        const items = await navigator.clipboard.read();
-        for (const item of items) {
-          const type = item.types.find((value) => value.startsWith("image/"));
-          if (!type) continue;
-          const blob = await item.getType(type);
-          await applyFile(new File([blob], "paste.jpg", { type: blob.type || type, lastModified: Date.now() }));
-          return;
-        }
-      }
-      setError("クリップボードに画像がありません。iPhone は枠を長押しして「ペースト」してください");
-    } catch {
-      setError("この端末ではボタン貼り付けが制限されています。枠を長押しして「ペースト」してください");
-    }
   }
 
   function onClearSlot(slotIndex: number) {
@@ -324,7 +283,6 @@ export function MemoForm({
       id="walk-memo-form"
       className="flex flex-col gap-5 pb-28"
       onSubmit={onSubmit}
-      onPaste={onPasteImage}
     >
       <BusyOverlay
         show={pending !== "idle"}
@@ -530,9 +488,6 @@ export function MemoForm({
             </div>
           ))}
         </div>
-        <Button type="button" variant="outline" onClick={() => void onPasteButton()} disabled={pending !== "idle"}>
-          貼り付け
-        </Button>
       </div>
 
       <div className="rounded-md bg-surface-2 px-4 py-3">
