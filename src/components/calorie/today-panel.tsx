@@ -427,8 +427,8 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <div className="flex items-end justify-center gap-2">
-            <div className="relative size-[9.2rem] shrink-0">
+          <div className="flex items-start justify-center gap-2">
+            <div className="relative size-[calc(11px+1rem+7rem+0.5rem)] shrink-0">
               <div className="absolute inset-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
                 <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
               </div>
