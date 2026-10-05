@@ -427,8 +427,9 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative size-56">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
+            <div className="relative size-56 shrink-0">
               <div className="absolute left-1/2 top-1/2 size-36 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
                 <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
               </div>
@@ -467,7 +468,7 @@ export function TodayPanel({
                 );
               })}
             </div>
-            <div className="flex items-start justify-center gap-4">
+            <div className="flex shrink-0 items-start justify-center gap-3">
             <div className="flex flex-col items-center">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
               <p className="mt-1 flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
@@ -530,6 +531,7 @@ export function TodayPanel({
                   </>
                 ) : null}
               </button>
+            </div>
             </div>
             </div>
             <p className="mt-2 min-h-4 text-center text-[11px] leading-none text-muted">
