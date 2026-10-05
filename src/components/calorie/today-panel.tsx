@@ -1,4 +1,4 @@
-import { ChartLine, ChevronLeft, ChevronRight, Plus, Scale, Trash2, Utensils } from "lucide-react";
+import { ChartLine, ChevronLeft, Plus, Scale, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -61,6 +61,64 @@ function chipText(food: DogFood): string {
 
 function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
+}
+
+function DateBar({
+  date,
+  chartOpen,
+  locked,
+  onShift,
+  onToday,
+  onChart,
+}: {
+  date: string;
+  chartOpen: boolean;
+  locked: boolean;
+  onShift: (days: -1 | 1) => void;
+  onToday: () => void;
+  onChart: () => void;
+}) {
+  const startX = useRef(0);
+  return (
+    <div>
+      <div
+        className="flex touch-pan-y items-center justify-center gap-0.5"
+        onPointerDown={(event) => {
+          startX.current = event.clientX;
+        }}
+        onPointerUp={(event) => {
+          const dx = event.clientX - startX.current;
+          if (Math.abs(dx) < 48) return;
+          onShift(dx < 0 ? 1 : -1);
+        }}
+      >
+        <p className="px-1 font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 min-h-8 px-2"
+          disabled={date === todayJst()}
+          onClick={onToday}
+        >
+          今日
+        </Button>
+        {chartOpen ? null : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label="グラフを表示"
+            onClick={onChart}
+          >
+            <ChartLine className="size-4" strokeWidth={1.75} />
+          </Button>
+        )}
+      </div>
+      {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
+    </div>
+  );
 }
 
 export function TodayPanel({
@@ -342,51 +400,17 @@ export function TodayPanel({
     <div className="flex flex-col gap-5">
       <BusyOverlay show={Boolean(busy)} label={busy ?? "処理中…"} />
       {view !== "home" ? (
-      <div className="flex flex-col items-center gap-1">
-      <div className="flex w-full items-center justify-between gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="前日"
-          onClick={() => void selectDate(shiftIsoDate(state.date, -1))}
-        >
-          <ChevronLeft />
-        </Button>
-        <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="翌日"
-          onClick={() => void selectDate(shiftIsoDate(state.date, 1))}
-        >
-          <ChevronRight />
-        </Button>
-      </div>
-      <div className="flex items-center gap-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        disabled={state.date === todayJst()}
-        onClick={() => {
-          setChartEnd(todayJst());
-          void selectDate(todayJst());
-        }}
-      >
-        今日
-      </Button>
-      {chartOpen ? null : (
-        <Button type="button" variant="ghost" size="icon" aria-label="グラフを表示" onClick={() => void openChart()}>
-          <ChartLine className="size-5" strokeWidth={1.75} />
-        </Button>
-      )}
-      </div>
-      {locked ? (
-        <p className="text-xs text-muted">2週間以上前の記録は閲覧のみです</p>
-      ) : null}
-      </div>
+        <DateBar
+          date={state.date}
+          chartOpen={chartOpen}
+          locked={locked}
+          onShift={(days) => void selectDate(shiftIsoDate(state.date, days))}
+          onToday={() => {
+            setChartEnd(todayJst());
+            void selectDate(todayJst());
+          }}
+          onChart={() => void openChart()}
+        />
       ) : null}
 
       {view === "home" ? (
@@ -493,49 +517,17 @@ export function TodayPanel({
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex w-full items-center justify-between gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="前日"
-                onClick={() => void selectDate(shiftIsoDate(state.date, -1))}
-              >
-                <ChevronLeft />
-              </Button>
-              <p className="font-display text-lg font-semibold text-fg">{formatJaDayWeek(state.date)}</p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="翌日"
-                onClick={() => void selectDate(shiftIsoDate(state.date, 1))}
-              >
-                <ChevronRight />
-              </Button>
-            </div>
-            <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={state.date === todayJst()}
-              onClick={() => {
-                setChartEnd(todayJst());
-                void selectDate(todayJst());
-              }}
-            >
-              今日
-            </Button>
-            {chartOpen ? null : (
-              <Button type="button" variant="ghost" size="icon" aria-label="グラフを表示" onClick={() => void openChart()}>
-                <ChartLine className="size-5" strokeWidth={1.75} />
-              </Button>
-            )}
-            </div>
-          </div>
-          {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
+          <DateBar
+            date={state.date}
+            chartOpen={chartOpen}
+            locked={locked}
+            onShift={(days) => void selectDate(shiftIsoDate(state.date, days))}
+            onToday={() => {
+              setChartEnd(todayJst());
+              void selectDate(todayJst());
+            }}
+            onChart={() => void openChart()}
+          />
         </>
       ) : (
         <>
