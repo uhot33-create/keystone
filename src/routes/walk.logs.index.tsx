@@ -60,8 +60,7 @@ function WalkLogsPage() {
     <div className="stagger-in flex flex-1 flex-col gap-6">
       <BusyOverlay show={pending || logs === null} label={pending ? "処理中…" : "読み込み中…"} />
       <div>
-        <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-fg">散歩ログ</h1>
+        <h1 className="font-display text-3xl font-semibold text-fg">散歩ログ</h1>
         <p className="mt-3 max-w-prose text-sm text-muted">
           GPS アプリから書き出した GPX を入れて、距離と軌跡を残します。
         </p>
