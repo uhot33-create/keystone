@@ -89,8 +89,7 @@ function WalkIndex() {
       <BusyOverlay show={memos === null} label="読み込み中…" />
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
-          <h1 className="mt-2 font-display text-3xl font-semibold text-fg sm:text-4xl">お散歩メモ</h1>
+          <h1 className="font-display text-3xl font-semibold text-fg sm:text-4xl">お散歩メモ</h1>
           <p className="mt-3 max-w-prose text-sm text-muted">出会った子のカードを、静かに残します。</p>
         </div>
         <Button asChild>

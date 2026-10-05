@@ -36,8 +36,7 @@ function WalkEdit() {
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
       <div>
-        <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-fg">カードを編集</h1>
+        <h1 className="font-display text-3xl font-semibold text-fg">カードを編集</h1>
       </div>
       {error ? (
         <p className="text-sm text-danger" role="alert">

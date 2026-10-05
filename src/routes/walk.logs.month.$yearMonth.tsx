@@ -38,8 +38,7 @@ function WalkMonthPage() {
     <div className="stagger-in flex flex-1 flex-col gap-6">
       <BusyOverlay show={!month && !error} label="読み込み中…" />
       <div>
-        <p className="font-sans text-xs font-medium tracking-widest text-subtle">03</p>
-        <h1 className="mt-2 font-display text-3xl font-semibold text-fg">{label}</h1>
+        <h1 className="font-display text-3xl font-semibold text-fg">{label}</h1>
       </div>
       <WalkSubnav current="logs" />
       <Link to="/walk/logs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
