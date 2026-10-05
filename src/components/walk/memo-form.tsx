@@ -156,6 +156,25 @@ export function MemoForm({
     });
   }
 
+  async function onPasteSlot(slotIndex: number) {
+    setError(null);
+    try {
+      if (navigator.clipboard && "read" in navigator.clipboard) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const type = item.types.find((value) => value.startsWith("image/"));
+          if (!type) continue;
+          const blob = await item.getType(type);
+          await applyFile(new File([blob], "paste.jpg", { type: blob.type || type, lastModified: Date.now() }), slotIndex);
+          return;
+        }
+      }
+      setError("クリップボードに画像がありません。枠を長押しして「ペースト」してください");
+    } catch {
+      setError("この端末ではボタン貼り付けが制限されています。枠を長押しして「ペースト」してください");
+    }
+  }
+
   function onZoneInput(event: FormEvent<HTMLDivElement>, slotIndex: number) {
     const root = event.currentTarget;
     const img = root.querySelector("img");
@@ -463,6 +482,9 @@ export function MemoForm({
                     }}
                   />
                 </Label>
+                <Button type="button" variant="outline" onClick={() => void onPasteSlot(index)} disabled={pending !== "idle"}>
+                  貼り付け
+                </Button>
                 {slot.preview ? (
                   <Button
                     type="button"
