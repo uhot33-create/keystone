@@ -12,7 +12,7 @@ function grainTitle(grain: TrendGrain): string {
   if (grain === "week") return "推移（週）";
   if (grain === "month") return "推移（月）";
   if (grain === "year") return "推移（年）";
-  return "推移（14日）";
+  return "推移（7日）";
 }
 
 function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined): string {

@@ -83,7 +83,7 @@ export function describePeriod(grain: TrendGrain, asOf: string): {
   return { key: asOf, start: asOf, end: asOf, label: `${Number(asOf.slice(5, 7))}/${Number(asOf.slice(8, 10))}` };
 }
 
-export const WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
+export const WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
 
 export function shiftPeriod(grain: TrendGrain, asOf: string, steps: number): string {
   if (grain === "week") return shiftIsoDate(mondayOf(asOf), steps * 7);

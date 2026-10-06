@@ -25,7 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
 const QTY_STEPS = [15, 2, 4] as const;
-const CHART_WINDOW: Record<TrendGrain, number> = { day: 14, week: 12, month: 12, year: 5 };
+const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
@@ -189,15 +189,8 @@ export function TodayPanel({
   const barScale = target > 0 ? Math.max(target, total) : Math.max(total, 1);
   const mealShare = (mealEaten / barScale) * 100;
   const treatShare = (treatEaten / barScale) * 100;
-  const latestWeight = (() => {
-    const days = state.trends?.day ?? state.trend ?? [];
-    for (let index = days.length - 1; index >= 0; index -= 1) {
-      const weight = days[index]?.weightKg;
-      if (weight != null && weight > 0) return weight;
-    }
-    if (state.dog.currentWeightKg > 0) return state.dog.currentWeightKg;
-    return state.todayWeightKg != null && state.todayWeightKg > 0 ? state.todayWeightKg : null;
-  })();
+  const latestWeight =
+    state.todayWeightKg != null && state.todayWeightKg > 0 ? state.todayWeightKg : null;
   const idealWeight = state.dog.idealWeightKg > 0 ? state.dog.idealWeightKg : 0;
   const weightMax = Math.max(latestWeight ?? 0, idealWeight, 0.01);
   const weightBar = latestWeight != null ? (latestWeight / weightMax) * 100 : 0;
@@ -502,7 +495,7 @@ export function TodayPanel({
                 aria-pressed={barTip === "weight"}
                 aria-label={
                   latestWeight != null
-                    ? `最新 ${latestWeight.toFixed(2)} kg、理想 ${idealWeight > 0 ? idealWeight.toFixed(2) : "未設定"} kg`
+                    ? `${state.date === todayJst() ? "今日" : "この日"} ${latestWeight.toFixed(2)} kg、理想 ${idealWeight > 0 ? idealWeight.toFixed(2) : "未設定"} kg`
                     : "体重は未記録"
                 }
                 onClick={() => setBarTip((current) => (current === "weight" ? null : "weight"))}
@@ -538,7 +531,7 @@ export function TodayPanel({
                 : barTip === "weight"
                   ? latestWeight == null
                     ? "体重は未記録"
-                    : `最新 ${latestWeight.toFixed(2)} kg${idealWeight > 0 ? `　差 ${(latestWeight - idealWeight).toFixed(2)} kg` : ""}`
+                    : `${state.date === todayJst() ? "今日" : "この日"} ${latestWeight.toFixed(2)} kg${idealWeight > 0 ? `　差 ${(latestWeight - idealWeight).toFixed(2)} kg` : ""}`
                   : "棒をタップすると内訳"}
             </p>
             </div>
