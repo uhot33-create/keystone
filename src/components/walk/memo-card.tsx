@@ -18,6 +18,12 @@ function RainbowIcon() {
   );
 }
 
+function formatMet(value: string | null): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "—";
+  const [year, month, day] = value.split("-");
+  return `${year}/${Number(month)}/${Number(day)}`;
+}
+
 export function MemoCard({
   memo,
   mates,
@@ -84,6 +90,7 @@ export function MemoCard({
               犬種 {memo.breedName || "—"}　年齢 {age || "—"}
               {memo.colorName ? `　色 ${memo.colorName}` : ""}
             </p>
+            <p className="mt-0.5 text-xs text-muted">最後に会った日 {formatMet(memo.lastMetOn)}</p>
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
           </Link>
         </div>
