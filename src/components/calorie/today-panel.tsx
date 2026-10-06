@@ -37,11 +37,7 @@ const DIAL = [
 const DIAL_STEP = 40;
 
 function dialAngle(index: number, active: number) {
-  let delta = index - active;
-  const half = DIAL.length / 2;
-  if (delta > half) delta -= DIAL.length;
-  if (delta < -half) delta += DIAL.length;
-  return 90 + delta * DIAL_STEP;
+  return 90 + (index - active) * DIAL_STEP;
 }
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
@@ -451,7 +447,10 @@ export function TodayPanel({
                   return;
                 }
                 dialSwipe.current = true;
-                setDialIndex((index) => (dy < 0 ? (index + 1) % DIAL.length : (index - 1 + DIAL.length) % DIAL.length));
+                setDialIndex((index) => {
+                  if (dy < 0) return Math.min(index + 1, DIAL.length - 1);
+                  return Math.max(index - 1, 0);
+                });
               }}
               onPointerCancel={() => {
                 dialStartY.current = null;
