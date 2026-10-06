@@ -151,6 +151,7 @@ export function buildDaySeries(
     kcal: kcal.get(period.start) ?? 0,
     guideKcal: null,
     weightKg: weights.get(period.start) ?? null,
+    walkKm: 0,
   }));
 }
 
@@ -212,6 +213,7 @@ export function trendsForDisplay(
       kcal: pointKcal,
       guideKcal: null,
       weightKg: weighed ?? (row?.weight_kg == null ? null : num(row.weight_kg, 2)),
+      walkKm: 0,
     };
   }
   function fromStats(grain: Exclude<TrendGrain, "day">): DayTrend[] {
@@ -231,6 +233,7 @@ export function trendsForDisplay(
         kcal: truncKcal(num(row.kcal_total)),
         guideKcal: null,
         weightKg: row.weight_kg == null ? null : num(row.weight_kg, 2),
+        walkKm: 0,
       });
     }
     return [...closed, current].sort((a, b) => a.start.localeCompare(b.start));
@@ -263,6 +266,7 @@ export function buildTrends(
         guideKcal: null,
         weightKg:
           grain === "day" ? (weights.get(period.start) ?? null) : weightOnEnd(weights, period.start, end),
+        walkKm: 0,
       };
     });
   }
@@ -321,6 +325,27 @@ export async function storePeriodGuides(sql: Sql, userId: string, dogId: number,
        updated_at = now()`,
     [userId, dogId, types, keys, starts, ends, guides],
   );
+}
+
+export function metersInRange(meters: Map<string, number>, start: string, end: string): number {
+  let total = 0;
+  for (let cursor = start; cursor <= end; cursor = shiftIsoDate(cursor, 1)) {
+    total += meters.get(cursor) ?? 0;
+    if (cursor === end) break;
+  }
+  return total;
+}
+
+export function attachWalks(trends: Record<TrendGrain, DayTrend[]>, meters: Map<string, number>) {
+  const grains: TrendGrain[] = ["day", "week", "month", "year"];
+  const out = {} as Record<TrendGrain, DayTrend[]>;
+  for (const grain of grains) {
+    out[grain] = trends[grain].map((point) => ({
+      ...point,
+      walkKm: Math.round((metersInRange(meters, point.start, point.end) / 1000) * 100) / 100,
+    }));
+  }
+  return out;
 }
 
 export function attachGuides(trends: Record<TrendGrain, DayTrend[]>, guides: Map<string, number>) {

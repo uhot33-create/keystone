@@ -71,6 +71,8 @@ export function TrendChart({
     grain === "day" ? 100 : 500,
   );
   const weights = days.map((day) => day.weightKg).filter((value): value is number => value != null && value > 0);
+  const walks = days.map((day) => day.walkKm ?? 0);
+  const maxWalk = niceMax(Math.max(...walks, 0), grain === "day" ? 1 : grain === "year" ? 20 : 5);
   const minW = weights.length ? Math.min(...weights) : 0;
   const maxW = weights.length ? Math.max(...weights) : 1;
   const span = Math.max(0.4, maxW - minW);
@@ -89,6 +91,13 @@ export function TrendChart({
   function yWeight(value: number) {
     return pad.top + innerH - ((value - weightMin) / (weightMax - weightMin || 1)) * innerH;
   }
+  function yWalk(value: number) {
+    return pad.top + innerH - (value / (maxWalk || 1)) * innerH;
+  }
+  function walkLabel(km: number) {
+    if (!(km > 0)) return "";
+    return km < 10 ? km.toFixed(1) : String(Math.round(km));
+  }
 
   const kcalLine = days.map((day, index) => `${x(index).toFixed(1)},${yKcal(day.kcal).toFixed(1)}`).join(" ");
   const guideLine = guides.some((value) => value > 0)
@@ -100,6 +109,10 @@ export function TrendChart({
     .map((day, index) => (day.weightKg != null ? { index, kg: day.weightKg } : null))
     .filter((item): item is { index: number; kg: number } => item != null);
   const weightLine = weightPts.map((item) => `${x(item.index).toFixed(1)},${yWeight(item.kg).toFixed(1)}`).join(" ");
+  const hasWalk = walks.some((value) => value > 0);
+  const walkLine = hasWalk
+    ? days.map((day, index) => `${x(index).toFixed(1)},${yWalk(day.walkKm ?? 0).toFixed(1)}`).join(" ")
+    : "";
   const latest = days[days.length - 1];
   const startX = useRef<number | null>(null);
   const swiped = useRef(false);
@@ -129,6 +142,7 @@ export function TrendChart({
           <p className="text-right text-xs text-muted">
             {latest ? `${formatKcal(latest.kcal)} kcal` : "—"}
             {latest?.weightKg != null ? ` / ${latest.weightKg.toFixed(2)} kg` : ""}
+            {latest && (latest.walkKm ?? 0) > 0 ? ` / ${walkLabel(latest.walkKm)} km` : ""}
           </p>
           <Button type="button" variant="ghost" size="sm" onClick={onToday} disabled={isToday}>
             今日
@@ -147,7 +161,7 @@ export function TrendChart({
           </button>
         ))}
       </div>
-      <div className="mt-2 flex items-center gap-4 text-[11px] text-muted">
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-0.5 w-4 rounded-full bg-primary" />
           期間のカロリー合計
@@ -159,6 +173,10 @@ export function TrendChart({
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-full bg-fg" />
           期末の体重
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded-full bg-[#6b5344]" />
+          散歩の距離
         </span>
       </div>
       <div
@@ -194,6 +212,9 @@ export function TrendChart({
         {weightLine ? (
           <polyline fill="none" stroke="var(--color-fg)" strokeWidth="1.75" strokeDasharray="4 3" points={weightLine} />
         ) : null}
+        {walkLine ? (
+          <polyline fill="none" stroke="#6b5344" strokeWidth="1.75" points={walkLine} />
+        ) : null}
         {weightPts.map((item) => (
           <circle
             key={`w-${days[item.index]!.start}`}
@@ -222,6 +243,17 @@ export function TrendChart({
                 {axisTick(grain, day, days[index - 1])}
               </text>
             ) : null}
+            {(day.walkKm ?? 0) > 0 ? (
+              <text
+                x={x(index)}
+                y={Math.max(yWalk(day.walkKm) - 6, pad.top + 8)}
+                textAnchor="middle"
+                fill="#6b5344"
+                fontSize="8"
+              >
+                {walkLabel(day.walkKm)}
+              </text>
+            ) : null}
             <rect
               x={x(index) - innerW / days.length / 2}
               y={pad.top}
@@ -234,7 +266,7 @@ export function TrendChart({
                 onSelect(day.date);
               }}
             >
-              <title>{`${day.label} ${formatKcal(day.kcal)}kcal / 目安 ${formatKcal(guides[index] ?? 0)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}`}</title>
+              <title>{`${day.label} ${formatKcal(day.kcal)}kcal / 目安 ${formatKcal(guides[index] ?? 0)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}${(day.walkKm ?? 0) > 0 ? ` 散歩 ${walkLabel(day.walkKm)}km` : ""}`}</title>
             </rect>
           </g>
         ))}

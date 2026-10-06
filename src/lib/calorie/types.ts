@@ -58,6 +58,7 @@ export type DayTrend = {
   kcal: number;
   guideKcal: number | null;
   weightKg: number | null;
+  walkKm: number;
 };
 
 export type CalorieState = {
