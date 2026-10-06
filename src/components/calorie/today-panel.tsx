@@ -27,6 +27,23 @@ import { Select } from "@/components/ui/select";
 const QTY_STEPS = [15, 2, 4] as const;
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
 
+const DIAL = [
+  { key: "food", label: "餌", Icon: Utensils, view: "add" as const },
+  { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
+  { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
+  { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
+] as const;
+
+const DIAL_STEP = 40;
+
+function dialAngle(index: number, active: number) {
+  let delta = index - active;
+  const half = DIAL.length / 2;
+  if (delta > half) delta -= DIAL.length;
+  if (delta < -half) delta += DIAL.length;
+  return 90 + delta * DIAL_STEP;
+}
+
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
 }
@@ -162,7 +179,10 @@ export function TodayPanel({
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight">("home");
   const [barTip, setBarTip] = useState(false);
+  const [dialIndex, setDialIndex] = useState(0);
   const skipScroll = useRef(true);
+  const dialSwipe = useRef(false);
+  const dialStartY = useRef<number | null>(null);
 
   useEffect(() => {
     if (skipScroll.current) {
@@ -411,45 +431,98 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <div className="flex items-start justify-center gap-8">
-            <div className="relative mt-[calc(11px+0.25rem)] size-[calc(1rem+0.25rem+7rem)] shrink-0">
+          <div className="flex items-start justify-center gap-3">
+            <div
+              className="relative mt-[calc(11px+0.25rem)] size-[calc(1rem+0.25rem+7rem)] shrink-0 touch-none"
+              onPointerDown={(event) => {
+                dialStartY.current = event.clientY;
+                dialSwipe.current = false;
+              }}
+              onPointerMove={(event) => {
+                if (dialStartY.current == null) return;
+                if (Math.abs(event.clientY - dialStartY.current) > 12) dialSwipe.current = true;
+              }}
+              onPointerUp={(event) => {
+                if (dialStartY.current == null) return;
+                const dy = event.clientY - dialStartY.current;
+                dialStartY.current = null;
+                if (Math.abs(dy) < 28) {
+                  dialSwipe.current = false;
+                  return;
+                }
+                dialSwipe.current = true;
+                setDialIndex((index) => (dy < 0 ? (index + 1) % DIAL.length : (index - 1 + DIAL.length) % DIAL.length));
+              }}
+              onPointerCancel={() => {
+                dialStartY.current = null;
+              }}
+            >
               <div className="absolute inset-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
                 <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
               </div>
-              {(
-                [
-                  { key: "food", label: "餌", angle: 315, Icon: Utensils, view: "add" as const },
-                  { key: "weight", label: "体重", angle: 45, Icon: Scale, view: "weight" as const },
-                  { key: "walk", label: "お散歩ログ", angle: 225, Icon: Footprints, to: "/walk/logs" as const },
-                  { key: "vet", label: "通院履歴", angle: 135, Icon: Stethoscope, to: "/vet" as const },
-                ] as const
-              ).map((item) => {
-                const upper = item.angle === 315 || item.angle === 45;
-                const face = (
-                  <>
-                    {upper ? <span className="text-[10px] leading-none text-muted">{item.label}</span> : null}
-                    <span className="grid size-10 place-items-center rounded-full border border-border bg-surface text-fg shadow-card">
-                      <item.Icon className="size-4" strokeWidth={1.75} />
-                    </span>
-                    {upper ? null : <span className="text-[10px] leading-none text-muted">{item.label}</span>}
-                  </>
-                );
-                const className = "absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
-                const rad = (item.angle * Math.PI) / 180;
+              {DIAL.map((item, index) => {
+                const active = index === dialIndex;
+                const rad = (dialAngle(index, dialIndex) * Math.PI) / 180;
+                const className = `absolute grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border shadow-card outline-none transition-[left,top,background-color,color] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring/35 ${active ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface text-fg"}`;
                 const style = {
                   left: `${50 + Math.sin(rad) * 50}%`,
                   top: `${50 - Math.cos(rad) * 50}%`,
                 };
+                const activate = (event: { preventDefault: () => void }) => {
+                  if (dialSwipe.current) {
+                    event.preventDefault();
+                    dialSwipe.current = false;
+                    return;
+                  }
+                  if (!active) {
+                    setDialIndex(index);
+                    return;
+                  }
+                  if ("view" in item) setView(item.view);
+                };
                 return "to" in item ? (
-                  <Link key={item.key} to={item.to} aria-label={item.label} className={className} style={style}>
-                    {face}
+                  <Link
+                    key={item.key}
+                    to={item.to}
+                    aria-label={item.label}
+                    aria-current={active ? "true" : undefined}
+                    className={className}
+                    style={style}
+                    onClick={(event) => {
+                      if (dialSwipe.current) {
+                        event.preventDefault();
+                        dialSwipe.current = false;
+                        return;
+                      }
+                      if (!active) {
+                        event.preventDefault();
+                        setDialIndex(index);
+                      }
+                    }}
+                  >
+                    <item.Icon className="size-4" strokeWidth={1.75} />
                   </Link>
                 ) : (
-                  <button key={item.key} type="button" aria-label={item.label} className={className} style={style} onClick={() => setView(item.view)}>
-                    {face}
+                  <button key={item.key} type="button" aria-label={item.label} aria-pressed={active} className={className} style={style} onClick={activate}>
+                    <item.Icon className="size-4" strokeWidth={1.75} />
                   </button>
                 );
               })}
+            </div>
+            <div className="mt-[calc(11px+0.25rem)] flex h-[calc(1rem+0.25rem+7rem)] min-w-14 shrink-0 items-center">
+              {(() => {
+                const active = DIAL[dialIndex] ?? DIAL[0];
+                const className = "whitespace-nowrap text-sm font-semibold leading-tight text-fg outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
+                return "to" in active ? (
+                  <Link to={active.to} className={className}>
+                    {active.label}
+                  </Link>
+                ) : (
+                  <button type="button" className={className} onClick={() => setView(active.view)}>
+                    {active.label}
+                  </button>
+                );
+              })()}
             </div>
             <div className="flex shrink-0 flex-col items-center">
             <div className="flex flex-col items-center gap-y-1">
