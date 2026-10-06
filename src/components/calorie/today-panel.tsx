@@ -161,7 +161,7 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight">("home");
-  const [barTip, setBarTip] = useState<"kcal" | "weight" | null>(null);
+  const [barTip, setBarTip] = useState(false);
   const skipScroll = useRef(true);
 
   useEffect(() => {
@@ -189,15 +189,6 @@ export function TodayPanel({
   const barScale = target > 0 ? Math.max(target, total) : Math.max(total, 1);
   const mealShare = (mealEaten / barScale) * 100;
   const treatShare = (treatEaten / barScale) * 100;
-  const latestWeight =
-    state.todayWeightKg != null && state.todayWeightKg > 0 ? state.todayWeightKg : null;
-  const idealWeight = state.dog.idealWeightKg > 0 ? state.dog.idealWeightKg : 0;
-  const weightMax = Math.max(latestWeight ?? 0, idealWeight, 0.01);
-  const weightBar = latestWeight != null ? (latestWeight / weightMax) * 100 : 0;
-  const idealLine = idealWeight > 0 ? (idealWeight / weightMax) * 100 : 0;
-  const weightOver = latestWeight != null && idealWeight > 0 && latestWeight > idealWeight;
-  const weightWithin = latestWeight == null ? 0 : idealWeight > 0 ? Math.min(weightBar, idealLine) : weightBar;
-  const weightAbove = weightOver ? Math.max(weightBar - idealLine, 0) : 0;
   const saburo = calorieSaburoStage(total, target);
 
   const foods = useMemo(
@@ -461,78 +452,29 @@ export function TodayPanel({
               })}
             </div>
             <div className="flex shrink-0 flex-col items-center">
-            <div className="grid grid-cols-2 grid-rows-[auto_1rem_7rem_auto] justify-items-center gap-x-3 gap-y-1 pr-6">
+            <div className="flex flex-col items-center gap-y-1">
               <p className="text-[11px] leading-none text-muted">ごはん</p>
-              <p className="text-[11px] leading-none text-muted">体重</p>
-              <p className="flex items-end text-xs font-semibold tabular-nums leading-none text-fg">
+              <p className="flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
                 {target > 0 ? formatKcal(target) : "—"}
-              </p>
-              <p className={`flex items-end text-xs font-semibold tabular-nums leading-none ${weightOver ? "text-danger" : "text-fg"}`}>
-                {latestWeight != null ? (
-                  <>
-                    {latestWeight.toFixed(2)}
-                    <span className="ml-0.5 text-[10px] font-medium">kg</span>
-                  </>
-                ) : (
-                  "—"
-                )}
               </p>
               <button
                 type="button"
-                className={`relative h-full w-8 self-stretch rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "kcal" ? "ring-2 ring-ring/40" : ""}`}
-                aria-pressed={barTip === "kcal"}
+                className={`relative h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip ? "ring-2 ring-ring/40" : ""}`}
+                aria-pressed={barTip}
                 aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
-                onClick={() => setBarTip((current) => (current === "kcal" ? null : "kcal"))}
+                onClick={() => setBarTip((current) => !current)}
               >
                 <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
                   <span className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
                   <span className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
                 </span>
               </button>
-              <button
-                type="button"
-                className={`relative h-full w-8 self-stretch rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip === "weight" ? "ring-2 ring-ring/40" : ""}`}
-                aria-pressed={barTip === "weight"}
-                aria-label={
-                  latestWeight != null
-                    ? `${state.date === todayJst() ? "今日" : "この日"} ${latestWeight.toFixed(2)} kg、理想 ${idealWeight > 0 ? idealWeight.toFixed(2) : "未設定"} kg`
-                    : "体重は未記録"
-                }
-                onClick={() => setBarTip((current) => (current === "weight" ? null : "weight"))}
-              >
-                <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
-                  <span className="absolute inset-x-0 bottom-0 bg-fg/55" style={{ height: `${weightWithin}%` }} />
-                  {weightAbove > 0 ? (
-                    <span className="absolute inset-x-0 bg-danger" style={{ bottom: `${idealLine}%`, height: `${weightAbove}%` }} />
-                  ) : null}
-                </span>
-                {idealWeight > 0 ? (
-                  <>
-                    <span className="absolute -left-0.5 right-0 z-10 h-0.5 bg-fg" style={{ bottom: `${idealLine}%` }} />
-                    <span
-                      className="pointer-events-none absolute left-full z-10 ml-0.5 -translate-y-1/2 text-[10px] leading-none tabular-nums text-subtle"
-                      style={{ bottom: `${idealLine}%` }}
-                    >
-                      {idealWeight.toFixed(2)}
-                    </span>
-                  </>
-                ) : null}
-              </button>
               <p className={`text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
                 {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
               </p>
-              <p className="text-[11px] leading-none text-transparent" aria-hidden>
-                —
-              </p>
             </div>
-            <p className="mt-1 w-full max-w-36 min-h-4 text-center text-[11px] leading-snug text-muted">
-              {barTip === "kcal"
-                ? `ごはん ${formatKcal(mealEaten)}　おやつ ${formatKcal(treatEaten)}`
-                : barTip === "weight"
-                  ? latestWeight == null
-                    ? "体重は未記録"
-                    : `${state.date === todayJst() ? "今日" : "この日"} ${latestWeight.toFixed(2)} kg${idealWeight > 0 ? `　差 ${(latestWeight - idealWeight).toFixed(2)} kg` : ""}`
-                  : "棒をタップすると内訳"}
+            <p className="mt-1 min-h-4 text-center text-[11px] leading-snug text-muted">
+              {barTip ? `ごはん ${formatKcal(mealEaten)}　おやつ ${formatKcal(treatEaten)}` : "棒をタップすると内訳"}
             </p>
             </div>
           </div>
@@ -896,9 +838,9 @@ export function TodayPanel({
             <p className="text-xs font-medium text-subtle">
               {state.date === todayJst() ? "今日の記録" : formatJaDayWeek(state.date)}
             </p>
-            {state.logs.length > 0 ? (
-              <p className="text-xs tabular-nums text-muted">{formatKcal(total)} kcal</p>
-            ) : null}
+            <p className="text-xs font-semibold tabular-nums text-fg">
+              {state.todayWeightKg != null && state.todayWeightKg > 0 ? `${state.todayWeightKg.toFixed(2)} kg` : "—"}
+            </p>
           </div>
           {state.logs.length === 0 ? (
             <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
