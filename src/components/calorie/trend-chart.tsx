@@ -170,7 +170,7 @@ export function TrendChart({
           {guideValue > 0 ? `目安 ${formatKcal(guideValue)}` : "目安"}
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-[#1d6fb8]" />
+          <span className="size-2 rounded-full bg-[#c23b32]" />
           期末の体重
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -230,7 +230,7 @@ export function TrendChart({
         ) : null}
         <polyline fill="none" stroke="var(--color-primary)" strokeWidth="2" points={kcalLine} />
         {weightLine ? (
-          <polyline fill="none" stroke="#1d6fb8" strokeWidth="2.25" points={weightLine} />
+          <polyline fill="none" stroke="#c23b32" strokeWidth="2.25" points={weightLine} />
         ) : null}
         {weightPts.map((item) => (
           <circle
@@ -238,7 +238,7 @@ export function TrendChart({
             cx={x(item.index)}
             cy={yWeight(item.kg)}
             r={days[item.index]!.date === activeDate ? 4 : 3}
-            fill="#1d6fb8"
+            fill="#c23b32"
           />
         ))}
         {days.map((day, index) => (
@@ -279,13 +279,13 @@ export function TrendChart({
         <text x={4} y={pad.top + 4} fill="var(--color-subtle)" fontSize="9">
           {maxKcal}
         </text>
-        <text x={width - 4} y={pad.top + 4} textAnchor="end" fill="#1d6fb8" fontSize="9">
+        <text x={width - 4} y={pad.top + 4} textAnchor="end" fill="#c23b32" fontSize="9">
           {weightMax.toFixed(2)}
         </text>
         <text x={4} y={pad.top + innerH} fill="var(--color-subtle)" fontSize="9">
           kcal
         </text>
-        <text x={width - 4} y={pad.top + innerH} textAnchor="end" fill="#1d6fb8" fontSize="9">
+        <text x={width - 4} y={pad.top + innerH} textAnchor="end" fill="#c23b32" fontSize="9">
           kg
         </text>
       </svg>
