@@ -109,10 +109,9 @@ export function TrendChart({
     .map((day, index) => (day.weightKg != null ? { index, kg: day.weightKg } : null))
     .filter((item): item is { index: number; kg: number } => item != null);
   const weightLine = weightPts.map((item) => `${x(item.index).toFixed(1)},${yWeight(item.kg).toFixed(1)}`).join(" ");
-  const hasWalk = walks.some((value) => value > 0);
-  const walkLine = hasWalk
-    ? days.map((day, index) => `${x(index).toFixed(1)},${yWalk(day.walkKm ?? 0).toFixed(1)}`).join(" ")
-    : "";
+  const slot = days.length > 0 ? innerW / days.length : innerW;
+  const barW = Math.max(3, Math.min(12, slot * 0.46));
+  const baseline = pad.top + innerH;
   const latest = days[days.length - 1];
   const startX = useRef<number | null>(null);
   const swiped = useRef(false);
@@ -175,7 +174,7 @@ export function TrendChart({
           期末の体重
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded-full bg-[#6b5344]" />
+          <span className="inline-block h-2.5 w-2 rounded-sm bg-[#6b5344]/70" />
           散歩の距離
         </span>
       </div>
@@ -187,7 +186,28 @@ export function TrendChart({
           startX.current = null;
         }}
       >
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重の推移">
+      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重と散歩距離の推移">
+        {days.map((day, index) => {
+          const km = day.walkKm ?? 0;
+          if (!(km > 0)) return null;
+          const top = yWalk(km);
+          return (
+            <g key={`walk-${day.start}`}>
+              <rect
+                x={x(index) - barW / 2}
+                y={top}
+                width={barW}
+                height={Math.max(1, baseline - top)}
+                rx="1"
+                fill="#6b5344"
+                fillOpacity="0.35"
+              />
+              <text x={x(index)} y={Math.max(top - 4, pad.top + 8)} textAnchor="middle" fill="#6b5344" fontSize="8">
+                {walkLabel(km)}
+              </text>
+            </g>
+          );
+        })}
         {guideLine ? (
           <polyline
             fill="none"
@@ -211,9 +231,6 @@ export function TrendChart({
         <polyline fill="none" stroke="var(--color-primary)" strokeWidth="2" points={kcalLine} />
         {weightLine ? (
           <polyline fill="none" stroke="var(--color-fg)" strokeWidth="1.75" strokeDasharray="4 3" points={weightLine} />
-        ) : null}
-        {walkLine ? (
-          <polyline fill="none" stroke="#6b5344" strokeWidth="1.75" points={walkLine} />
         ) : null}
         {weightPts.map((item) => (
           <circle
@@ -241,17 +258,6 @@ export function TrendChart({
                 fontSize="8"
               >
                 {axisTick(grain, day, days[index - 1])}
-              </text>
-            ) : null}
-            {(day.walkKm ?? 0) > 0 ? (
-              <text
-                x={x(index)}
-                y={Math.max(yWalk(day.walkKm) - 6, pad.top + 8)}
-                textAnchor="middle"
-                fill="#6b5344"
-                fontSize="8"
-              >
-                {walkLabel(day.walkKm)}
               </text>
             ) : null}
             <rect
