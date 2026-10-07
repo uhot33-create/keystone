@@ -27,18 +27,12 @@ import { Select } from "@/components/ui/select";
 const QTY_STEPS = [15, 2, 4] as const;
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
 
-const DIAL = [
-  { key: "food", label: "餌", Icon: Utensils, view: "add" as const },
+const MENU = [
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
+  { key: "food", label: "餌", Icon: Utensils, view: "add" as const },
   { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
 ] as const;
-
-const DIAL_STEP = 40;
-
-function dialAngle(index: number, active: number) {
-  return 90 + (index - active) * DIAL_STEP;
-}
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
@@ -174,11 +168,7 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight">("home");
-  const [barTip, setBarTip] = useState(false);
-  const [dialIndex, setDialIndex] = useState(0);
   const skipScroll = useRef(true);
-  const dialSwipe = useRef(false);
-  const dialStartY = useRef<number | null>(null);
 
   useEffect(() => {
     if (skipScroll.current) {
@@ -193,18 +183,7 @@ export function TodayPanel({
   }, [state.date, state.todayWeightKg]);
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
-  const mealEaten = truncKcal(
-    state.logs.filter((log) => log.kind !== "treat").reduce((sum, log) => sum + log.kcal, 0),
-  );
-  const treatEaten = truncKcal(
-    state.logs.filter((log) => log.kind === "treat").reduce((sum, log) => sum + log.kcal, 0),
-  );
-  const total = mealEaten + treatEaten;
-  const remaining = target > 0 ? target - total : null;
-  const over = target > 0 && total > target;
-  const barScale = target > 0 ? Math.max(target, total) : Math.max(total, 1);
-  const mealShare = (mealEaten / barScale) * 100;
-  const treatShare = (treatEaten / barScale) * 100;
+  const total = truncKcal(state.logs.reduce((sum, log) => sum + log.kcal, 0));
   const saburo = calorieSaburoStage(total, target);
 
   const foods = useMemo(
@@ -427,129 +406,41 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <div className="flex items-start justify-center gap-3">
-            <div
-              className="relative mt-[calc(11px+0.25rem)] size-[calc(1rem+0.25rem+7rem)] shrink-0 touch-none"
-              onPointerDown={(event) => {
-                dialStartY.current = event.clientY;
-                dialSwipe.current = false;
-              }}
-              onPointerMove={(event) => {
-                if (dialStartY.current == null) return;
-                if (Math.abs(event.clientY - dialStartY.current) > 12) dialSwipe.current = true;
-              }}
-              onPointerUp={(event) => {
-                if (dialStartY.current == null) return;
-                const dy = event.clientY - dialStartY.current;
-                dialStartY.current = null;
-                if (Math.abs(dy) < 28) {
-                  dialSwipe.current = false;
-                  return;
-                }
-                dialSwipe.current = true;
-                setDialIndex((index) => {
-                  if (dy < 0) return Math.min(index + 1, DIAL.length - 1);
-                  return Math.max(index - 1, 0);
-                });
-              }}
-              onPointerCancel={() => {
-                dialStartY.current = null;
-              }}
-            >
-              <div className="absolute inset-0 overflow-hidden rounded-full border border-border bg-surface-2 shadow-card">
-                <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
+          <section className="overflow-hidden rounded-md border-2 border-fg/75 bg-surface shadow-card">
+            <div className="m-1.5 flex items-stretch gap-3 border border-border bg-surface-2 p-3">
+              <div className="flex w-28 shrink-0 flex-col">
+                <div className="aspect-square overflow-hidden border border-fg/30 bg-surface">
+                  <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
+                </div>
+                <p className="mt-1 text-center text-[11px] leading-tight text-muted">{saburo.label}</p>
+                <p className="text-center text-[11px] tabular-nums text-fg">{formatKcal(total)} kcal</p>
               </div>
-              {DIAL.map((item, index) => {
-                const active = index === dialIndex;
-                const rad = (dialAngle(index, dialIndex) * Math.PI) / 180;
-                const className = `absolute grid size-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border shadow-card outline-none transition-[left,top,background-color,color] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring/35 ${active ? "border-primary bg-primary text-primary-fg" : "border-border bg-surface text-fg"}`;
-                const style = {
-                  left: `${50 + Math.sin(rad) * 50}%`,
-                  top: `${50 - Math.cos(rad) * 50}%`,
-                };
-                const activate = (event: { preventDefault: () => void }) => {
-                  if (dialSwipe.current) {
-                    event.preventDefault();
-                    dialSwipe.current = false;
-                    return;
-                  }
-                  if (!active) {
-                    setDialIndex(index);
-                    return;
-                  }
-                  if ("view" in item) setView(item.view);
-                };
-                return "to" in item ? (
-                  <Link
-                    key={item.key}
-                    to={item.to}
-                    aria-label={item.label}
-                    aria-current={active ? "true" : undefined}
-                    className={className}
-                    style={style}
-                    onClick={(event) => {
-                      if (dialSwipe.current) {
-                        event.preventDefault();
-                        dialSwipe.current = false;
-                        return;
-                      }
-                      if (!active) {
-                        event.preventDefault();
-                        setDialIndex(index);
-                      }
-                    }}
-                  >
-                    <item.Icon className="size-4" strokeWidth={1.75} />
-                  </Link>
-                ) : (
-                  <button key={item.key} type="button" aria-label={item.label} aria-pressed={active} className={className} style={style} onClick={activate}>
-                    <item.Icon className="size-4" strokeWidth={1.75} />
-                  </button>
-                );
-              })}
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+                {MENU.map((item) => {
+                  const className =
+                    "flex h-10 items-center gap-2 border border-fg/25 bg-surface px-2.5 text-sm font-semibold text-fg shadow-card outline-none hover:bg-primary hover:text-primary-fg focus-visible:ring-2 focus-visible:ring-ring/35";
+                  const face = (
+                    <>
+                      <span aria-hidden className="text-[10px]">
+                        ▶
+                      </span>
+                      <item.Icon className="size-4 shrink-0" strokeWidth={1.75} />
+                      <span className="truncate">{item.label}</span>
+                    </>
+                  );
+                  return "to" in item ? (
+                    <Link key={item.key} to={item.to} className={className}>
+                      {face}
+                    </Link>
+                  ) : (
+                    <button key={item.key} type="button" className={className} onClick={() => setView(item.view)}>
+                      {face}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="mt-[calc(11px+0.25rem)] flex h-[calc(1rem+0.25rem+7rem)] min-w-14 shrink-0 items-center">
-              {(() => {
-                const active = DIAL[dialIndex] ?? DIAL[0];
-                const className = "whitespace-nowrap text-sm font-semibold leading-tight text-fg outline-none focus-visible:ring-2 focus-visible:ring-ring/35";
-                return "to" in active ? (
-                  <Link to={active.to} className={className}>
-                    {active.label}
-                  </Link>
-                ) : (
-                  <button type="button" className={className} onClick={() => setView(active.view)}>
-                    {active.label}
-                  </button>
-                );
-              })()}
-            </div>
-            <div className="flex shrink-0 flex-col items-center">
-            <div className="flex flex-col items-center gap-y-1">
-              <p className="text-[11px] leading-none text-muted">ごはん</p>
-              <p className="flex h-4 items-end text-xs font-semibold tabular-nums leading-none text-fg">
-                {target > 0 ? formatKcal(target) : "—"}
-              </p>
-              <button
-                type="button"
-                className={`relative h-28 w-8 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/35 ${barTip ? "ring-2 ring-ring/40" : ""}`}
-                aria-pressed={barTip}
-                aria-label={`ごはん ${formatKcal(mealEaten)} kcal、おやつ ${formatKcal(treatEaten)} kcal、目標 ${target > 0 ? formatKcal(target) : "未設定"} kcal`}
-                onClick={() => setBarTip((current) => !current)}
-              >
-                <span className="absolute inset-0 overflow-hidden rounded-full bg-surface-2">
-                  <span className="absolute inset-x-0 bottom-0 bg-primary" style={{ height: `${mealShare}%` }} />
-                  <span className="absolute inset-x-0 bg-accent" style={{ bottom: `${mealShare}%`, height: `${treatShare}%` }} />
-                </span>
-              </button>
-              <p className={`text-center text-[11px] leading-none ${over ? "text-danger" : "text-muted"}`}>
-                {target > 0 ? (over ? `超 ${formatKcal(total - target)}` : `残 ${formatKcal(remaining ?? 0)}`) : "未設定"}
-              </p>
-            </div>
-            <p className="mt-1 min-h-4 text-center text-[11px] leading-snug text-muted">
-              {barTip ? `ごはん ${formatKcal(mealEaten)}　おやつ ${formatKcal(treatEaten)}` : "棒をタップすると内訳"}
-            </p>
-            </div>
-          </div>
+          </section>
 
           <DateBar
             date={state.date}
