@@ -804,17 +804,17 @@ export function TodayPanel({
 
       {view !== "add" ? (
         <section className="rounded-lg border border-border bg-surface px-3 py-2">
-          <div className="flex items-baseline justify-between gap-2">
-            <p className="text-xs font-medium text-subtle">
+          <div className="flex items-baseline gap-2 whitespace-nowrap">
+            <p className="shrink-0 text-xs font-medium text-subtle">
               {state.date === todayJst() ? "今日の記録" : formatJaDayWeek(state.date)}
             </p>
-            <p className="text-xs font-semibold tabular-nums text-fg">
+            <p className={`min-w-0 flex-1 truncate text-right text-xs tabular-nums ${total > target && target > 0 ? "text-danger" : "text-muted"}`}>
+              {formatKcal(total)} kcal　{remainText}
+            </p>
+            <p className="shrink-0 text-xs font-semibold tabular-nums text-fg">
               {state.todayWeightKg != null && state.todayWeightKg > 0 ? `${state.todayWeightKg.toFixed(2)} kg` : "—"}
             </p>
           </div>
-          <p className={`mt-0.5 text-xs tabular-nums ${total > target && target > 0 ? "text-danger" : "text-muted"}`}>
-            {formatKcal(total)} kcal　{remainText}
-          </p>
           {state.logs.length === 0 ? (
             <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
           ) : (
