@@ -25,17 +25,6 @@ function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined):
   return day.label;
 }
 
-function rangeLabel(grain: TrendGrain, days: DayTrend[]): string {
-  const first = days[0];
-  const last = days[days.length - 1];
-  if (!first || !last) return "";
-  if (grain === "year") return `${first.label}–${last.label}`;
-  if (first.start.slice(0, 4) === last.end.slice(0, 4)) {
-    return `${first.start.slice(0, 4)}年`;
-  }
-  return `${first.start.slice(0, 4)}年–${last.end.slice(0, 4)}年`;
-}
-
 export function TrendChart({
   grain,
   days,
@@ -132,13 +121,10 @@ export function TrendChart({
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
-      <div className="flex items-end justify-between gap-2">
-        <div>
-          <p className="font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
-          <p className="mt-0.5 text-xs text-muted">{rangeLabel(grain, days)}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <p className="text-right text-xs text-muted">
+      <div className="flex items-center justify-between gap-2">
+        <p className="shrink-0 whitespace-nowrap font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="min-w-0 truncate whitespace-nowrap text-right text-xs text-muted">
             {latest ? `${formatKcal(latest.kcal)} kcal` : "—"}
             {latest?.weightKg != null ? ` / ${latest.weightKg.toFixed(2)} kg` : ""}
             {latest && (latest.walkKm ?? 0) > 0 ? ` / ${walkLabel(latest.walkKm)} km` : ""}
