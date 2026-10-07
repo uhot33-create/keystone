@@ -418,7 +418,7 @@ export function TodayPanel({
                 <img
                   src={saburo.src}
                   alt={saburo.label}
-                  className="absolute inset-0 h-full w-full origin-center scale-[1.45] object-cover object-center"
+                  className="absolute inset-0 h-full w-full object-cover object-center"
                 />
                 <p className="absolute inset-x-0 bottom-0 bg-surface/80 py-0.5 text-center text-[11px] leading-tight text-muted">
                   {saburo.label}
