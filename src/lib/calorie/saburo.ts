@@ -3,8 +3,8 @@ import { truncKcal } from "@/lib/calorie/formula";
 const STAGES = [
   { src: "/calorie/saburo/01-standard.jpg", label: "今の体型" },
   { src: "/calorie/saburo/12-near.jpg", label: "すこし丸い" },
-  { src: "/calorie/saburo/13-over.jpg", label: "かなり太い" },
-  { src: "/calorie/saburo/14-more.jpg", label: "もっと太い" },
+  { src: "/calorie/saburo/15-quite.jpg", label: "かなり太い" },
+  { src: "/calorie/saburo/16-heavier.jpg", label: "もっと太い" },
 ] as const;
 
 export function calorieSaburoStage(total: number, target: number) {
