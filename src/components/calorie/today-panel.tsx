@@ -185,6 +185,12 @@ export function TodayPanel({
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
   const total = truncKcal(state.logs.reduce((sum, log) => sum + log.kcal, 0));
   const saburo = calorieSaburoStage(total, target);
+  const remainText =
+    target > 0
+      ? total > target
+        ? `超 ${formatKcal(truncKcal(total - target))}`
+        : `残 ${formatKcal(truncKcal(target - total))}`
+      : "残 —";
 
   const foods = useMemo(
     () => state.foods.filter((item) => item.kind === kind),
@@ -413,7 +419,6 @@ export function TodayPanel({
                   <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
                 </div>
                 <p className="mt-1 text-center text-[11px] leading-tight text-muted">{saburo.label}</p>
-                <p className="text-center text-[11px] tabular-nums text-fg">{formatKcal(total)} kcal</p>
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
                 {MENU.map((item) => {
@@ -760,7 +765,9 @@ export function TodayPanel({
       <section className="rounded-lg border border-border bg-surface px-3 py-2">
         <div className="flex items-baseline justify-between gap-2">
           <p className="text-xs font-medium text-subtle">今日の記録</p>
-          {state.logs.length > 0 ? <p className="text-xs tabular-nums text-muted">{state.logs.length}件</p> : null}
+          <p className={`text-xs tabular-nums ${total > target && target > 0 ? "text-danger" : "text-muted"}`}>
+            {formatKcal(total)} kcal　{remainText}
+          </p>
         </div>
         {state.logs.length === 0 ? (
           <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
@@ -805,6 +812,9 @@ export function TodayPanel({
               {state.todayWeightKg != null && state.todayWeightKg > 0 ? `${state.todayWeightKg.toFixed(2)} kg` : "—"}
             </p>
           </div>
+          <p className={`mt-0.5 text-xs tabular-nums ${total > target && target > 0 ? "text-danger" : "text-muted"}`}>
+            {formatKcal(total)} kcal　{remainText}
+          </p>
           {state.logs.length === 0 ? (
             <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
           ) : (
