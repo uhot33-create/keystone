@@ -413,14 +413,18 @@ export function TodayPanel({
       {view === "home" ? (
         <>
           <section className="overflow-hidden rounded-md border-2 border-fg/75 bg-surface shadow-card">
-            <div className="m-1.5 flex items-stretch gap-3 border border-border bg-surface-2 p-3">
-              <div className="flex w-28 shrink-0 flex-col">
-                <div className="aspect-square overflow-hidden border border-fg/30 bg-surface">
-                  <img src={saburo.src} alt={saburo.label} className="h-full w-full object-cover" />
-                </div>
-                <p className="mt-1 text-center text-[11px] leading-tight text-muted">{saburo.label}</p>
+            <div className="m-1.5 flex items-stretch gap-3 border border-border bg-surface-2">
+              <div className="relative w-40 shrink-0 self-stretch overflow-hidden border-r border-fg/30 bg-surface">
+                <img
+                  src={saburo.src}
+                  alt={saburo.label}
+                  className="absolute inset-0 h-full w-full origin-center scale-[1.45] object-cover object-center"
+                />
+                <p className="absolute inset-x-0 bottom-0 bg-surface/80 py-0.5 text-center text-[11px] leading-tight text-muted">
+                  {saburo.label}
+                </p>
               </div>
-              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-3 pr-3">
                 {MENU.map((item) => {
                   const className =
                     "flex h-10 items-center gap-2 border border-fg/25 bg-surface px-2.5 text-sm font-semibold text-fg shadow-card outline-none hover:bg-primary hover:text-primary-fg focus-visible:ring-2 focus-visible:ring-ring/35";
