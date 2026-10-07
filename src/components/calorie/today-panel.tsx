@@ -412,9 +412,10 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <section className="overflow-hidden rounded-md border-2 border-fg/75 bg-surface shadow-card">
-            <div className="m-1.5 flex items-stretch gap-3 border border-border bg-surface-2">
-              <div className="relative w-40 shrink-0 self-stretch overflow-hidden border-r border-fg/30 bg-surface">
+          <section className="rounded-sm bg-surface p-1 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_16px_32px_-22px_var(--color-fg)] ring-1 ring-fg/80">
+            <div className="rounded-[2px] border border-fg/40 p-1">
+            <div className="flex items-stretch gap-3 overflow-hidden border border-fg/15 bg-surface-2">
+              <div className="relative w-40 shrink-0 self-stretch overflow-hidden border-r border-fg/20 bg-surface">
                 <img
                   src={saburo.src}
                   alt={saburo.label}
@@ -448,6 +449,7 @@ export function TodayPanel({
                   );
                 })}
               </div>
+            </div>
             </div>
           </section>
 
