@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ChartLine, Footprints, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import { chartWindowStart } from "@/lib/calorie/summary";
@@ -33,65 +33,6 @@ const MENU = [
   { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
 ] as const;
-
-function IvyLeaf({ className, style }: { className: string; style?: CSSProperties }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} style={style} aria-hidden>
-      <path
-        fill="currentColor"
-        d="M12 21.5c.4-3.2.8-5.6.8-5.6 2.4 2.2 5.4 1.8 6.4-.2 1-2-.8-4.2-3-4.6 2.6-2.2 2.8-5.6.6-7-2-1.2-4.2.2-5 2.6C10.6 4 8 2.6 6 3.8c-2.2 1.4-2 4.8.8 7-2.2.5-4 2.6-3 4.6 1 2 4 .4 6.4.2 0 0 .2 2.4.6 5.9z"
-      />
-      <path d="M12 21.5c0-4 .1-8-.2-11" stroke="#e8f0e2" strokeWidth="0.7" fill="none" />
-    </svg>
-  );
-}
-
-function IvyFrame() {
-  const top = ["14%", "36%", "58%", "80%"];
-  const side = ["28%", "62%"];
-  return (
-    <div aria-hidden className="pointer-events-none absolute -inset-3 z-20 text-[#3d5c42]">
-      <svg className="absolute inset-3 h-[calc(100%-1.5rem)] w-[calc(100%-1.5rem)]" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none">
-        <path d="M2 6 C 18 1, 34 9, 50 3 S 82 8, 98 4" stroke="currentColor" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
-        <path d="M2 94 C 18 99, 34 91, 50 97 S 82 92, 98 96" stroke="currentColor" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
-        <path d="M5 4 C 1 22, 9 40, 3 56 S 8 84, 5 96" stroke="currentColor" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
-        <path d="M95 4 C 99 22, 91 40, 97 56 S 92 84, 95 96" stroke="currentColor" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
-      </svg>
-      {top.map((left, index) => (
-        <IvyLeaf
-          key={`top-${left}`}
-          className="absolute top-1 size-[1.35rem] -translate-x-1/2"
-          style={{ left, rotate: `${index % 2 ? 16 : -18}deg` }}
-        />
-      ))}
-      {top.map((left, index) => (
-        <IvyLeaf
-          key={`bottom-${left}`}
-          className="absolute bottom-1 size-[1.35rem] -translate-x-1/2"
-          style={{ left, rotate: `${index % 2 ? 198 : 164}deg` }}
-        />
-      ))}
-      {side.map((topPos, index) => (
-        <IvyLeaf
-          key={`left-${topPos}`}
-          className="absolute left-1 size-[1.35rem] -translate-y-1/2"
-          style={{ top: topPos, rotate: `${index % 2 ? -70 : -100}deg` }}
-        />
-      ))}
-      {side.map((topPos, index) => (
-        <IvyLeaf
-          key={`right-${topPos}`}
-          className="absolute right-1 size-[1.35rem] -translate-y-1/2"
-          style={{ top: topPos, rotate: `${index % 2 ? 70 : 100}deg` }}
-        />
-      ))}
-      <IvyLeaf className="absolute left-0 top-0 size-8 -rotate-40" />
-      <IvyLeaf className="absolute right-0 top-0 size-8 rotate-[48deg]" />
-      <IvyLeaf className="absolute bottom-0 left-0 size-8 -rotate-[140deg]" />
-      <IvyLeaf className="absolute bottom-0 right-0 size-8 rotate-[138deg]" />
-    </div>
-  );
-}
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
@@ -471,9 +412,7 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <section className="relative">
-            <IvyFrame />
-            <div className="relative z-10 rounded-sm bg-surface p-1 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_16px_32px_-22px_var(--color-fg)] ring-1 ring-fg/80">
+          <section className="rounded-sm bg-surface p-1 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_16px_32px_-22px_var(--color-fg)] ring-1 ring-fg/80">
             <div className="rounded-[2px] border border-fg/40 p-1">
             <div className="flex items-stretch gap-3 overflow-hidden border border-fg/15 bg-surface-2">
               <div className="relative w-40 shrink-0 self-stretch overflow-hidden border-r border-fg/20 bg-surface">
@@ -510,7 +449,6 @@ export function TodayPanel({
                   );
                 })}
               </div>
-            </div>
             </div>
             </div>
           </section>
