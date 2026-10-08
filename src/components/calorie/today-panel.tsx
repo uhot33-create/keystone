@@ -29,7 +29,7 @@ const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, 
 
 const MENU = [
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
-  { key: "food", label: "餌", Icon: Utensils, view: "add" as const },
+  { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
   { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
 ] as const;
