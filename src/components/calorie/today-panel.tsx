@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
-import { ChartLine, Footprints, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
+import { ChartLine, Footprints, GripVertical, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
-import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
+import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import { chartWindowStart } from "@/lib/calorie/summary";
 import {
   formatJaDayWeek,
@@ -33,6 +33,14 @@ const MENU = [
   { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
 ] as const;
+
+function moveId(ids: number[], from: number, to: number): number[] {
+  if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return ids;
+  const next = ids.slice();
+  const [id] = next.splice(from, 1);
+  next.splice(to, 0, id!);
+  return next;
+}
 
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
@@ -169,6 +177,10 @@ export function TodayPanel({
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight">("home");
   const skipScroll = useRef(true);
+  const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
+  const stapleOrderRef = useRef<number[] | null>(null);
+  const [stapleOrder, setStapleOrder] = useState<number[] | null>(null);
+  const [stapleDragging, setStapleDragging] = useState<number | null>(null);
 
   useEffect(() => {
     if (skipScroll.current) {
@@ -625,13 +637,78 @@ export function TodayPanel({
               ) : null}
             </div>
             {state.foods.length === 0 ? <p className="text-xs text-muted">先にフードを登録してください。</p> : null}
+            {state.staples.length > 1 ? <p className="text-[11px] text-muted">左のつまみをドラッグして並べ替え</p> : null}
             {state.staples.length > 0 ? (
               <ul className="divide-y divide-border">
-                {state.staples.map((item) => {
+                {(stapleOrder ?? state.staples.map((item) => item.id)).map((id) => {
+                  const item = state.staples.find((entry) => entry.id === id);
+                  if (!item) return null;
                   const food = state.foods.find((entry) => entry.id === item.foodId);
                   const label = food ? `${food.name} ${formatQuantity(item.qty, food.unit)}` : "フードがありません";
                   return (
-                    <li key={item.id} className="flex items-center gap-2 py-1">
+                    <li
+                      key={item.id}
+                      data-staple-id={item.id}
+                      className={`flex items-center gap-1 py-1 ${stapleDragging === item.id ? "bg-surface-2" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="grid size-8 shrink-0 cursor-grab touch-none place-items-center text-muted active:cursor-grabbing"
+                        aria-label={`${label}を並べ替え`}
+                        disabled={pending || locked || state.staples.length < 2}
+                        onPointerDown={(event) => {
+                          if (pending || locked || state.staples.length < 2) return;
+                          const row = event.currentTarget.closest("li");
+                          if (!row) return;
+                          event.preventDefault();
+                          event.currentTarget.setPointerCapture(event.pointerId);
+                          const ids = state.staples.map((entry) => entry.id);
+                          stapleDrag.current = {
+                            startIndex: ids.indexOf(item.id),
+                            startY: event.clientY,
+                            rowHeight: row.getBoundingClientRect().height || 36,
+                            origin: ids,
+                          };
+                          stapleOrderRef.current = ids;
+                          setStapleOrder(ids);
+                          setStapleDragging(item.id);
+                        }}
+                        onPointerMove={(event) => {
+                          const drag = stapleDrag.current;
+                          if (!drag) return;
+                          const shift = Math.round((event.clientY - drag.startY) / drag.rowHeight);
+                          const to = Math.min(drag.origin.length - 1, Math.max(0, drag.startIndex + shift));
+                          const next = moveId(drag.origin, drag.startIndex, to);
+                          stapleOrderRef.current = next;
+                          setStapleOrder(next);
+                        }}
+                        onPointerUp={() => {
+                          const next = stapleOrderRef.current;
+                          const current = state.staples.map((entry) => entry.id);
+                          stapleDrag.current = null;
+                          setStapleDragging(null);
+                          if (!next || next.join(",") === current.join(",")) {
+                            stapleOrderRef.current = null;
+                            setStapleOrder(null);
+                            return;
+                          }
+                          void run(
+                            () => reorderCalorieStaples({ data: { date: state.date, dogId: state.dog.id, ids: next } }),
+                            "並び替え中…",
+                          ).finally(() => {
+                            stapleOrderRef.current = null;
+                            setStapleOrder(null);
+                          });
+                        }}
+                        onPointerCancel={() => {
+                          stapleDrag.current = null;
+                          stapleOrderRef.current = null;
+                          setStapleDragging(null);
+                          setStapleOrder(null);
+                        }}
+                      >
+                        <GripVertical className="size-4" />
+                      </button>
                       <p className="min-w-0 flex-1 truncate text-xs text-fg">{label}</p>
                       <button
                         type="button"

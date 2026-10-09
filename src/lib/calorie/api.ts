@@ -671,6 +671,38 @@ export const saveCalorieStaple = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+const stapleOrderInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
+  ids: z.array(z.number().int().positive()).min(1).max(50),
+});
+
+export const reorderCalorieStaples = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(stapleOrderInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    const rows = await sql<{ id: number }>`
+      select id from calorie_staples
+      where user_id = ${context.userId} and dog_id = ${dog.id}
+    `;
+    const owned = new Set(rows.map((row) => row.id));
+    if (data.ids.length !== owned.size || data.ids.some((id) => !owned.has(id))) {
+      throw new Error("並び順を保存できません");
+    }
+    for (let index = 0; index < data.ids.length; index += 1) {
+      const id = data.ids[index];
+      if (id == null) continue;
+      await sql`
+        update calorie_staples
+        set sort_order = ${index + 1}
+        where id = ${id} and user_id = ${context.userId} and dog_id = ${dog.id}
+      `;
+    }
+    return loadState(context.userId, data.date, dog.id);
+  });
+
 export const deleteCalorieStaple = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
