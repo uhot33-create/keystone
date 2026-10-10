@@ -1,5 +1,12 @@
+/*
+ * アプリ全体の色・フォント・角丸・影。
+ * 既定の色は下の @theme。季節の配色は :root[data-theme="..."]。
+ * テーマを足すときはここへブロックを追加し、lib/theme.ts の THEMES と theme-motif.tsx の MOTIFS も揃える。
+ * 文字色 --color-fg は読みやすさのため、派手にしすぎない。
+ */
 @import "tailwindcss";
 
+/* 既定（和紙）。--color-* を変えると、テーマ未選択のときの色が変わる。 */
 @theme {
   --color-bg: #f3efe8;
   --color-surface: #fffbf6;
@@ -35,6 +42,7 @@
   --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* 春。data-theme="spring"。見本色は lib/theme.ts の swatch / paper と揃える。 */
 :root[data-theme="spring"] {
   --color-bg: #fbf4f6;
   --color-surface: #fff8fa;
@@ -50,6 +58,7 @@
   --color-ring: #c45c78;
 }
 
+/* 新緑。data-theme="midori"。 */
 :root[data-theme="midori"] {
   --color-bg: #eef5e8;
   --color-surface: #f7fbf4;
@@ -65,6 +74,7 @@
   --color-ring: #4a7a48;
 }
 
+/* 梅雨。data-theme="tsuyu"。 */
 :root[data-theme="tsuyu"] {
   --color-bg: #eef0f7;
   --color-surface: #f7f8fc;
@@ -80,6 +90,7 @@
   --color-ring: #5a6a9a;
 }
 
+/* 夏。data-theme="summer"。 */
 :root[data-theme="summer"] {
   --color-bg: #eef6f8;
   --color-surface: #f7fcfd;
@@ -95,6 +106,7 @@
   --color-ring: #2a7a8c;
 }
 
+/* 秋。data-theme="autumn"。 */
 :root[data-theme="autumn"] {
   --color-bg: #f6efe4;
   --color-surface: #fdf6ec;
@@ -110,6 +122,7 @@
   --color-ring: #a04828;
 }
 
+/* 月見。data-theme="tsukimi"。 */
 :root[data-theme="tsukimi"] {
   --color-bg: #f4efe4;
   --color-surface: #fbf7ee;
@@ -125,6 +138,7 @@
   --color-ring: #8a6a3a;
 }
 
+/* 冬。data-theme="winter"。 */
 :root[data-theme="winter"] {
   --color-bg: #eef1f5;
   --color-surface: #f7f9fb;
@@ -140,6 +154,7 @@
   --color-ring: #3a4e68;
 }
 
+/* マカロン。data-theme="macaron"。 */
 :root[data-theme="macaron"] {
   --color-bg: #fbf6f2;
   --color-surface: #fffaf8;

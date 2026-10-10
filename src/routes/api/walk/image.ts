@@ -1,7 +1,15 @@
+/**
+ * カード画像の取得 API（GET /api/walk/image）。
+ * 一覧の拡大と編集プレビューが、id と i（何枚目か）で本画像を取る。
+ * 自分のメモだけ。Blob は非公開なので、ここでトークン付きで読む。
+ * t=1 のときはサムネ優先。キャッシュは private, no-cache。
+ * アップロードの大きさは lib/walk/image.ts と uploadWalkImage。
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { getSql } from "@/lib/db";
 
+/** ログイン済みの画像プロキシ。失敗時は 401 / 404 / 502。 */
 export const Route = createFileRoute("/api/walk/image")({
   server: {
     handlers: {

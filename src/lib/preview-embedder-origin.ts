@@ -1,3 +1,9 @@
+/**
+ * プレビュー iframe の親が、許可された Grok の画面かどうかを判定する。
+ * grok.com・localhost・サンドボックスのホストを足したり外したりするときはここ。
+ * メッセージのやり取り本体は preview-host-bridge.ts。
+ */
+/** grok.com とそのサブドメイン、または手元の localhost なら true。 */
 export function isGrokEmbedderOrigin(origin: string): boolean {
   try {
     const url = new URL(origin);
@@ -11,6 +17,7 @@ export function isGrokEmbedderOrigin(origin: string): boolean {
   }
 }
 
+/** ゲスト側が grok-sandbox.com 上のプレビューか。 */
 export function isSandboxPreviewGuestHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
   return host === "grok-sandbox.com" || host.endsWith(".grok-sandbox.com");
@@ -28,6 +35,7 @@ function isRemintPreviewPair(guestHost: string, parentHost: string): boolean {
   return parent === rest || parent === `grok.${rest}`;
 }
 
+/** 埋め込み親のオリジン。自分自身の窓や、許可外なら null。 */
 export function resolveParentEmbedderOrigin(
   parentIsSelf: boolean,
   referrer: string,

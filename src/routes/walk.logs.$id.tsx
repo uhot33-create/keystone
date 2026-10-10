@@ -1,3 +1,9 @@
+/**
+ * 散歩ログの 1 件（/walk/logs/$id）。
+ * 距離・時間・軌跡と、前後のログへの移動。削除は deleteWalkLog。
+ * 地図は TrackMap。線の切れ目は gpx.ts の TRACK_GAP_M。
+ * 表示の km と時間は format.ts。名前は取り込み時の町名か GPX 名。
+ */
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
@@ -8,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { deleteWalkLog, getWalkLog, type WalkLogDetail } from "@/lib/walk-log/api";
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
 
+/** 詳細ルート。id は URL。前後は getWalkLog の prevId / nextId。 */
 export const Route = createFileRoute("/walk/logs/$id")({
   component: WalkLogDetail,
 });

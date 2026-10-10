@@ -1,3 +1,9 @@
+/**
+ * 残り本数を減らすパネル。
+ * 画面は /smoking の「減算」。三郎の写真と、次の0時までのカウント。
+ * 1秒ごとに時刻を見て、resetsAt を過ぎたら getSmokingState で取り直す。
+ * 残り0でもボタンは押せる。そのときは限度超えになる（smokeOne）。
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import { getSmokingState, setRemaining, smokeOne } from "@/lib/smoking/api";
 import { formatCountdown, formatJaDateTime } from "@/lib/smoking/period";
@@ -8,6 +14,7 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** state が変わると onChange で親に返す。修正フォームは上限まで。 */
 export function CountPanel({
   state,
   onChange,

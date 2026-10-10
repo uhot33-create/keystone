@@ -1,8 +1,16 @@
+/**
+ * カップ麺の品名と在庫。
+ * 画面は /cup。画像の出し入れは /api/cup/image（このファイルは URL を保存するだけ）。
+ * 品名は1〜100文字。在庫は期限（実在する YYYY-MM-DD）と0以上の個数。
+ * 一覧は期限が近い順。品名を消しても在庫の名前は残り、マスタとのつながりだけ切れる。
+ * 画像の実体は Vercel Blob。削除に失敗しても品名の保存は続ける（removeBlob）。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 
+/** 品名マスタ1件。hasImage は image_url があるか。 */
 export type CupItem = {
   id: string;
   name: string;
@@ -10,6 +18,7 @@ export type CupItem = {
   createdAt: string;
 };
 
+/** 在庫1件。itemId が null なら直接入力の名前だけ。 */
 export type CupStock = {
   id: string;
   itemId: string | null;
@@ -88,6 +97,7 @@ async function removeBlob(url: string | null) {
   }
 }
 
+/** 品名一覧（名前順）と在庫一覧（期限の早い順）。 */
 export const getCupState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -107,6 +117,7 @@ export const getCupState = createServerFn({ method: "GET" })
     return { items: items.map(mapItem), stocks: stocks.map(mapStock) };
   });
 
+/** 品名の入力。名前は1〜100文字。画像URLは任意。 */
 const itemInput = z.object({
   name: z.string().trim().min(1, "品名は必須です").max(100, "品名は100文字以内で入力してください"),
   imageUrl: z.string().nullable().optional(),
@@ -114,6 +125,7 @@ const itemInput = z.object({
   clearImage: z.boolean().optional(),
 });
 
+/** 品名を追加する。画像は先にアップロードした URL を渡す。 */
 export const addCupItem = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -135,6 +147,7 @@ export const addCupItem = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** 品名を更新。画像を差し替えるか外すときは、古い Blob を消す。 */
 export const updateCupItem = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -168,6 +181,7 @@ export const updateCupItem = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** 品名を削除。戻り値 referenced は、つながっていた在庫の件数（在庫自体は消さない）。 */
 export const deleteCupItem = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -192,6 +206,7 @@ export const deleteCupItem = createServerFn({ method: "POST" })
     return { referenced: Number(counts[0]?.count) || 0 };
   });
 
+/** 在庫の入力。期限は YYYY-MM-DD、個数は0以上の整数。 */
 const stockInput = z.object({
   itemId: z.string().uuid().nullable().optional(),
   itemName: z.string().trim().max(100).optional(),
@@ -220,6 +235,7 @@ async function resolveItem(
   return { itemId: null, itemName: name };
 }
 
+/** 在庫を1件追加。マスタ選択か、名前の直接入力。 */
 export const addCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -238,6 +254,7 @@ export const addCupStock = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** 在庫の品名・期限・個数をまとめて更新。 */
 export const updateCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -264,6 +281,7 @@ export const updateCupStock = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** 個数を delta だけ増減。結果が0未満ならエラー。 */
 export const adjustCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -285,6 +303,7 @@ export const adjustCupStock = createServerFn({ method: "POST" })
     return { quantity: Number(rows[0].quantity) };
   });
 
+/** 在庫を1件削除。 */
 export const deleteCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {

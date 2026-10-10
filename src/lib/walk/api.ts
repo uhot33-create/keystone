@@ -1,3 +1,10 @@
+/**
+ * お散歩カード（メモ）のサーバー処理。一覧・新規・編集・削除・画像アップロード。
+ * 画面は /walk、/walk/new、/walk/$id/edit。ログインした自分の行だけ触る。
+ * 名前の文字数、年齢 0〜30、メモ 2000 文字、画像枚数は memoInput。
+ * 犬種・色の初期リストは BREED_SEED と COLOR_SEED。表が空のときだけ入れる。
+ * 画像の送信サイズは MAX_B64。枚数の上限は types.ts の MAX_MEMO_IMAGES。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -148,6 +155,7 @@ function mapMemo(row: MemoRow, includeThumbData = true): WalkMemo {
   };
 }
 
+/** 犬種マスタが空のときだけ入れる初期リスト。並びは sort。足す・消すならここ。 */
 const BREED_SEED: { id: string; name: string; sort: number }[] = [
   ["a1000000-0000-4000-8000-000000000001", "チワワ", 10],
   ["a1000000-0000-4000-8000-000000000002", "トイプードル", 20],
@@ -200,6 +208,7 @@ async function listBreeds(): Promise<DogBreed[]> {
   }));
 }
 
+/** 色マスタが空のときだけ入れる初期リスト。並びは sort。 */
 const COLOR_SEED: { id: string; name: string; sort: number }[] = [
   ["c1000000-0000-4000-8000-000000000001", "白", 10],
   ["c1000000-0000-4000-8000-000000000002", "茶", 20],
@@ -354,6 +363,7 @@ const optionalDate = z
   .transform((value) => (value && value.length > 0 ? value : null))
   .refine((value) => value == null || /^\d{4}-\d{2}-\d{2}$/.test(value), "日付の形式を確認してください");
 
+/** 保存前の入力チェック。名前・飼い主・年齢・メモ・画像枚数の上限はここ。 */
 const memoInput = z.object({
   name: z
     .string()
@@ -428,6 +438,7 @@ async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[
   };
 }
 
+/** 一覧と犬種・色と、Blob が使えるか。サムネ本体は含めず、あとから getWalkThumbs。 */
 export const getWalkState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -444,6 +455,7 @@ export const getWalkState = createServerFn({ method: "GET" })
     };
   });
 
+/** 一覧用のカバー画像サムネだけ返す。文字を先に出すための分割取得。 */
 export const getWalkThumbs = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -479,6 +491,7 @@ export const getWalkThumbs = createServerFn({ method: "GET" })
     });
   });
 
+/** 編集画面用の 1 件と犬種・色。他人のカードは「見つかりません」。 */
 export const getWalkMemo = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -497,6 +510,7 @@ export const getWalkMemo = createServerFn({ method: "GET" })
     };
   });
 
+/** 新規カードを保存し、保存後の 1 件を返す。 */
 export const createWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(memoInput, input))
@@ -542,6 +556,7 @@ const updateInput = memoInput.extend({
   id: z.string().min(1),
 });
 
+/** 既存カードを上書きする。外した画像の Blob は削除を試みる。 */
 export const updateWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(updateInput, input))
@@ -586,8 +601,10 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
     return memo;
   });
 
+/** base64 の最大長。JSON が Vercel の約 4.5MB を超えないようにする。元の上限は image.ts。 */
 const MAX_B64 = Math.ceil((2.8 * 1024 * 1024 * 4) / 3) + 64;
 
+/** 画像を Vercel Blob に置く。本画像は非公開。128px の JPEG サムネも作る。 */
 export const uploadWalkImage = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -659,6 +676,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     }
   });
 
+/** カードと、ひも付いた画像 Blob を削除する。 */
 export const deleteWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -673,6 +691,7 @@ export const deleteWalkMemo = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** 「今日会った」を日本時間の今日にする。虹渡りのカードは更新しない。 */
 export const touchWalkMemoMet = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))

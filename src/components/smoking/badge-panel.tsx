@@ -1,7 +1,15 @@
+/**
+ * バッチタブの印章。
+ * 画面は /smoking の「バッチ」。数字は state.badges。
+ * 繰り上げの個数は NICE_PER_VERY（30）と VERY_PER_WONDERFUL（6）。
+ * 日数の印はスタート、連続7、連続30、累計100。静かな週の目盛りはゼロ連続を7で割った余り。
+ * 印の大きさは Seal の size。未獲得は薄い枠、獲得は赤枠。
+ */
 import { NICE_PER_VERY, VERY_PER_WONDERFUL } from "@/lib/smoking/badges";
 import type { SmokingState } from "@/lib/smoking/types";
 import { cn } from "@/lib/utils";
 
+/** 貯める・日数・本数・特別の印を並べる。 */
 export function BadgePanel({ state }: { state: SmokingState }) {
   const b = state.badges;
 
@@ -74,6 +82,7 @@ export function BadgePanel({ state }: { state: SmokingState }) {
   );
 }
 
+/** 印1つ。progress と total があるときだけ下に棒グラフを出す。 */
 function Seal({
   title,
   hint,

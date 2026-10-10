@@ -1,3 +1,11 @@
+/**
+ * 「プロフィール」タブです。名前・現在体重・理想体重を dogs に保存します。
+ * 理想体重を変えると、プランの1日の目安（dailyEnergy）とグラフの点線も作り直されます。
+ * ライフステージとおやつ割合はこの画面では変えず、いまの値のまま保存します。
+ * 多頭飼いは最大10頭（addDog）。最後の1頭は deleteDog が拒否します。
+ * 体重の表示桁は kgText（小数2桁）。入力の上限120kgは api.ts の saveDogInput です。
+ * 追加時の仮名は「うちの子2」のように頭数+1です。名前が空だと「うちの子」で保存します。
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import { addDog, deleteDog, saveDogProfile } from "@/lib/calorie/api";
 import type { CalorieState } from "@/lib/calorie/types";
@@ -6,11 +14,16 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** 体重を小数2桁の文字列にします。0以下は空欄（未入力）です。桁を変えると入力欄の見た目が変わります。 */
 function kgText(value: number): string {
   if (!(value > 0)) return "";
   return (Math.round(value * 100) / 100).toFixed(2);
 }
 
+/**
+ * 名前・体重の保存と、子の追加・削除です。追加の上限10頭と「最後の1頭は消せない」はサーバー側のチェックです。
+ * ここだけ文言を変えても、11頭目は addDog がエラーにします。
+ */
 export function ProfilePanel({
   state,
   onChange,

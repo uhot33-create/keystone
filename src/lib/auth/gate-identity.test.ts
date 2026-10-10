@@ -1,3 +1,7 @@
+/**
+ * ゲート本人確認トークンのテスト。期限・発行者・鍵の入れ替えを確認する。
+ * 本番の検証は gate-identity.server.ts。GROK_PROJECT_ID と GROK_GATE_ORIGIN の意味もそちら。
+ */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync, type KeyObject } from "node:crypto";

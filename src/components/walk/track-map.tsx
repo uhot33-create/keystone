@@ -1,7 +1,15 @@
+/**
+ * 散歩の軌跡を Leaflet で描く地図。
+ * 画面はログ詳細（encoded が 1 本）と月の合計（tracks が複数）。
+ * 線が切れる距離は gpx.ts の TRACK_GAP_M と splitTrack。ここは描画だけ。
+ * タイルは OpenStreetMap。線の色は CSS の --color-primary。高さは h-64。
+ * ホイールズームはオフ。軌跡が無いときはその旨の枠を出す。
+ */
 import { useEffect, useRef } from "react";
 import { decodePolyline, splitTrack } from "@/lib/walk-log/gpx";
 import "leaflet/dist/leaflet.css";
 
+/** encoded か tracks のポリラインを線にする。点が無ければ地図は作らない。 */
 export function TrackMap({ encoded, tracks }: { encoded?: string | null; tracks?: string[] }) {
   const el = useRef<HTMLDivElement>(null);
   const lines = (tracks ?? (encoded ? [encoded] : [])).filter((line) => line.length > 0);

@@ -1,8 +1,15 @@
+/**
+ * 「次回、先生に伝えること」のメモ。
+ * DoctorMemoCard は /vet の一覧に出る編集欄。DoctorMemoCopy は入力フォームのコピー欄。
+ * 本文は最大1000文字。保存先はユーザーごとに1件（saveDoctorMemo）。
+ * コピーはクリップボード。使えないときは古い方法（execCommand）に切り替える。
+ */
 import { useEffect, useState } from "react";
 import { getDoctorMemo, saveDoctorMemo } from "@/lib/vet/api";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
+/** 一覧用。開いたときに読み、保存ボタンで上書きする。 */
 export function DoctorMemoCard() {
   const [body, setBody] = useState("");
   const [ready, setReady] = useState(false);
@@ -72,6 +79,7 @@ export function DoctorMemoCard() {
   );
 }
 
+/** フォーム用。本文が空なら何も出さない。ボタンで全文をコピーする。 */
 export function DoctorMemoCopy() {
   const [body, setBody] = useState("");
   const [copied, setCopied] = useState(false);

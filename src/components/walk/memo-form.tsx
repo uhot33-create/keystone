@@ -1,3 +1,10 @@
+/**
+ * お散歩カードの新規・編集フォーム。
+ * 画面は /walk/new と /walk/$id/edit。保存は createWalkMemo / updateWalkMemo。
+ * 画像は最大 MAX_MEMO_IMAGES 枚。縮小は prepareImageFile、サムネは makeListThumb。
+ * 一覧に出す写真は「一覧に表示」のラジオ（coverIndex）。
+ * 生年月日を入れると年齢を自動計算。文字数の上限は各欄の maxLength と api.ts。
+ */
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createPortal } from "react-dom";
@@ -79,6 +86,7 @@ function fromMemo(memo?: WalkMemo | null): Draft {
   };
 }
 
+/** 入力欄。memo があれば編集、無ければ新規。保存後は一覧へ戻る。 */
 export function MemoForm({
   memo,
   breeds,

@@ -1,6 +1,12 @@
+/**
+ * DB 接続。DATABASE_URL があれば Neon／Postgres、無ければ埋め込みの PGLite。
+ * Supabase は同時接続 1、空き 5000ms で切断、接続待ち 8000ms、クエリ 12000ms。
+ * テーブル定義は migrations/*.sql。サーバー関数の中以外から getSql しない。
+ */
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 import { serverlessDatabaseUrl } from "./postgres-url";
 
+/** 今使っている DB。neon は DATABASE_URL あり、pglite はプレビュー用。 */
 /** Which database backend is active. */
 export type DbSource = "neon" | "pglite";
 
@@ -11,6 +17,7 @@ const rawDatabaseUrl =
 const databaseUrl =
   rawDatabaseUrl && rawDatabaseUrl.trim() ? rawDatabaseUrl : undefined;
 
+/** DATABASE_URL の有無でバックエンドを決める。空文字は未設定と同じ。 */
 /**
  * Active backend: real **Neon** when `DATABASE_URL` is set (deployed / configured
  * sandbox), otherwise a local embedded **PGLite** (Postgres compiled to WASM) so
@@ -19,6 +26,7 @@ const databaseUrl =
  */
 export const dbSource: DbSource = databaseUrl ? "neon" : "pglite";
 
+/** タグ付き SQL と query() の共通の形。両方とも行の配列を返す。 */
 /**
  * Minimal shared SQL surface, satisfied by both Neon and PGLite. Both the
  * tagged-template and `.query()` forms resolve to an array of row objects:
@@ -63,6 +71,7 @@ const globalRef = globalThis as typeof globalThis & {
  *   interval                     -> Postgres interval text
  * numeric already comes back as a string on both (arbitrary precision).
  */
+/** int8 / date / interval の OID。ドライバ差を揃えるために使う。 */
 const OID_INT8 = 20;
 const OID_DATE = 1082;
 const OID_INTERVAL = 1186;
@@ -99,6 +108,7 @@ function createNeonSql(): Promise<Sql> {
     const supabase = url.includes("supabase.com");
     const pool = new Pool({
       connectionString: url,
+      // Supabase は同時 1 本。空き 5000ms、接続待ち 8000ms、クエリ 12000ms。
       // One client per instance. The default of 10 fills Supabase's session cap.
       max: supabase ? 1 : undefined,
       idleTimeoutMillis: supabase ? 5000 : undefined,
@@ -193,6 +203,9 @@ async function createSql(): Promise<Sql> {
 }
 
 /**
+ * 共有の SQL クライアント。サーバー専用。何回呼んでも同じ接続を返す。
+ */
+/**
  * Get the shared, **server-only** SQL client. Neon when `DATABASE_URL` is set,
  * otherwise the local PGLite fallback. Memoized — safe to call per request.
  *
@@ -207,6 +220,7 @@ export function getSql(): Promise<Sql> {
   return sqlPromise;
 }
 
+/** プレビュー用 PGLite。DATABASE_URL があるときは使えない。 */
 /**
  * The shared PGLite instance (preview only), with `migrations/*.sql` applied.
  * Lets Better Auth persist to the SAME embedded DB as app data in preview (via a
@@ -222,6 +236,7 @@ export async function getPglite(): Promise<import("@electric-sql/pglite").PGlite
   return pg;
 }
 
+/** 起動時に PGLite のマイグレーションを済ませる。Neon では何もしない。 */
 /**
  * Finish DB bootstrap before the server handles traffic.
  *

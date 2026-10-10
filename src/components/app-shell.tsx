@@ -1,3 +1,8 @@
+/**
+ * ログイン後の共通レイアウト（ヘッダーと本文）。
+ * アプリ名は lib/app-meta.ts の APP_NAME。ヘッダーの高さや余白はこの className。
+ * 背景色・文字色は styles.css の --color-*（配色テーマに従う）。
+ */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { APP_NAME } from "@/lib/app-meta";
@@ -6,6 +11,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { PaperWash, ThemeMotif } from "@/components/theme-motif";
 import { useHydrateDeskVisibility } from "@/lib/desk/visibility";
 
+/** 全画面共通のヘッダーとメイン。children が各ページの中身。 */
 export function AppShell({ children }: { children: ReactNode }) {
   useHydrateDeskVisibility();
   return (

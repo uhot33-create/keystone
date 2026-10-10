@@ -1,6 +1,12 @@
+/**
+ * コネクタ呼び出しの失敗を、画面向けの種類に分ける。
+ * 利用者向けの英文は classifyCallToolError の message。ログイン判定は login.ts。
+ * 日本語UIに載せるときは、ここを変えるか呼び出す側で訳す。
+ */
 import type { CallToolResult } from "./types.ts";
 import { isLoginRequired } from "./login.ts";
 
+/** 失敗の種類。login は再ログイン、not_connected は未接続。 */
 export type CallToolErrorKind =
   | "login"
   | "not_connected"
@@ -8,12 +14,14 @@ export type CallToolErrorKind =
   | "access_denied"
   | "error";
 
+/** 種類と、画面に出す message。detail は元のエラー文。 */
 export type CallToolErrorState = {
   kind: CallToolErrorKind;
   message: string;
   detail?: string;
 };
 
+/** 成功なら null。失敗なら種類付きの説明を返す。 */
 export function classifyCallToolError(
   result: CallToolResult,
 ): CallToolErrorState | null {

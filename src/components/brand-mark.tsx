@@ -1,5 +1,11 @@
+/**
+ * ヘッダーとログイン画面のマーク（ノート形の SVG）。
+ * 形を変えるときは下の rect と path。色は text-primary なので配色テーマに従う。
+ * アプリ名の文字はここではなく lib/app-meta.ts。
+ */
 import { cn } from "@/lib/utils";
 
+/** ロゴ。className で大きさだけ渡す。読み上げはしない（aria-hidden）。 */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <svg

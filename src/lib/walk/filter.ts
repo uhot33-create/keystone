@@ -1,7 +1,15 @@
+/**
+ * お散歩カード一覧の検索・並び・多頭飼いのつながり。
+ * 画面は /walk。ツールバー（MemoToolbar）の条件をここで絞り込む。
+ * 検索対象を変えるなら filterMemos の hay（名前・飼い主・メモ・犬種・色）。
+ * 並びの種類を増やすなら types.ts の SORT_OPTIONS と、ここの switch。
+ * ひらがなとカタカナは同じ文字として探す（foldJa）。
+ */
 import { ageFromBirthday } from "./age";
 import type { SortKey, WalkMemo } from "./types";
 import { SORT_OPTIONS } from "./types";
 
+/** URL の sort が SORT_OPTIONS にある値か。無いときは一覧側が名前昇順に戻す。 */
 export function isSortKey(value: unknown): value is SortKey {
   return SORT_OPTIONS.some((item) => item.value === value);
 }
@@ -18,6 +26,7 @@ function foldJa(value: string): string {
   );
 }
 
+/** 検索語・犬種・並び順で一覧を返す。検索は名前・飼い主・メモ・犬種名・色名。 */
 export function filterMemos(
   memos: WalkMemo[],
   query: { q: string; sort: SortKey; breed: string },
@@ -84,6 +93,7 @@ function compareNullableNum(a: number | null, b: number | null): number {
   return a - b;
 }
 
+/** 同じ飼い主名のほかの犬。カードの「ほか」表示。表記が違うとつながらない。 */
 export function householdMates(memos: WalkMemo[], memo: WalkMemo): string[] {
   const owner = memo.ownerName?.trim();
   if (!owner) return [];

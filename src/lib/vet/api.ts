@@ -1,3 +1,10 @@
+/**
+ * 通院記録と「先生に伝えるメモ」の保存・取得。
+ * 画面は /vet（一覧）、/vet/new（新規）、/vet/$id/edit（編集）。
+ * ログイン中のユーザーの行だけを読む。テーブルは vet_visits と vet_doctor_memo。
+ * 履歴を保存すると、同じ日付・病院の予定を消し、次回があれば予定行を足す。
+ * 文字数の上限は下の visitInput（目的50、診断200、メモ1000など）。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -84,6 +91,7 @@ const timeText = z
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "時刻が正しくありません")
   .nullable();
 
+/** 日付・時刻・文字数のチェック。上限を変えるときはこことフォームの maxLength を揃える。 */
 const visitInput = z.object({
   id: z.string().min(1).optional(),
   visitOn: isoDate,
@@ -172,6 +180,7 @@ async function clearMatchedPlans(sql: Sql, userId: string, visitOn: string, clin
   `;
 }
 
+/** 自分の通院を新しい順で全部返す。一覧のページ送りは画面側（PAGE_SIZE）。 */
 export const listVetVisits = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -185,6 +194,7 @@ export const listVetVisits = createServerFn({ method: "GET" })
     return rows.map(mapVisit);
   });
 
+/** id が自分の記録なら1件返す。無ければ「記録が見つかりません」。 */
 export const getVetVisit = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -200,6 +210,7 @@ export const getVetVisit = createServerFn({ method: "GET" })
     return mapVisit(rows[0]);
   });
 
+/** 予定か履歴を保存する。履歴の「予約済」は次回の日付が必須。予定中は診断・費用を空にする。 */
 export const saveVetVisit = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(visitInput, input))
@@ -287,6 +298,7 @@ export const saveVetVisit = createServerFn({ method: "POST" })
     return { id: writingId };
   });
 
+/** 自分の記録を1件削除する。予定も履歴も同じ。 */
 export const deleteVetVisit = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -299,6 +311,7 @@ export const deleteVetVisit = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** 先生に伝えるメモを1件読む。未作成なら空文字。 */
 export const getDoctorMemo = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -309,6 +322,7 @@ export const getDoctorMemo = createServerFn({ method: "GET" })
     return { body: rows[0]?.body ?? "" };
   });
 
+/** 先生に伝えるメモを上書き保存。1000文字まで。ユーザーにつき1行。 */
 export const saveDoctorMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ body: z.string().trim().max(1000, "1000文字以内で入力してください") }), input))

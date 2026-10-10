@@ -1,12 +1,19 @@
+/**
+ * 配色ごとの背景モチーフ（桜、ひまわりなど）と、紙のような背景の枠。
+ * 季節を足すときは lib/theme.ts の THEMES、styles.css の data-theme、下の MOTIFS を揃える。
+ * 絵の色は各関数の fill。文字色は変えない。
+ */
 import type { JSX, ReactNode } from "react";
 import { useTheme } from "@/components/theme-provider";
 import type { ThemeId } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
+/** 背景クラス paper-wash を付ける枠。中身の色は styles.css。 */
 export function PaperWash({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("paper-wash relative isolate overflow-hidden", className)}>{children}</div>;
 }
 
+/** 今の配色の絵。compact はヘッダー用。既定テーマでは何も出さない。 */
 export function ThemeMotif({ compact = false }: { compact?: boolean }) {
   const { theme } = useTheme();
   if (theme === "default") return null;
@@ -30,6 +37,7 @@ export function ThemeMotif({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** テーマ id と描画の対応。id は lib/theme.ts の THEMES と一致させる。 */
 const MOTIFS: Partial<Record<ThemeId, () => JSX.Element>> = {
   spring: SpringMotif,
   midori: MidoriMotif,

@@ -1,6 +1,13 @@
+/**
+ * 写真を画面いっぱいに出すライトボックス。
+ * カード一覧のサムネと、新規・編集フォームのプレビューから開く。
+ * Escape か背景クリックで閉じる。開いているあいだは背景のスクロールを止める。
+ * 写真の最大は max-h-full / max-w-full。背景の濃さは bg-fg/80。
+ */
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
+/** body 直下に出す。src は /api/walk/image か、フォームの blob: プレビュー。 */
 export function ImageLightbox({
   src,
   alt,

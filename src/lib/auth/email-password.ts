@@ -1,4 +1,9 @@
 /**
+ * メールとパスワードでのログイン設定。今は有効（true）。
+ * 止めるときは emailAndPasswordEnabled を false にする。server.ts は書き換えない。
+ * 再設定メールは send-reset-mail.ts。RESEND_API_KEY と RESET_EMAIL_FROM が必要。
+ */
+/**
  * Local email/password sign-in (this app's Better Auth DB — not the broker).
  *
  * Off by default. To enable: set `emailAndPasswordEnabled` to `true` below,
@@ -10,8 +15,10 @@
  */
 import { sendPasswordResetEmail } from "./send-reset-mail";
 
+/** true のときメール＋パスワードを使う。false にするとこの機能だけ止まる。 */
 export const emailAndPasswordEnabled = true;
 
+/** Better Auth に渡す設定。再設定時は他セッションも無効にし、メールを送る。 */
 export const emailAndPasswordConfig = {
   enabled: true as const,
   revokeSessionsOnPasswordReset: true,

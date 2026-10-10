@@ -1,5 +1,11 @@
+/**
+ * 認証まわりをルートで一度だけ包む枠。今は中身をそのまま通すだけ。
+ * セッション取得は lib/auth/client の useSession が単独で動く。
+ * 将来クライアント側のプロバイダを足すときは、この中に置く。
+ */
 import type { ReactNode } from "react";
 
+/** 子要素をそのまま返す。ルート（__root.tsx）で ThemeProvider の内側に置く。 */
 /**
  * App-wide client provider mounted once near the root (in `src/routes/__root.tsx`):
  *

@@ -1,3 +1,10 @@
+/**
+ * 散歩ログのサーバー処理。一覧・1 件・保存・削除・月の地図。
+ * 画面は /walk/logs、/walk/logs/$id、/walk/logs/month/$yearMonth。
+ * 月のまとめは日本時間。並びは開始が新しい順。
+ * GPX の距離・時間・軌跡の上限は saveInput。町名は address.server.ts。
+ * 月地図のまとまり（700m）は merge.ts。線の切れ目は gpx.ts の TRACK_GAP_M。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -104,6 +111,7 @@ function jstYearMonth(iso: string | null): string | null {
   return /^\d{4}-\d{2}/.test(key) ? key.slice(0, 7) : null;
 }
 
+/** ログを日本時間の年月でまとめ、新しい月から並べる。日時が無いものは undated。 */
 export function groupWalkLogs(logs: WalkLog[]): WalkLogList {
   const months = new Map<string, WalkLog[]>();
   const undated: WalkLog[] = [];
@@ -181,10 +189,12 @@ async function listLogs(userId: string): Promise<WalkLogList> {
   return groupWalkLogs(rows.map(mapLog));
 }
 
+/** ログ一覧。軌跡の中身は返さない（一覧を軽くするため）。 */
 export const getWalkLogs = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => listLogs(context.userId));
 
+/** 1 件の詳細と前後の id。並びは一覧と同じ（新しい方が next）。 */
 export const getWalkLog = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -213,6 +223,7 @@ export const getWalkLog = createServerFn({ method: "GET" })
     };
   });
 
+/** 取り込みの上限。名前 80 文字、時間は 7 日、距離 1000km、軌跡文字列 8 万文字。 */
 const saveInput = z.object({
   name: z.string().trim().min(1, "名前がありません").max(80),
   startedAt: z.string().nullable(),
@@ -222,6 +233,7 @@ const saveInput = z.object({
   sourceName: z.string().max(120),
 });
 
+/** GPX を 1 件保存する。町名が取れたら名前を町名にする。失敗時は送られた名前。 */
 export const saveWalkLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(saveInput, input))
@@ -247,6 +259,7 @@ export const saveWalkLog = createServerFn({ method: "POST" })
     return listLogs(context.userId);
   });
 
+/** 自分のログを 1 件消して、残りの一覧を返す。 */
 export const deleteWalkLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -256,6 +269,7 @@ export const deleteWalkLog = createServerFn({ method: "POST" })
     return listLogs(context.userId);
   });
 
+/** 集計済みの月地図。まだ無い月は「毎日0時の集計のあと」とエラーになる。 */
 export const getWalkMonth = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>

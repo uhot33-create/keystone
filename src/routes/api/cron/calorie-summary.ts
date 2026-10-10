@@ -1,3 +1,11 @@
+/**
+ * 定期実行（Vercel Cron）の入口です。GET /api/cron/calorie-summary。
+ * 認証は CRON_SECRET があるとき Bearer トークン、無いときはヘッダ x-vercel-cron: 1 だけ通します。
+ * 処理は3つです。喫煙カウンタのリセット、散歩ログの月次マージ、
+ * カロリー集計の全頭再計算（rebuildAllCalorieStats → calorie_period_stats）。
+ * 成否は cron ログ（startCronRun / appendCronLog / finishCronRun）に残します。
+ * 期間の区切りや WINDOW、目安の計算を変える場合は summary.ts 側です。ここは呼び出すだけです。
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { rebuildAllCalorieStats } from "@/lib/calorie/summary";
@@ -5,6 +13,10 @@ import { appendCronLog, finishCronRun, startCronRun } from "@/lib/cron-log";
 import { resetSmokingIfDue } from "@/lib/smoking/api";
 import { rebuildAllWalkMonths } from "@/lib/walk-log/merge";
 
+/**
+ * Cron からのリクエストか判定します。CRON_SECRET を空にすると、x-vercel-cron: 1 だけで通ります。
+ * 秘密を変えたあとは、呼び出す側の Authorization も同じ値にしてください。
+ */
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET?.trim();
   const auth = request.headers.get("authorization");
@@ -12,10 +24,16 @@ function authorized(request: Request): boolean {
   return request.headers.get("x-vercel-cron") === "1";
 }
 
+/** 失敗時のログ用です。Error なら message、それ以外は fallback の日本語を残します。 */
 function errorText(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback;
 }
 
+/**
+ * GET で1回分の定期処理を走らせます。未認証は 401。
+ * 喫煙リセットと散歩の月次が失敗しても、カロリーの全頭再計算は続けます。
+ * カロリーまで成功すれば 200、そこで失敗すれば 500。集計の中身は summary.ts の rebuildAllCalorieStats です。
+ */
 export const Route = createFileRoute("/api/cron/calorie-summary")({
   server: {
     handlers: {

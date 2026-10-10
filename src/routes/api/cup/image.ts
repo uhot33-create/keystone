@@ -1,3 +1,10 @@
+/**
+ * カップ麺の品名画像。
+ * POST は /cup の品名追加・編集から。GET は img の src（?id=品名id）。
+ * 保存先は非公開の Vercel Blob。パスは cup/{ユーザーid}/{uuid}.拡張子。
+ * 形式は jpeg / png / webp。それ以外は jpeg として保存。上限は MAX_UPLOAD_BYTES。
+ * GET はログイン本人の cup_items だけ。トークンは環境変数 BLOB_READ_WRITE_TOKEN。
+ */
 import { put } from "@vercel/blob";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
@@ -11,6 +18,7 @@ function asUploadBlob(value: FormDataEntryValue | null): Blob | null {
   return value as Blob;
 }
 
+/** POST でアップロード、GET ?id= で本人の画像を流す。 */
 export const Route = createFileRoute("/api/cup/image")({
   server: {
     handlers: {

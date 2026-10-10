@@ -1,3 +1,9 @@
+/**
+ * ある月の散歩を地図で重ねる（/walk/logs/month/$yearMonth）。
+ * データは集計済みの getWalkMonth。未集計ならエラー文になる。
+ * 同じ地図に載せる範囲は 700m（merge.ts の REGION_CELL_M）。説明文もこの画面。
+ * 線を切る距離は gpx.ts の TRACK_GAP_M。地図部品は TrackMap。
+ */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
@@ -7,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkMonth, type WalkMonthTrack } from "@/lib/walk-log/api";
 import { formatDuration, formatKm } from "@/lib/walk-log/format";
 
+/** 月地図ルート。yearMonth は YYYY-MM。 */
 export const Route = createFileRoute("/walk/logs/month/$yearMonth")({
   component: WalkMonthPage,
 });

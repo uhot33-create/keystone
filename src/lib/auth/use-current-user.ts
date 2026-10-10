@@ -1,5 +1,11 @@
+/**
+ * 今のユーザーを画面から読むフック。
+ * 認証オンなら Better Auth のセッション。オフ（VITE_AUTH_ENABLED=false）なら DEV_USER。
+ * リダイレクト判定は isPending が終わってから。null だけでは読み込み中と区別できない。
+ */
 import { authClient, authEnabled } from "./client";
 
+/** 画面で使うユーザーの形。isDevFallback は認証オフの仮ユーザー。 */
 /** Normalized user shape used across the app, auth on or off. */
 export type AppUser = {
   id: string;
@@ -10,6 +16,7 @@ export type AppUser = {
   isDevFallback: boolean;
 };
 
+/** 認証オフのときだけ使う固定ユーザー。id はサーバー側 DEV_USER_ID と同じ。 */
 /**
  * Stable fallback user, used ONLY when auth is disabled
  * (`VITE_AUTH_ENABLED=false`, the shipped default). With auth on, the sandbox
@@ -25,6 +32,7 @@ export const DEV_USER: AppUser = {
   isDevFallback: true,
 };
 
+/** user と、セッション確認中かどうか。 */
 /** `useCurrentUserState()` result: the user plus the session-loading flag. */
 export type CurrentUserState = {
   /** The user — `null` BOTH while the session loads and when signed out. */
@@ -33,6 +41,7 @@ export type CurrentUserState = {
   isPending: boolean;
 };
 
+/** ユーザーと読み込み中フラグ。ガードは isPending を見てから user を見る。 */
 /**
  * Current user + loading state. Same behavior in live preview and when deployed:
  *   - Auth enabled -> the real signed-in user; `user` is `null` while
@@ -73,6 +82,7 @@ export function useCurrentUserState(): CurrentUserState {
   };
 }
 
+/** 表示用。null は読み込み中か未ログイン。判定には useCurrentUserState を使う。 */
 /**
  * Convenience view of `useCurrentUserState().user` for display (e.g.
  * `user?.displayName ?? "Guest"`). NOTE: `null` means *loading OR signed out* —

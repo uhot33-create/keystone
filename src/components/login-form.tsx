@@ -1,3 +1,8 @@
+/**
+ * ログインと新規登録の画面。メールアドレスとパスワードだけ。
+ * 入力ルール（8文字以上など）は credentialsSchema。機能のオンオフは VITE_AUTH_ENABLED。
+ * アプリ名と一言は lib/app-meta.ts。見た目の色は styles.css。
+ */
 import { Link, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
@@ -10,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** メール形式と、パスワード8文字以上。画面に出すエラー文もここ。 */
 const credentialsSchema = z.object({
   email: z
     .string()
@@ -19,6 +25,7 @@ const credentialsSchema = z.object({
   password: z.string().min(8, "パスワードは8文字以上にしてください"),
 });
 
+/** ログイン／新規登録の切り替え。成功したらトップへ移動する。 */
 export function LoginScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -187,6 +194,7 @@ export function LoginScreen() {
   );
 }
 
+/** セッション確認中の全画面待ち。 */
 export function AuthSplash() {
   return (
     <PaperWash className="grid min-h-dvh place-items-center px-5">

@@ -1,3 +1,11 @@
+/**
+ * 「わんカロリー」画面（URL /calorie）です。下のタブで今日・プラン・フード・プロフィールを切り替えます。
+ * 中身は today-panel / plan-panel / foods-panel / profile-panel に任せています。
+ * 最初の読み込みは今日（日本時間）と、前回選んだ犬（localStorage の calorie-dog-id）です。
+ * タブの文言は一番下の NavBtn（今日／プラン／フード／プロフィール）です。
+ * 見出し「わんカロリー」を変えると画面タイトルだけ変わります。データの取得は api.ts の getCalorieState。
+ * 未ログインのときは Protected が止め、loader は session が無いと null を返して画面側で取り直します。
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -13,6 +21,10 @@ import { getCalorieState } from "@/lib/calorie/api";
 import { todayJst } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 
+/**
+ * このURLの入口です。ログイン済みなら、今日の日付と前回の犬で getCalorieState を先に取ります。
+ * 未ログインのときは null。画面側の useEffect がもう一度取りにいきます。
+ */
 export const Route = createFileRoute("/calorie")({
   loader: async ({ context }) => {
     if (!context.sessionUser) return null;
@@ -21,6 +33,7 @@ export const Route = createFileRoute("/calorie")({
   component: CaloriePage,
 });
 
+/** 下の4タブ。today が初期表示です。id を増やすときは下の NavBtn とパネルの分岐も足してください。 */
 type Tab = "today" | "plan" | "foods" | "profile";
 
 function CaloriePage() {
@@ -148,6 +161,7 @@ function CalorieApp() {
   );
 }
 
+/** 下のタブボタンです。label が表示文言、children がアイコン。active のときだけ primary 色になります。 */
 function NavBtn({
   active,
   label,

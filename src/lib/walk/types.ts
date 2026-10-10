@@ -1,3 +1,12 @@
+/**
+ * お散歩カードの型と、画面で使う選択肢。
+ * 一覧・新規・編集・検索 URL がこの形を共有する。
+ * 並びの追加や文言は SORT_OPTIONS。性別の選択肢は SEX_OPTIONS。
+ * 画像枚数の上限は MAX_MEMO_IMAGES。検索の初期値は DEFAULT_WALK_SEARCH。
+ * 年齢などの入力ルールは api.ts。検索の実装は filter.ts。
+ */
+
+/** 性別のプルダウン。空は未選択。値を増やすなら api.ts の asSex と zod も合わせる。 */
 export const SEX_OPTIONS = [
   { value: "", label: "未選択" },
   { value: "オス", label: "オス" },
@@ -7,6 +16,7 @@ export const SEX_OPTIONS = [
 
 export type SexValue = "オス" | "メス" | "不明";
 
+/** 一覧の並び順。value を増やすなら filter.ts の switch も足す。 */
 export const SORT_OPTIONS = [
   { value: "name_asc", label: "名前昇順" },
   { value: "name_desc", label: "名前降順" },
@@ -31,6 +41,7 @@ export type DogColor = {
   sortOrder: number;
 };
 
+/** 1 枚のカードに置ける画像数。フォームの枠・保存上限・カバー位置がこれ。 */
 export const MAX_MEMO_IMAGES = 3;
 
 export type MemoImage = {
@@ -71,6 +82,7 @@ export type WalkSearch = {
   breed: string;
 };
 
+/** 一覧を開いたときの検索。名前昇順・全犬種・検索語なし。 */
 export const DEFAULT_WALK_SEARCH: WalkSearch = {
   q: "",
   sort: "name_asc",

@@ -1,3 +1,9 @@
+/**
+ * 通院の予定と履歴を入力するフォーム。
+ * 画面は /vet/new と /vet/$id/edit。保存や削除のあと /vet に戻る。
+ * 上の切替で予定（planned）と履歴（done）を選ぶ。予定中は診断・費用を出さない。
+ * 予約済は次回の日付が必須。要予約は日付なしでも保存できる。費用は0以上の整数。
+ */
 import { useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { deleteVetVisit, saveVetVisit } from "@/lib/vet/api";
@@ -11,6 +17,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { DoctorMemoCopy } from "@/components/vet/doctor-memo";
 
+/** visit があれば編集、無ければ新規。initialStatus は新規の初期タブ。 */
 export function VisitForm({
   visit,
   initialStatus = "done",

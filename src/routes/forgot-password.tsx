@@ -1,3 +1,8 @@
+/**
+ * パスワードを忘れたときの画面。メールアドレスへ再設定リンクを送る。
+ * 送信は authClient.requestPasswordReset。本文は lib/auth/send-reset-mail.ts。
+ * 認証オフ（VITE_AUTH_ENABLED=false）のときは送れない。
+ */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { z } from "zod";
@@ -10,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** /forgot-password。ログインしていなくても開ける。 */
 export const Route = createFileRoute("/forgot-password")({
   component: ForgotPasswordPage,
 });

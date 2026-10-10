@@ -1,4 +1,9 @@
 /**
+ * 外部ログイン（Google / X）の一覧。サーバーとクライアントの両方がここを見る。
+ * 項目を足すときは GROK_PROVIDERS に1行追加する。providerId はコールバックのパスになる。
+ * 秘密情報はブローカー側。このアプリは idp の名前だけ知る。環境変数は server.ts。
+ */
+/**
  * The upstream identity providers this app offers for sign-in (via the broker).
  *
  * Source of truth for BOTH the server (`server.ts`, one `genericOAuth` provider
@@ -16,6 +21,7 @@
  * (`/api/auth/oauth2/callback/<providerId>`); `idp` is the hint the broker reads
  * to pick the upstream (Better Auth's id for X is still `twitter`).
  */
+/** 1つの外部ログイン。providerId はアプリ内の id、idp はブローカーへのヒント。 */
 export type GrokProvider = {
   /** This app's local provider id; also the callback path segment. */
   providerId: string;
@@ -25,6 +31,7 @@ export type GrokProvider = {
   label: string;
 };
 
+/** サインインに出す外部サービス。ラベルはボタン文言。 */
 export const GROK_PROVIDERS: readonly GrokProvider[] = [
   { providerId: "grok-google", idp: "google", label: "Google" },
   { providerId: "grok-x", idp: "twitter", label: "X" },

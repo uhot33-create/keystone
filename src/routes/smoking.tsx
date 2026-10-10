@@ -1,3 +1,10 @@
+/**
+ * 喫煙管理のページ。
+ * 画面は /smoking。タブは減算・上限の設定・バッチ。ログイン必須。
+ * 最初に残り本数を読み、バッチを開いたときだけバッジを取り直す。
+ * 減算や上限変更のあと、バッジの数字は画面に残っている値を維持する。
+ * 見出し下の一文はリセットが日本時間0時であることの説明。
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CountPanel } from "@/components/smoking/count-panel";
@@ -9,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getSmokingBadges, getSmokingState } from "@/lib/smoking/api";
 import type { SmokingState } from "@/lib/smoking/types";
 
+/** 喫煙ルート。中身はログイン後の SmokingApp。 */
 export const Route = createFileRoute("/smoking")({ component: SmokingPage });
 
 function SmokingPage() {

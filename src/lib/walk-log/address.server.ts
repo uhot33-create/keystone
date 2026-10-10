@@ -1,3 +1,10 @@
+/**
+ * 散歩ログの軌跡から町名を取る。サーバー専用。
+ * 保存時（saveWalkLog）に軌跡の中心を逆ジオコードし、ログ名に使う。
+ * 画面は散歩ログの取り込み。失敗したら GPX の名前のまま残る。
+ * API は HeartRails Geo。タイムアウトは 4 秒。名前は 80 文字まで。
+ * 地図で線を切る距離はここではない。gpx.ts の TRACK_GAP_M。
+ */
 import { decodePolyline } from "@/lib/walk-log/gpx";
 
 /** 軌跡を囲む範囲の中心。 */

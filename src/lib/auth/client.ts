@@ -1,8 +1,17 @@
+/**
+ * ブラウザ側の認証クライアント（Better Auth）。
+ * ログイン UI を出すかは VITE_AUTH_ENABLED（"false" なら開発用ユーザー）。
+ * ログアウトは必ず下の signOut()。authClient.signOut() だけだとプレビューのトークンが残る。
+ * 外部ログインの一覧は providers.ts。メールログインの画面は components/login-form.tsx。
+ */
 import { genericOAuthClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { runPreSignInSignOut, runSignOut } from "../../../scripts/sign-out-plan.mjs";
 import { GROK_PROVIDERS } from "./providers";
 
+/**
+ * このアプリ自身の Better Auth クライアント。リクエストには保存済みトークンを付ける。
+ */
 /**
  * Better Auth client for this React SPA (browser-side).
  *
@@ -29,6 +38,9 @@ export const authClient = createAuthClient({
 });
 
 /**
+ * ログイン画面を出すか。VITE_AUTH_ENABLED が "false" でなければ true。
+ */
+/**
  * True when sign-in UI should be shown — i.e. whenever `VITE_AUTH_ENABLED` is
  * not `"false"`. The shipped template sets it to `"false"`
  * (`.grok/app-env.json`), which selects the dev user (see `use-current-user`);
@@ -37,6 +49,7 @@ export const authClient = createAuthClient({
  */
 export const authEnabled = import.meta.env.VITE_AUTH_ENABLED !== "false";
 
+/** サインインボタン用の外部プロバイダ一覧。中身は providers.ts。 */
 /** The upstream providers to render sign-in buttons for. */
 export { GROK_PROVIDERS };
 
@@ -45,8 +58,10 @@ export { GROK_PROVIDERS };
 // bearer token in sessionStorage and attach it to every Better Auth request (and
 // to server functions, via `@/lib/auth/middleware`). Empty everywhere except the
 // preview after a popup sign-in, so the cookie path is untouched elsewhere.
+/** プレビュー用セッショントークンの sessionStorage キー。本番のクッキー認証では空。 */
 const BEARER_KEY = "grok-auth.bearer-token";
 
+/** 保存してあるプレビュートークン。サーバー上や読めないときは null。 */
 /** The stored preview bearer token, or null. */
 export function getBearerToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -82,6 +97,9 @@ function inLivePreview(): boolean {
 /** Message the popup posts back to the opener once sign-in completes. */
 type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
 
+/**
+ * 外部プロバイダでサインインを始める。プレビューはポップアップ、本番は画面遷移。
+ */
 /**
  * Start sign-in with one upstream provider (`providerId` from `GROK_PROVIDERS`),
  * federating through the Grok auth broker.
@@ -206,6 +224,9 @@ function waitForPopupToken(popup: Window): Promise<string | null> {
   });
 }
 
+/**
+ * このアプリのセッションを切ってから redirectTo へ移動する。失敗したら reject する。
+ */
 /**
  * Sign out of THIS app's local session, clear the preview token, then redirect.
  *

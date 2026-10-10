@@ -1,3 +1,8 @@
+/**
+ * ログイン中に、今のパスワードから新しいパスワードへ変える画面（/password）。
+ * 8文字以上。他の端末のセッションも切る（revokeOtherSessions）。
+ * 未ログインは Protected がログインへ返す。
+ */
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { authClient } from "@/lib/auth/client";
@@ -7,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** /password。中身は Protected で包む。 */
 export const Route = createFileRoute("/password")({
   component: PasswordPage,
 });

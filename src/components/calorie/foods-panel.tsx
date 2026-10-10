@@ -1,3 +1,11 @@
+/**
+ * 「フード」タブです。ごはん・おやつを、カロリーと分量・単位つきで登録します。
+ * 保存先は dog_foods（addDogFood / deleteDogFood）。今日画面のチップとプランの
+ * 「何g・何個」は、ここで登録した kcal と amount から割って計算します。
+ * 触りやすいところ: 初期の分量（ごはんは100、おやつは1）と単位（g / 個）。
+ * 単位の候補そのものは formula.ts の FOOD_UNITS です。api の zod も同じ並びに揃えてください。
+ * 種類の文言「ごはん」「おやつ」を変えると、この画面の表示だけが変わります。
+ */
 import { Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { addDogFood, deleteDogFood } from "@/lib/calorie/api";
@@ -9,6 +17,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
+/**
+ * フード登録フォームと一覧です。ごはんに切り替えると分量100・単位g、おやつなら1・個に戻します。
+ * この初期値を変えると、新規入力の初期値だけが変わります（保存済みのフードは変わりません）。
+ */
 export function FoodsPanel({
   state,
   onChange,

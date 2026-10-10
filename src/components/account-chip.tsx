@@ -1,3 +1,8 @@
+/**
+ * 画面右上のアカウントメニュー。
+ * 配色・メニューのアイコン/一覧・メニュー下の表示オンオフ・ログアウトをここから操作する。
+ * 表示項目の一覧は lib/desk/visibility.ts、配色の候補は lib/theme.ts、色の実体は styles.css。
+ */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useId, useRef, useState } from "react";
 import { signOut } from "@/lib/auth/client";
@@ -8,6 +13,7 @@ import { ThemeSettings } from "@/components/theme-settings";
 import { DESK_ITEMS, setDeskItemVisible, useResolvedDeskVisibility } from "@/lib/desk/visibility";
 import { setMenuLayout, useMenuLayout } from "@/lib/menu-layout";
 
+/** 頭文字ボタンと、開いたときの設定パネル。未ログイン中は骨組み表示だけ。 */
 export function AccountChip() {
   const user = useCurrentUser();
   const [signingOut, setSigningOut] = useState(false);

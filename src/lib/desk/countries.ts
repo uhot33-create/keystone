@@ -1,3 +1,9 @@
+/**
+ * 「今日は何の日」の文に出る国コードを日本語の国名にする。
+ * 使う場所は desk/api.ts の cleanWiki（Wikipedia の {{JPN}} など）。
+ * キーはだいたい3文字。表に無いコードは空文字になり、国名は消える。
+ * 国を足すときは、Wikipedia のテンプレート名と表示したい日本語を1行追加する。
+ */
 /** Wikipedia の国旗テンプレート（{{JPN}} など）を日本語の国名にする */
 export const COUNTRY_TEMPLATES: Record<string, string> = {
   AFG: "アフガニスタン",

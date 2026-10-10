@@ -1,6 +1,11 @@
+/**
+ * プルダウン。見た目は Input と揃えている。
+ * 枠とフォーカスの色は styles.css。選択肢の中身は children に書く。
+ */
 import type { SelectHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+/** select 要素。option は呼び出す側が渡す。 */
 export function Select({ className, children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select

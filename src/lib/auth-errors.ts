@@ -1,3 +1,9 @@
+/**
+ * 認証のエラーを、画面に出せる日本語の一文にする。
+ * 新しい失敗を足すときは、英語メッセージに含まれる単語で if を増やす。
+ * ログイン機能のオンオフは VITE_AUTH_ENABLED（lib/auth/server.ts）。
+ */
+/** Better Auth などの英語エラーを日本語へ置き換える。分からなければ元の文を返す。 */
 export function toJapaneseAuthError(err: unknown): string {
   const message =
     typeof err === "object" && err !== null && "message" in err

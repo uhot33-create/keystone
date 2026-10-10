@@ -1,4 +1,9 @@
 /**
+ * プレビュー用の埋め込み DB（PGLite）を Better Auth から使うための方言。
+ * 接続は最初のクエリまで遅らせる（マイグレーションが先に終わるように）。
+ * DATABASE_URL がある本番は Neon／Postgres 側。このファイルはプレビュー用。
+ */
+/**
  * Kysely dialect for Better Auth over the app's embedded PGLite instance.
  * Lazy: resolves `getClient` on first connection so migrations can finish first.
  */
@@ -20,6 +25,7 @@ import {
 
 type Client = PGlite;
 
+/** auth/server.ts が渡すファクトリ。getPglite() を包む。 */
 /** Factory used by `auth/server.ts`: `pgliteDialect(() => getPglite())`. */
 export function pgliteDialect(
   getClient: () => Promise<Client> | Client,

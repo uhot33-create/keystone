@@ -1,3 +1,9 @@
+/**
+ * 別サイトや兄弟アプリからの不正な API 呼び出しを拒否する。サーバー専用。
+ * ファイル名の .server は消さない（ブラウザに載ると落ちる）。
+ * 許可するのは自サイト、ブラウザ以外、一番上の GET 遷移だけ。
+ * 認証の入口は middleware.ts の authMiddleware。
+ */
 import { getRequest } from "@tanstack/react-start/server";
 
 /**
@@ -22,6 +28,7 @@ import { getRequest } from "@tanstack/react-start/server";
  * closes the sibling-tenant attack surface. Enforced at the `authMiddleware`
  * chokepoint (see `middleware.ts`).
  */
+/** クロスサイトのスクリプト呼び出しを 403 にするエラー。 */
 export class CrossSiteRequestError extends Error {
   readonly status = 403;
   constructor() {
@@ -30,6 +37,7 @@ export class CrossSiteRequestError extends Error {
   }
 }
 
+/** スクリプトによる別サイト／兄弟サイトからの要求なら例外にする。 */
 /** Throw `CrossSiteRequestError` for a scripted cross-site/sibling request. */
 export function assertSameSiteRequest(): void {
   const request = getRequest();

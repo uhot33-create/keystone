@@ -1,8 +1,14 @@
+/**
+ * アプリ内リンクや「検索」ボタンを押したとき、読み込み中の覆いを出す。
+ * 描画が終わると消える。20秒たっても残っていたら強制的に消す。
+ * 文言は BusyOverlay に渡す label。色は styles.css。
+ */
 import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 
+/** ページ移動のあいだだけ BusyOverlay を出す。 */
 export function NavBusy() {
   const router = useRouter();
   const [show, setShow] = useState(false);

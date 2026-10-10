@@ -1,4 +1,10 @@
 /**
+ * このアプリ自身の Better Auth（サーバー専用）。安易に書き換えない。
+ * オンオフは VITE_AUTH_ENABLED。ブローカーは GROK_AUTH_ISSUER / CLIENT_ID / CLIENT_SECRET。
+ * 公開 URL は BETTER_AUTH_URL、署名は BETTER_AUTH_SECRET、DB は DATABASE_URL。
+ * メールログインは email-password.ts。Supabase の接続は同時1本・空き5秒で切る。
+ */
+/**
  * Self-hosted Better Auth for THIS app (server-only).
  *
  * Pre-wired for live preview + deploy — do not rewrite this file. To enable
@@ -82,6 +88,7 @@ const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
 const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
 const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
 
+/** 外部ログイン（ブローカー）が有効か。VITE_AUTH_ENABLED=false なら false。 */
 /** True when federated sign-in is active (real auth is enforced). */
 export const authConfigured =
   !authDisabled && Boolean(grokClientId && grokClientSecret);
@@ -99,6 +106,7 @@ const previewAllowedHosts: string[] = [...PREVIEW_ALLOWED_HOSTS];
 // Local `npm run dev` (port 8080 contract). Browsers may send Origin as any of
 // these for the same server — trusting only `localhost` rejects `127.0.0.1` and
 // breaks email/password with "Invalid origin".
+/** ローカル開発で信頼するオリジン。localhost と 127.0.0.1 の両方を入れる。 */
 const LOCAL_DEV_ORIGINS: string[] = [
   "http://localhost:8080",
   "http://127.0.0.1:8080",
@@ -146,12 +154,14 @@ const grokUserInfoUrl = `${issuerBase}/api/auth/oauth2/userinfo`;
 const database = postgresUrl
   ? new Pool({
       connectionString: postgresUrl,
+      // Supabase は同時接続を1本、空き 5000ms で切る。証明書検証はプーラー都合で緩める。
       max: postgresUrl.includes("supabase.com") ? 1 : undefined,
       idleTimeoutMillis: postgresUrl.includes("supabase.com") ? 5000 : undefined,
       ssl: postgresUrl.includes("supabase.com") ? { rejectUnauthorized: false } : undefined,
     })
   : { dialect: pgliteDialect(() => getPglite()), type: "postgres" as const };
 
+/** セッションクッキー名。プレビューのポップアップ完了ページもこれを読む。 */
 /** Session token cookie name — also read by the live-preview popup completion page. */
 export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";
 
@@ -179,6 +189,7 @@ const grokOAuthPlugin = authConfigured
     })
   : null;
 
+/** Better Auth 本体。プラグイン順（最後は tanstackStartCookies）は崩さない。 */
 export const auth = betterAuth({
   baseURL,
   // Deployed apps inject BETTER_AUTH_SECRET. Preview: process-stable secret on
@@ -259,10 +270,12 @@ export const auth = betterAuth({
   ],
 });
 
+/** 今のリクエストのセッションクッキー。無ければ null。 */
 export function readSessionToken(): string | null {
   return getCookie(SESSION_TOKEN_COOKIE) ?? null;
 }
 
+/** クライアントも使うプロバイダ一覧。定義は providers.ts。 */
 // Re-exported for convenience; the array lives in the dependency-free
 // `providers.ts` so the client can import it too.
 export { GROK_PROVIDERS } from "./providers";

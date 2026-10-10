@@ -1,3 +1,8 @@
+/**
+ * ゲートの本人確認から、このアプリのログインセッションを作るプラグイン。
+ * 提供者 id は GATE_PROVIDER_ID（grok-gate）。クッキーの出し方は emitSessionCookie。
+ * 認証を切る環境変数は VITE_AUTH_ENABLED。server.ts からプラグインとして読まれる。
+ */
 import type { BetterAuthPlugin } from "better-auth";
 import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import {
@@ -13,6 +18,7 @@ import {
   sessionBoundToGateIdentity,
 } from "./gate-identity.server";
 
+/** ゲート経由ユーザーを Better Auth に登録するときの providerId。 */
 export const GATE_PROVIDER_ID = "grok-gate";
 const GATE_ACCOUNT_ISSUER = "https://grok.com";
 const LOG = "[gate-identity]";
@@ -148,6 +154,7 @@ function removeRequestCookie(headers: Headers, name: string): void {
   }
 }
 
+/** /get-session の前に、ゲート本人とセッションを揃えるプラグイン。 */
 export function gateIdentitySessions() {
   return {
     id: "grok-gate-identity",

@@ -1,4 +1,14 @@
+/**
+ * GPX の読み取りと、地図用の軌跡の切れ目。
+ * 画面は散歩ログの取り込みと、詳細・月地図の線。
+ * ファイル上限は MAX_GPX_BYTES（8MB）。点の間引きは MAX_POINTS（1500）。
+ * 隣の点が TRACK_GAP_M より離れたら線を切る。切れ目のメートルはここを変える。
+ * 距離は間引く前の全点。保存 API の上限は walk-log/api.ts の saveInput。
+ */
+
+/** GPX の最大バイト。超えると「8MB 以下」とエラーになる。 */
 const MAX_GPX_BYTES = 8 * 1024 * 1024;
+/** 地図に載せる点の上限。多い軌跡は均等に間引く。距離計算は間引く前の全点。 */
 const MAX_POINTS = 1500;
 
 export type ParsedGpx = {
@@ -10,6 +20,7 @@ export type ParsedGpx = {
   sourceName: string;
 };
 
+/** ファイルを GPX として読む。trkpt と rtept。点が 2 未満ならエラー。 */
 export async function parseGpxFile(file: File): Promise<ParsedGpx> {
   if (file.size > MAX_GPX_BYTES) {
     throw new Error("GPX は 8MB 以下にしてください");
@@ -89,6 +100,7 @@ function haversine(a: [number, number], b: [number, number]): number {
   return 2 * 6371000 * Math.asin(Math.min(1, Math.sqrt(s)));
 }
 
+/** エンコード済みポリラインを [緯度, 経度] に戻す。地図に描く直前。 */
 export function decodePolyline(encoded: string): [number, number][] {
   const points: [number, number][] = [];
   let index = 0;
@@ -117,6 +129,7 @@ export function decodePolyline(encoded: string): [number, number][] {
 /** 隣り合う点がこの距離を超えたら、地図では線を切る。 */
 export const TRACK_GAP_M = 100;
 
+/** 距離が gapM を超えるところで軌跡を分割する。既定は上の TRACK_GAP_M。 */
 export function splitTrack(points: [number, number][], gapM = TRACK_GAP_M): [number, number][][] {
   const segments: [number, number][][] = [];
   let current: [number, number][] = [];

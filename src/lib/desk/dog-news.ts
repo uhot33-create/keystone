@@ -1,8 +1,16 @@
+/**
+ * 最近の犬ネタを最大4件取る。
+ * 画面はホームの机パネル（項目 id は dogNews）。
+ * 検索語は QUERIES。上から順に Google ニュース RSS を試し、同じ見出しは捨てる。
+ * 日本時間の日付ごとに desk_dog_news へ1行キャッシュする。
+ * force が true のときだけ取り直して上書きする。
+ */
 import { getSql } from "@/lib/db";
 import type { DogNews, DogNewsItem } from "./types";
 
 const UA = "KurashiCho/1.0 (https://github.com/uhot33-create/keystone)";
 
+/** 検索の順番。when:14d は新しい記事を優先するクエリ。最大4件で打ち切る。 */
 const QUERIES = [
   "チワワ (グッズ OR ごはん OR おやつ OR フード OR イベント) when:14d",
   "犬 (グッズ OR ごはん OR おやつ OR イベント) when:14d",
@@ -94,6 +102,7 @@ function asItems(value: unknown): DogNewsItem[] {
   });
 }
 
+/** 今日のキャッシュがあればそれを返す。無ければ取得して保存。 */
 export async function loadDogNews(force = false): Promise<DogNews> {
   const sql = await getSql();
   const shownOn = jstDateKey();

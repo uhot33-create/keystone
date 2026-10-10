@@ -1,3 +1,9 @@
+/**
+ * パスワード再設定メールを Resend で送る。
+ * 鍵は RESEND_API_KEY。差出人は RESET_EMAIL_FROM（無ければ beth.t@example.com）。
+ * 件名と本文の文言はこの関数の中。呼び出しは email-password.ts。
+ */
+/** to に再設定リンク url を送る。鍵が無いときは送らず例外にする。 */
 export async function sendPasswordResetEmail(to: string, url: string) {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESET_EMAIL_FROM?.trim() || "暮らし帳 <beth.t@example.com>";

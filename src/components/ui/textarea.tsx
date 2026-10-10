@@ -1,6 +1,11 @@
+/**
+ * 複数行入力。最低の高さは min-h-28。
+ * 枠・フォーカス・プレースホルダの色は Input と同じ（styles.css）。
+ */
 import type { TextareaHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+/** textarea。行数を変えるときは className の min-h を上書きする。 */
 export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea

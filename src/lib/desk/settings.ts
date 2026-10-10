@@ -1,8 +1,15 @@
+/**
+ * 机パネルをユーザーごとに出すか保存する。
+ * 画面は設定と、ホームの DeskPanel。
+ * 項目 id は onThisDay, quote, story, dogFact, dogNews, fortune。
+ * 未保存のユーザーは全部オフ。テーブル user_settings に1人1行。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 
+/** 6項目のオンオフ。id の名前は visibility.ts の DESK_ITEMS と揃える。 */
 export type DeskVisibility = {
   onThisDay: boolean;
   quote: boolean;
@@ -42,6 +49,7 @@ function mapRow(row: SettingsRow | undefined): DeskVisibility {
   };
 }
 
+/** ログインユーザーの表示設定。行が無ければ全部 false。 */
 export const getUserSettings = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -64,6 +72,7 @@ const saveInput = z.object({
   fortune: z.boolean(),
 });
 
+/** 6項目をまとめて上書き保存する。 */
 export const saveUserSettings = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {

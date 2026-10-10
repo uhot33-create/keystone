@@ -1,3 +1,8 @@
+/**
+ * 全ページの土台。html・フォント・認証・配色・プレビュー橋をここで包む。
+ * タイトルは APP_NAME。フォント URL と theme-color はこの head。色の実体は styles.css。
+ * 配色の初期化は THEME_BOOT_SCRIPT。ログイン状態は fetchSessionUser。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { useEffect } from "react";
@@ -17,6 +22,7 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
   return u ? { id: u.id, email: u.email } : null;
 });
 
+/** ルート経路。セッションと机の設定を読み、head のメタ情報を置く。 */
 export const Route = createRootRoute({
   beforeLoad: async () => {
     try {

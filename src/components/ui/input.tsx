@@ -1,8 +1,15 @@
+/**
+ * 1行入力。高さはタップしやすい h-11。
+ * 枠色・フォーカスは border と ring（styles.css の --color-*）。
+ * プレースホルダの色は subtle。
+ */
 import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+/** input に渡せる属性そのもの。 */
 export type InputProps = InputHTMLAttributes<HTMLInputElement>;
 
+/** テキスト入力。type の既定は text。 */
 export function Input({ className, type = "text", ...props }: InputProps) {
   return (
     <input

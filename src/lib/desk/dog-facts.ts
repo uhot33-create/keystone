@@ -1,3 +1,10 @@
+/**
+ * 今日の犬の豆知識を1件選ぶ。
+ * 画面はホームの机パネル（項目 id は dogFact）。
+ * 候補は WIKI_PAGES（Wikipedia の要約）と LOCAL_FACTS（手元の短文）。
+ * 同じユーザーには30日間、同じ key を出さない。31日より古い履歴は消す。
+ * 短文はおよそ90文字以上、180文字以内（firstSentences）。
+ */
 import { getSql } from "@/lib/db";
 import type { DailyStory } from "./types";
 
@@ -21,6 +28,7 @@ function wikiCite(page: string) {
   };
 }
 
+/** Wikipedia 要約を取りにいくページ名。足すと豆知識の候補が増える。 */
 const WIKI_PAGES = [
   "犬",
   "柴犬",
@@ -107,6 +115,7 @@ const WIKI_PAGES = [
   "ウィペット",
 ];
 
+/** 手元の豆知識。source と sourceUrl が出典リンクになる。 */
 const LOCAL_FACTS: LocalSource[] = [
   { key: "local:nose-news", kind: "local", title: "匂いの新聞", text: "散歩で地面を嗅ぐのは、その場所を通った犬や人の情報を読むようなものです。急かさず嗅がせてあげると満足しやすいです。", ...wikiCite("嗅覚") },
   { key: "local:paws-sweat", kind: "local", title: "肉球と汗", text: "犬がよく汗をかく場所のひとつが肉球です。暑い日は地面の熱も伝わるので、散歩の時間帯をずらすのが有効です。", ...wikiCite("肉球") },
@@ -150,6 +159,7 @@ const LOCAL_FACTS: LocalSource[] = [
   { key: "local:two-dogs", kind: "local", title: "多頭飼い", text: "2頭いると散歩で名前を間違えても、匂いや歩幅で飼い主はすぐ気づきます。犬同士は、声より動きで区別しています。", ...wikiCite("イヌ") },
 ];
 
+/** 実際に引く一覧。wiki:ページ名 と local:... が key。 */
 const POOL: DogSource[] = [
   ...WIKI_PAGES.map((page): WikiSource => ({ key: `wiki:${page}`, kind: "wiki", page })),
   ...LOCAL_FACTS,
@@ -228,6 +238,7 @@ async function remember(userId: string, factKey: string, dateKey: string) {
   `;
 }
 
+/** ユーザーごとに1件返す。force なら今日の分も避けて次を選ぶ。 */
 export async function loadDogFact(userId: string, force: boolean): Promise<DailyStory> {
   const sql = await getSql();
   const dateKey = jstDateKey();

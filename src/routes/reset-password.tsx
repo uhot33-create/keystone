@@ -1,3 +1,8 @@
+/**
+ * メールのリンク先（/reset-password）。URL の token で新しいパスワードを保存する。
+ * token が無い、または error があるときは無効リンクの案内。
+ * 期限切れの文言は lib/auth-errors.ts にもある。メール送信は send-reset-mail.ts。
+ */
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useMemo, useState } from "react";
 import { authClient, authEnabled } from "@/lib/auth/client";
@@ -9,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** 検索パラメータ token と error を読んで、新しいパスワード画面を出す。 */
 export const Route = createFileRoute("/reset-password")({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === "string" ? search.token : "",

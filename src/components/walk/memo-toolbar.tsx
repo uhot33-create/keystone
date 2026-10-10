@@ -1,3 +1,10 @@
+/**
+ * お散歩カード一覧の検索バー。
+ * 画面は /walk。検索語はボタンを押したときに確定し、URL の search に載る。
+ * 並びの選択肢は types.ts の SORT_OPTIONS。犬種はマスタの一覧。
+ * 実際に絞り込む処理は filter.ts の filterMemos。ここは入力 UI だけ。
+ * 件数は「total件中 shown件」。
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import type { DogBreed, WalkSearch } from "@/lib/walk/types";
 import { SORT_OPTIONS } from "@/lib/walk/types";
@@ -6,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
+/** 検索・並び・犬種。onChange に次の WalkSearch を渡す。並びと犬種はすぐ反映。 */
 export function MemoToolbar({
   search,
   breeds,

@@ -1,3 +1,9 @@
+/**
+ * ゲートが付ける本人確認 JWT（ヘッダー x-grok-identity）の検証。サーバー専用。
+ * 有効条件は VITE_AUTH_ENABLED が false 以外、かつ GROK_PROJECT_ID があること。
+ * 発行元は GROK_GATE_ORIGIN。無ければホスト名から gate.grok.me などを決める。
+ * 公開鍵のキャッシュ時間は JWKS_CACHE_TTL_MS（5分）。
+ */
 import {
   importJWK,
   jwtVerify,
@@ -5,11 +11,15 @@ import {
   type JWTVerifyGetKey,
 } from "jose";
 
+/** 本人確認トークンが入るリクエストヘッダー名。 */
 export const GATE_IDENTITY_HEADER = "x-grok-identity";
+/** 公開鍵（JWKS）を取りに行くパス。発行元のオリジンに付ける。 */
 export const GATE_JWKS_PATH = "/__gate/identity-key";
 
+/** 公開鍵を覚えている時間（ミリ秒）。過ぎたら取り直す。 */
 const JWKS_CACHE_TTL_MS = 300_000;
 
+/** 検証済みの本人。sub がユーザー id。 */
 export type GateIdentity = {
   sub: string;
   email: string | null;
@@ -17,8 +27,10 @@ export type GateIdentity = {
   teamId: string | null;
 };
 
+/** ゲートが返す公開鍵の束。 */
 export type GateJwks = { keys: JWK[] };
 
+/** 公開鍵を URL から取る関数。テストでは差し替えられる。 */
 export type JwksFetch = (url: string) => Promise<GateJwks | null>;
 
 function env(key: string): string | undefined {
@@ -26,6 +38,7 @@ function env(key: string): string | undefined {
   return v || undefined;
 }
 
+/** ゲート本人確認を使うか。認証オフ、またはプロジェクト id 無しなら false。 */
 export function gateIdentityEnabled(): boolean {
   return env("VITE_AUTH_ENABLED") !== "false" && Boolean(env("GROK_PROJECT_ID"));
 }
@@ -46,6 +59,7 @@ async function defaultJwksFetch(url: string): Promise<GateJwks | null> {
 
 const jwksCache = new Map<string, { jwks: GateJwks; fetchedAt: number }>();
 
+/** JWT の kid に合う公開鍵を、キャッシュ付きで返す。 */
 export function gateKeyResolver(
   url: string,
   jwksFetch: JwksFetch = defaultJwksFetch,
@@ -84,12 +98,14 @@ export function gateKeyResolver(
   };
 }
 
+/** 検証に使う発行者と、オーディエンス（app:プロジェクトid）。 */
 export type VerifyGateIdentityTokenOptions = {
   issuer: string;
   audience: string;
   getKey: JWTVerifyGetKey;
 };
 
+/** トークンを検証して本人を返す。期限切れや発行者が違うときは null。 */
 export async function verifyGateIdentityToken(
   token: string,
   options: VerifyGateIdentityTokenOptions,
@@ -117,6 +133,7 @@ export async function verifyGateIdentityToken(
 
 type GateEndpoints = { issuer: string; jwksUrl: string };
 
+/** 環境変数か Host ヘッダーから、ゲートの発行元と公開鍵 URL を決める。 */
 export function resolveGateEndpoints(headers: Headers): GateEndpoints | null {
   const explicit = env("GROK_GATE_ORIGIN");
   if (explicit) {
@@ -145,8 +162,10 @@ export function resolveGateEndpoints(headers: Headers): GateEndpoints | null {
   return { issuer, jwksUrl: `${issuer}${GATE_JWKS_PATH}` };
 }
 
+/** セッションに紐づく外部アカウント。providerId と accountId の組。 */
 export type GateLinkedAccount = { providerId: string; accountId: string };
 
+/** 今のセッションが、このゲート本人（sub）に紐づいているか。 */
 export function sessionBoundToGateIdentity(
   accounts: readonly GateLinkedAccount[],
   identitySub: string,
@@ -159,6 +178,7 @@ export function sessionBoundToGateIdentity(
   );
 }
 
+/** リクエストヘッダーから本人を取り出す。無効なら null（失敗は閉じる）。 */
 export async function gateIdentityFromHeaders(
   headers: Headers,
   jwksFetch?: JwksFetch,

@@ -1,3 +1,9 @@
+/**
+ * 外部コネクタ（Grok のゲート）をサーバーから呼ぶクライアント。ブラウザでは使わない。
+ * 接続先は GROK_CONNECTORS_URL、無ければ公開ホストからステージング／本番を決める。
+ * 開発時のトークンは GROK_CONNECTOR_ACCESS_TOKEN。本番はリクエストのヘッダーだけ。
+ * 失敗は FAILURE_MEMO_TTL_MS のあいだ覚え、同じ呼び出しの連打を避ける。
+ */
 import { createHash } from "node:crypto";
 import { getRequest } from "@tanstack/react-start/server";
 import {
@@ -15,7 +21,9 @@ import {
 
 assertAppDataServerOnly("app-data/client.server");
 
+/** ステージングのコネクタホスト。公開ホストが app-builder-testing.com のとき使う。 */
 export const CONNECTORS_HOST_STAGING = "connectors.app-builder-testing.com";
+/** 本番のコネクタホスト。公開ホストが grok.me のとき使う。 */
 export const CONNECTORS_HOST_PROD = "connectors.grok.me";
 
 function env(key: string): string | undefined {
@@ -76,10 +84,12 @@ function inboundContext(): InboundContext {
   };
 }
 
+/** このリクエストから決めたコネクタのベース URL。取れなければ null。 */
 export function resolveGateAppDataBase(): string | null {
   return inboundContext().connectorsBase;
 }
 
+/** 受信ヘッダーのトークン。本番以外だけ環境変数も見る。 */
 export function getConnectorAccessToken(): string | null {
   return inboundContext().token;
 }
@@ -188,6 +198,7 @@ function crossSiteBlockedResult(): CallToolResult | null {
   }
 }
 
+/** 同じ失敗を覚えておく時間（ミリ秒）。過ぎたら次の呼び出しでやり直す。 */
 const FAILURE_MEMO_TTL_MS = 5_000;
 const failureMemo = new Map<string, { at: number; result: CallToolResult }>();
 
@@ -240,6 +251,7 @@ function memoizeFailure(
   return result;
 }
 
+/** テスト用。いま覚えている失敗の件数。 */
 export function failureMemoSize(): number {
   return failureMemo.size;
 }
@@ -264,6 +276,10 @@ function nonPostBlockedResult(): CallToolResult | null {
   };
 }
 
+/**
+ * コネクタのツールを1回呼ぶ。POST のサーバー関数の中だけで使う。
+ * connectorType は必須。401 はログイン要求、同じ失敗は短時間メモする。
+ */
 export async function callTool(
   toolName: string,
   args: ToolArgs,
@@ -355,6 +371,7 @@ export async function callTool(
   }
 }
 
+/** 型とログイン補助を、このファイルからも再エクスポートする。 */
 export {
   ConnectorType,
   GoogleDriveTools,

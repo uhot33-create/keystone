@@ -1,3 +1,10 @@
+/**
+ * お散歩カード一覧の 1 枚。
+ * 画面は /walk。名前タップで編集、肉球で「今日会った」、写真で拡大。
+ * 年齢表示は age.ts の displayAge。画像の有無と URL は image.ts。
+ * 同じ飼い主の他犬は mates（filter.ts の householdMates）を「ほか」に出す。
+ * 虹渡りアイコンと、今日済みの肉球の見た目もここ。
+ */
 import { Link } from "@tanstack/react-router";
 import { PawPrint } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +31,7 @@ function formatMet(value: string | null): string {
   return `${year}/${Number(month)}/${Number(day)}`;
 }
 
+/** 一覧の 1 行。pending 中は肉球を押せない。onMetToday が無いと肉球は出さない。 */
 export function MemoCard({
   memo,
   mates,

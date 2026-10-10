@@ -1,3 +1,9 @@
+/**
+ * まだ実装していない機能の仮画面。
+ * 「準備中」の説明文を変えるときは下の段落。メニュー項目そのものは lib/app-meta.ts の MENUS。
+ * 枠の色は styles.css の border / surface。
+ */
+/** 番号・タイトル・説明を受け取り、準備中カードを出す。 */
 export function ComingSoon({
   index,
   title,

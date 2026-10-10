@@ -1,3 +1,12 @@
+/**
+ * カロリー画面のサーバー処理です。/calorie と各パネルがここを呼んで、
+ * 犬・フード・定番・その日の記録・体重・グラフを読み書きします。
+ * 触りやすいところ: テーブル名（dogs, dog_foods, calorie_staples, calorie_logs,
+ * dog_weight_logs, calorie_period_guides, calorie_period_stats, walk_logs）と、
+ * 後半の zod の上限（名前の長さ、kcal、おやつ割合 0〜0.3、犬は10頭まで）。
+ * 定番の並びは calorie_staples.sort_order（小さいほど先）。新規は最大値+1です。
+ * 体重の計測時刻は measuredAt20 で、その日の20:00（日本時間）として保存します。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -120,6 +129,7 @@ function asDateKey(value: unknown): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
 }
 
+/** 体重の計測時刻です。その日の20:00（日本時間）として dog_weight_logs.measured_at に入れます。時刻だけ変えても、記録の日付キーは変わりません。 */
 function measuredAt20(date: string): string {
   return `${date}T20:00:00+09:00`;
 }
@@ -260,11 +270,13 @@ function asRows<T>(value: unknown): T[] {
   return [];
 }
 
+/** 日付と犬の指定です。date は YYYY-MM-DD。メッセージを変えると、不正な日付のエラー文言が変わります。 */
 const dateInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive().optional(),
 });
 
+/** プロフィール保存の上限です。名前20文字、体重120kgまで、おやつ割合は 0〜0.3。超えると保存できません。 */
 const saveDogInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
@@ -275,6 +287,7 @@ const saveDogInput = z.object({
   treatRatio: z.number().min(0).max(0.3),
 });
 
+/** フード登録の上限です。名前30文字、kcal と分量は 10000 まで。単位は FOOD_UNITS と同じ並びに揃えてください。 */
 const addFoodInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
@@ -285,6 +298,7 @@ const addFoodInput = z.object({
   unit: z.enum(["g", "個", "杯", "袋", "本"]),
 });
 
+/** 1食の記録の上限です。名前40文字、kcal は 20000 まで。kind に other を足すときは画面側も対応してください。 */
 const addLogInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
@@ -296,17 +310,26 @@ const addLogInput = z.object({
   unit: z.string().max(8).nullable(),
 });
 
+/** 削除系の共通入力です。date・dogId・消す行の id。 */
 const idDateInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
   id: z.number().int().positive(),
 });
 
+/**
+ * 画面を開いたときの一式です。犬一覧、その犬のフード・定番・その日の記録・体重を返します。
+ * 犬が1頭も無ければ「うちの子」（体重0、成犬去勢済み、おやつ10%）を作ってから読み直します。
+ */
 export const getCalorieState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(dateInput, input))
   .handler(async ({ context, data }) => loadState(context.userId, isoDate(data.date), data.dogId));
 
+/**
+ * 日付を変えたときに今日画面が使う、その日の記録と体重だけです。
+ * フードや定番は取り直さないので、軽い切り替えになります。kcal は truncKcal 済みです。
+ */
 export const getCalorieDay = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(dateInput, input))
@@ -429,6 +452,7 @@ const chartInput = z.object({
   dogId: z.number().int().positive(),
 });
 
+/** いま画面に出ている範囲のグラフ（日・週・月・年）です。散歩距離は walk_logs から足します。 */
 export const getCalorieChart = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(chartInput, input))
@@ -444,6 +468,10 @@ const trendInput = z.object({
   end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 
+/**
+ * グラフを過去へ送ったとき、その粒度の1窓分を足します。未来の日付は今日までに切ります。
+ * 週・月・年の確定分は calorie_period_stats、進行中の期間は今日の calorie_logs を足します。
+ */
 export const getCalorieTrend = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(trendInput, input))
@@ -518,6 +546,10 @@ export const getCalorieTrend = createServerFn({ method: "GET" })
     );
   });
 
+/**
+ * 名前・体重・ステージ・おやつ割合を dogs に保存します。
+ * 続けて dailyEnergy（理想体重 × 係数）で calorie_period_guides の点線を作り直します。
+ */
 export const saveDogProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(saveDogInput, input))
@@ -544,6 +576,10 @@ export const saveDogProfile = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/**
+ * 犬を1頭足します。10頭まで。初期値は体重0、adult_neutered、おやつ10%です。
+ * 11頭目はこのエラーになります。初期ステージを変えるならここの life_stage です。
+ */
 export const addDog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -569,6 +605,7 @@ export const addDog = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, row.id);
   });
 
+/** 犬を消します。最後の1頭は消せません。dogs を消すと、紐づく記録はDBの外部キーに従います。 */
 export const deleteDog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -591,6 +628,7 @@ export const deleteDog = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, next?.id);
   });
 
+/** フードを dog_foods に1件追加します。kind は food（ごはん）か treat（おやつ）です。 */
 export const addDogFood = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(addFoodInput, input))
@@ -612,6 +650,7 @@ export const addDogFood = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** そのフードを dog_foods から消します。定番が残るかはDBの外部キー次第です。 */
 export const deleteDogFood = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
@@ -625,6 +664,7 @@ export const deleteDogFood = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 定番の数量です。1頭あたり最大50件（ids の上限）。数量は 10000 まで。 */
 const stapleInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
@@ -633,6 +673,10 @@ const stapleInput = z.object({
   qty: z.number().positive("数量を入力してください").max(10000),
 });
 
+/**
+ * 定番を新規または更新します。新規の sort_order は、その犬の最大値+1（無ければ1）です。
+ * 更新は food_id と qty だけで、並び順は変えません。並びは reorderCalorieStaples です。
+ */
 export const saveCalorieStaple = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(stapleInput, input))
@@ -671,12 +715,17 @@ export const saveCalorieStaple = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 定番を並べ替える入力です。ids はその犬の定番を過不足なく、新しい順で並べたものです。 */
 const stapleOrderInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
   ids: z.array(z.number().int().positive()).min(1).max(50),
 });
 
+/**
+ * 渡された ids の順に sort_order を 1, 2, 3… と書き直します。
+ * 件数や id が保存済みと違うと保存しません。今日画面のドラッグ並び替えがここを呼びます。
+ */
 export const reorderCalorieStaples = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(stapleOrderInput, input))
@@ -703,6 +752,7 @@ export const reorderCalorieStaples = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 定番を1件消します。残った行の sort_order は詰めません（歯抜けでも表示順は小さい順のままです）。 */
 export const deleteCalorieStaple = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
@@ -716,6 +766,10 @@ export const deleteCalorieStaple = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/**
+ * 摂取を1件足します。14日ロック（assertCalorieEditable）より前は保存しません。
+ * kcal は truncKcal して calorie_logs へ。そのあと refreshDogStats で週・月・年の集計を更新します。
+ */
 export const addCalorieLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(addLogInput, input))
@@ -742,6 +796,10 @@ export const addCalorieLog = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/**
+ * 摂取を1件消します。ロック判定はその行の log_date です（画面の表示日ではありません）。
+ * 消したあと同じく refreshDogStats で集計を更新します。
+ */
 export const deleteCalorieLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
@@ -763,12 +821,18 @@ export const deleteCalorieLog = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 体重保存の上限です。0より大きく120kgまで。日付の形式が違うと「日付が正しくありません」。 */
 const saveWeightInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
   weightKg: z.number().positive("体重を入力してください").max(120),
 });
 
+/**
+ * その日の体重を1件保存します（同じ日なら上書き）。計測時刻は20:00（日本時間）です。
+ * それより新しい体重が無いときだけ、dogs.current_weight_kg もこの値に更新します。
+ * 14日より前は変更できません。保存後に集計（期末体重）を更新します。
+ */
 export const saveWeightLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(saveWeightInput, input))

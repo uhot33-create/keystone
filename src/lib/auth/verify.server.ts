@@ -1,3 +1,8 @@
+/**
+ * サーバーで今のユーザーを確かめる。クライアントが渡した id は信用しない。
+ * 認証オンならセッション、オフかつ DB 無しなら dev-user、オフかつ DATABASE_URL ありは拒否。
+ * プレビューの bearer は authMiddleware が渡す。環境変数は VITE_AUTH_ENABLED。
+ */
 import { getRequest } from "@tanstack/react-start/server";
 import { gateIdentityEnabled } from "./gate-identity.server";
 import { auth, authConfigured } from "./server";
@@ -12,9 +17,11 @@ import { auth, authConfigured } from "./server";
  * client-supplied user id — only the result of this verification.
  */
 
+/** DATABASE_URL があるか。空文字は無しと同じ。 */
 /** True when a real database is configured server-side. */
 const databaseConfigured = Boolean(process.env.DATABASE_URL?.trim());
 
+/** server.ts を直接 import せず、認証が有効かを見るための再エクスポート。 */
 /** Re-export so callers can branch on it without importing `server.ts`. */
 export { authConfigured };
 
@@ -26,9 +33,11 @@ if (databaseConfigured && !authConfigured) {
   );
 }
 
+/** 認証オフかつ DB 無しのときだけ使う id。クライアントの DEV_USER と揃える。 */
 /** Dev fallback user id, used only when auth is disabled (VITE_AUTH_ENABLED=false). */
 export const DEV_USER_ID = "dev-user";
 
+/** 未ログインのとき requireUserId が投げる。status は 401。 */
 /**
  * Thrown by `requireUserId` when the caller has no valid session. Carries
  * `status: 401`; the message is a stable contract — match
@@ -42,8 +51,10 @@ export class UnauthorizedError extends Error {
   }
 }
 
+/** 検証済みユーザー。id とメールだけ。 */
 export type VerifiedUser = { id: string; email: string | null };
 
+/** 今のリクエストのユーザー。未ログインや認証オフ（ゲート無し）なら null。 */
 /**
  * Resolve the signed-in user from the current request, or `null` when auth isn't
  * configured / nobody is signed in. Safe to call from server functions and SSR
@@ -70,6 +81,7 @@ export async function getSessionUser(
   return { id: session.user.id, email: session.user.email ?? null };
 }
 
+/** ユーザー id を返す。取れなければ例外。普段は authMiddleware 経由で使う。 */
 /**
  * Resolve the current user id for a server function, or throw when unauthorized.
  * Prefer `authMiddleware` (`./middleware`), which calls this for you.

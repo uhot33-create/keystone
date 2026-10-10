@@ -1,6 +1,14 @@
+/**
+ * アプリ名と、トップに並ぶメニュー。
+ * 名前・一言は APP_NAME / APP_TAGLINE。項目の追加・順番・説明は MENUS。
+ * アイコンは routes/index.tsx の ICONS を同じパスで揃える。色は styles.css。
+ */
+/** ヘッダーとログイン画面に出す名前。 */
 export const APP_NAME = "暮らし帳";
+/** ログイン画面の短い説明。 */
 export const APP_TAGLINE = "毎日を、静かに整える";
 
+/** トップのメニュー。to はパス、index は番号、title と description が画面の文言。 */
 export const MENUS = [
   {
     to: "/calorie",

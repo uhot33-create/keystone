@@ -1,3 +1,11 @@
+/**
+ * 「今日」タブです。さぶろうの体型、体重、ごはんの追加、定番、その日の記録、推移グラフです。
+ * 触りやすいところ: QTY_STEPS（+15/+2/+4）、MENU のラベルとリンク、CHART_WINDOW
+ * （日7・週12・月12・年5。summary.ts の WINDOW と同じにしてください）。
+ * 14日より前は閲覧のみ。日数は formula.ts の CALORIE_EDIT_DAYS、文言は「2週間以上前…」です。
+ * 定番の並びはドラッグで reorderCalorieStaples に渡り、calorie_staples.sort_order になります。
+ * さぶろうの段階は saburo.ts（残り5kcal未満、超過10kcal以上）。体重は20時計測として保存します。
+ */
 import { Link } from "@tanstack/react-router";
 import { ChartLine, Footprints, GripVertical, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -24,9 +32,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
+/** 数量の足しボタンです。+15、+2、+4。数字や個数を変えると、ボタンの種類が変わります。 */
 const QTY_STEPS = [15, 2, 4] as const;
+/** グラフ1ページの件数です。summary.ts の WINDOW と同じにしてください。片方だけ変えると、読み込み幅と表示幅がずれます。 */
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
 
+/**
+ * さぶろうの右に並ぶメニューです。label が表示文言。to があると別ページへ、view だとこの画面の中を切り替えます。
+ * 項目を足すときは key をユニークにし、view を足すなら下の表示分岐も追加してください。
+ */
 const MENU = [
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
@@ -46,6 +60,7 @@ function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): 
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
 }
 
+/** グラフを過去に遡れる最古です。今日から約5年（5×366日）。summary の全再計算と同じ幅です。 */
 function historyFloor(today: string): string {
   return shiftIsoDate(today, -5 * 366);
 }
@@ -56,6 +71,10 @@ function mergeTrends(current: DayTrend[], extra: DayTrend[]): DayTrend[] {
   for (const point of extra) byStart.set(point.start, point);
   return [...byStart.values()].sort((a, b) => a.start.localeCompare(b.start));
 }
+/**
+ * グラフを1ページ送ります。日は14日、週は84日（12週）、月は12ヶ月、年は5年です。
+ * 今日より未来には進めません。幅を変えるときは CHART_WINDOW との差に注意してください。
+ */
 function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, today: string): string {
   let next = viewEnd;
   if (grain === "day") next = shiftIsoDate(viewEnd, direction * 14);
@@ -79,6 +98,10 @@ function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
 }
 
+/**
+ * 日付バーです。左右スワイプは48px以上で前日・翌日。それ未満は無視します。
+ * locked のとき「2週間以上前の記録は閲覧のみです」と出します。文言を変えてもロック日数は変わりません。
+ */
 function DateBar({
   date,
   chartOpen,
@@ -147,6 +170,10 @@ function DateBar({
   );
 }
 
+/**
+ * 今日タブ本体です。合計と目標からさぶろう（saburo.ts）と「残／超」を出します。
+ * 目標は dailyEnergy、合計は各記録を足して truncKcal。14日ロック中は追加・削除・体重・定番を止めます。
+ */
 export function TodayPanel({
   state,
   onChange,

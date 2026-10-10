@@ -1,3 +1,10 @@
+/**
+ * 喫煙の残り本数・上限・バッジを保存する。
+ * 画面は /smoking（減算、上限の設定、バッチ）。
+ * 日付の区切りは日本時間の0時（period.ts）。初期の上限と残りは10本。入力は1〜80本。
+ * 上限を下げたときだけバッジの limitDownCount が1増える。判定の閾値は badges.ts。
+ * 0時をまたいだ締めは resetSmokingIfDue が settleBadges のあと残りを上限に戻す。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -220,6 +227,7 @@ async function loadState(userId: string): Promise<SmokingState> {
   return toState(raw, emptyBadges());
 }
 
+/** 全ユーザーを見て、日付が変わっていればバッジを締めて残りを上限に戻す。 */
 export async function resetSmokingIfDue(sql: Sql): Promise<{ users: number }> {
   const rows = await sql<SettingsRow & { user_id: unknown }>`
     select user_id, daily_limit, remaining, period_started_at, last_smoked_at, exceeded
@@ -248,14 +256,17 @@ export async function resetSmokingIfDue(sql: Sql): Promise<{ users: number }> {
   return { users };
 }
 
+/** バッチの数字だけ返す。日付またぎの締めはここではしない。 */
 export const getSmokingBadges = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => mapBadges(await loadBadgeRow(context.userId)));
 
+/** 残り本数と上限を返す。バッジは空のまま（バッチタブが別途取る）。 */
 export const getSmokingState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => loadState(context.userId));
 
+/** 上限の入力。1以上80以下の整数。 */
 const limitInput = z.object({
   dailyLimit: z
     .number()
@@ -264,6 +275,7 @@ const limitInput = z.object({
     .max(80, "80本までにしてください"),
 });
 
+/** 上限を保存。上げた分は残りに足し、下げたら残りを新しい上限以下にして上限ダウンを1増やす。 */
 export const saveDailyLimit = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(limitInput, input))
@@ -292,6 +304,7 @@ export const saveDailyLimit = createServerFn({ method: "POST" })
     return loadState(context.userId);
   });
 
+/** 1本減らす。残り0のときは本数は変えず、限度超えフラグだけ立てる。 */
 export const smokeOne = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -317,6 +330,7 @@ export const smokeOne = createServerFn({ method: "POST" })
     return loadState(context.userId);
   });
 
+/** 残り本数の手修正。0以上80以下。実際の上限でさらに切り詰める。 */
 const remainingInput = z.object({
   remaining: z
     .number()
@@ -325,6 +339,7 @@ const remainingInput = z.object({
     .max(80, "80本までにしてください"),
 });
 
+/** 残り本数を手入力で上書き。上限を超える値は上限に丸める。 */
 export const setRemaining = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(remainingInput, input))

@@ -1,4 +1,9 @@
 /**
+ * ブラウザ同士を直接つなぐ WebRTC の部屋。合図は /api/rtc 経由。
+ * 待ち時間は FAST_POLL_MS / IDLE_POLL_MS / STALL_MS。STUN は VITE_STUN_URLS。
+ * 今の暮らし帳メニューからは使っていない。接続のやり直し回数は MAX_RECOVERY_ATTEMPTS。
+ */
+/**
  * Full-mesh WebRTC rooms: one RTCPeerConnection per remote peer, signaled
  * through /api/rtc (see signaling.server.ts), game data flowing directly
  * browser-to-browser afterwards. Client-authoritative by construction — see
@@ -9,8 +14,10 @@
  * rolls back and accepts, so pairs converge without wedging.
  */
 
+/** 合図の種類。offer / answer / ice。 */
 export type SignalKind = "offer" | "answer" | "ice";
 
+/** /api/rtc とやり取りする形。保存の仕方はアプリ側のリレーに任せる。 */
 /**
  * Wire contract between this client and the signaling relay the app provides
  * at /api/rtc (see the multiplayer-p2p skill for a reference implementation).
@@ -31,6 +38,7 @@ export interface RtcPollResponse {
   signals: SignalRow[];
 }
 
+/** 画面に出す相手の状態。RTT はつながってから約2秒ごと。 */
 export interface PeerInfo {
   id: string;
   name: string;
@@ -41,6 +49,7 @@ export interface PeerInfo {
   rttMs: number | null;
 }
 
+/** 部屋を作るときの設定。iceServers を省略すると defaultIceServers。 */
 export interface P2PRoomOptions {
   room: string;
   selfId: string;
@@ -74,13 +83,17 @@ interface PeerSlot {
   pingSentAt?: number;
 }
 
+/** 接続中のポーリング間隔（ミリ秒）。交渉中は短く、安定したら長くする。 */
 const FAST_POLL_MS = 400;
 const IDLE_POLL_MS = 2000;
+/** 生死確認の間隔と、止まっているとみなす時間、やり直しの上限。 */
 const PING_INTERVAL_MS = 2000;
 const STALL_MS = 10_000;
 const MAX_RECOVERY_ATTEMPTS = 3;
+/** 合図の送信に失敗したときの待ち（ミリ秒）。この回数を超えたら諦める。 */
 const SIGNAL_RETRY_DELAYS_MS = [250, 750];
 
+/** STUN の一覧。VITE_STUN_URLS（カンマ区切り）が無ければ公開 STUN を使う。 */
 export function defaultIceServers(): RTCIceServer[] {
   const urls = (import.meta.env.VITE_STUN_URLS as string | undefined)
     ?.split(",")
@@ -95,6 +108,7 @@ export function defaultIceServers(): RTCIceServer[] {
   ];
 }
 
+/** 1部屋分の接続。join で参加、close で退出、broadcast / send でデータを送る。 */
 export class P2PRoom {
   private readonly opts: P2PRoomOptions;
   private readonly peers = new Map<string, PeerSlot>();

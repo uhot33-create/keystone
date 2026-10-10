@@ -1,3 +1,9 @@
+/**
+ * 画面全体を覆う「処理中」表示。
+ * 初期の文言は label の既定値。色は bg-bg や border（styles.css）。
+ * ページ移動中は nav-busy.tsx から呼ばれる。
+ */
+/** show が true のときだけ、中央にスピナーと文言を出す。 */
 export function BusyOverlay({
   show,
   label = "処理中…",

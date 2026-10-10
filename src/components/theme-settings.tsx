@@ -1,3 +1,8 @@
+/**
+ * 配色を選ぶダイアログ。アカウントメニューの歯車から開く。
+ * 名前と色見本は lib/theme.ts の THEMES。実際に塗る色は styles.css。
+ * 項目を足すときは THEMES 側。この一覧はそこを map しているだけ。
+ */
 import { Settings2 } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
@@ -5,6 +10,7 @@ import { useTheme } from "@/components/theme-provider";
 import { THEMES, type ThemeId } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 
+/** 歯車ボタンと、テーマ一覧のダイアログ。選ぶとすぐ保存して閉じる。 */
 export function ThemeSettings() {
   const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);

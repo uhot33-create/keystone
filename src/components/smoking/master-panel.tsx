@@ -1,3 +1,9 @@
+/**
+ * 1日の上限を保存するパネル。
+ * 画面は /smoking の「上限の設定」。
+ * 入力欄は1〜80。繰り越し（上げた分を残りに足す）は saveDailyLimit 側。
+ * 説明の「毎日0時（日本時間）」は period.ts のリセットと対応している。
+ */
 import { useEffect, useState, type FormEvent } from "react";
 import { saveDailyLimit } from "@/lib/smoking/api";
 import { formatJaDateTime } from "@/lib/smoking/period";
@@ -7,6 +13,7 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/** 上限の入力。保存後の新しい state を onChange で返す。 */
 export function MasterPanel({
   state,
   onChange,

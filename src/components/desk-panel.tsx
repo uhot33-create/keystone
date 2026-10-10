@@ -1,3 +1,10 @@
+/**
+ * ホームに出す机のカード。
+ * オンになっている項目だけ描く。id は visibility.ts の DESK_ITEMS。
+ * 占いの種類と値はブラウザの localStorage（KIND_KEY / VALUE_KEY）。初期はおひつじ座。
+ * 「更新」があるのは格言・小話・豆知識・犬ネタ。何の日と占いは選び直しで再取得する。
+ * 占いの星は5個。種類を変えると、その種類の先頭の選択肢に戻る。
+ */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getDesk, refreshDogFact, refreshDogNews, refreshQuote, refreshStory } from "@/lib/desk/api";
 import { Button } from "@/components/ui/button";
@@ -14,7 +21,9 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
+/** localStorage のキー。占いの種類。 */
 const KIND_KEY = "kurashi-fortune-kind";
+/** localStorage のキー。星座・血液型・干支の id。 */
 const VALUE_KEY = "kurashi-fortune-key";
 
 function readStored(): { kind: FortuneKind; key: string } {
@@ -60,6 +69,7 @@ function formatNewsDate(value: string): string {
   }).format(date);
 }
 
+/** 5個の点。value 個だけ色を付ける。null なら何も出さない。 */
 function Score({ value }: { value: number | null }) {
   if (value == null) return null;
   return (
@@ -74,6 +84,7 @@ function Score({ value }: { value: number | null }) {
   );
 }
 
+/** 机パネル本体。全部オフなら何も出さない。 */
 export function DeskPanel() {
   const visible = useResolvedDeskVisibility();
   const anyVisible = visible
@@ -351,6 +362,7 @@ export function DeskPanel() {
   );
 }
 
+/** カードの枠。onRefresh がある項目だけ「更新」ボタンを出す。 */
 function DeskCard({
   title,
   children,

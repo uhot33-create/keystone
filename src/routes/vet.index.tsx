@@ -1,3 +1,9 @@
+/**
+ * 通院の一覧。
+ * 画面は /vet。上からメモ、次の予定、年ごとの履歴。
+ * PAGE_SIZE は履歴を何件ずつ足すか。下端までスクロールすると同じ件数を追加する。
+ * 年の開閉の初期値は今年だけ。240px より下へスクロールすると TOP ボタンが出る。
+ */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJaDate } from "@/lib/calorie/formula";
@@ -9,8 +15,10 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DoctorMemoCard } from "@/components/vet/doctor-memo";
 
+/** 履歴の追加件数。下までスクロールするたびにこの件数だけ足す。 */
 const PAGE_SIZE = 10;
 
+/** 一覧ルート。 */
 export const Route = createFileRoute("/vet/")({ component: VetIndex });
 
 function VetIndex() {

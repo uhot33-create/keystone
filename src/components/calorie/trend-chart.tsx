@@ -1,13 +1,23 @@
+/**
+ * 今日タブの推移グラフ（SVG）です。TodayPanel がグラフを開いたときだけ出します。
+ * 線は期間のカロリー合計、点線は目安（guideKcal）、赤点は期末の体重、茶色の棒は散歩です。
+ * 色は primary / accent / #c23b32（体重）/ #6b5344（散歩）です。
+ * 触りやすいところ: 幅320・高さ184、kcalの刻み（日は100、それ以外500）、
+ * 散歩の上限刻み（日1km・年20km・それ以外5km）、左右スワイプの判定48px。
+ * ボタンの「日／週／月／年」は types.ts の TREND_GRAINS。見出しは grainTitle です。
+ */
 import { useRef, type PointerEvent } from "react";
 import { formatKcal } from "@/lib/calorie/formula";
 import { TREND_GRAINS, type DayTrend, type TrendGrain } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 
+/** 軸の最大値を step の倍数に切り上げます。step を変えると、縦軸の上限の丸めが変わります。 */
 function niceMax(value: number, step: number): number {
   if (!(value > 0)) return step;
   return Math.ceil(value / step) * step;
 }
 
+/** グラフの見出しです。「推移（7日）」などを変えると、タイトルの文字だけ変わります。 */
 function grainTitle(grain: TrendGrain): string {
   if (grain === "week") return "推移（週）";
   if (grain === "month") return "推移（月）";
@@ -15,6 +25,7 @@ function grainTitle(grain: TrendGrain): string {
   return "推移（7日）";
 }
 
+/** 横軸の文字です。月表示は年が変わるところだけ「年/月」、それ以外は期間の label をそのまま出します。 */
 function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined): string {
   if (grain === "month") {
     const month = String(Number(day.start.slice(5, 7)));
@@ -25,6 +36,11 @@ function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined):
   return day.label;
 }
 
+/**
+ * 渡された days を1枚のグラフに描きます。点をタップすると onSelect（その期間の最終日）です。
+ * 右スワイプで過去、左スワイプで未来。canOlder / canNewer が false の方向には動きません。
+ * kcal の刻みは日が100・それ以外500、散歩は日1km・年20km・それ以外5km。ここの数字が縦軸の粗さです。
+ */
 export function TrendChart({
   grain,
   days,

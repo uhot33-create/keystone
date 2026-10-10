@@ -1,3 +1,8 @@
+/**
+ * コネクタ呼び出しの失敗メモと、ログイン判定・エラー分類のテスト。
+ * 本番の動きは client.server.ts / login.ts / errors.ts。ここは期待値の確認だけ。
+ * 環境変数 GROK_CONNECTORS_URL はテストの中だけで一時的に置く。
+ */
 import { describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
 import { callTool, failureMemoSize } from "./client.server.ts";

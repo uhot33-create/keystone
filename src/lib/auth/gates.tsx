@@ -1,3 +1,8 @@
+/**
+ * ログイン状態で中身の出し分けと、ログインへの戻りを行う部品。
+ * 未ログインの行き先は SIGN_IN_PATH（/login）。認証オフのときは開発ユーザー扱い。
+ * 環境変数は VITE_AUTH_ENABLED。見た目を変えるなら className と文言。
+ */
 import { useState, type ReactNode } from "react";
 import { Navigate } from "@tanstack/react-router";
 import { authEnabled, signOut } from "./client";
@@ -13,15 +18,18 @@ import { useCurrentUser, useCurrentUserState } from "./use-current-user";
  * render nothing so there's no signed-out flash on hard reload.
  */
 
+/** 未ログインを戻すパス。ログイン画面のルートを変えたらここも変える。 */
 /** Where `RedirectToSignIn` sends signed-out visitors. Create this route. */
 export const SIGN_IN_PATH = "/login";
 
+/** ユーザーがいるときだけ children を出す。 */
 /** Render children only when a user is present (real session, or the disabled-auth dev user). */
 export function SignedIn({ children }: { children: ReactNode }) {
   const { user } = useCurrentUserState();
   return user ? <>{children}</> : null;
 }
 
+/** 確認が終わり、かつユーザーがいないときだけ children を出す。 */
 /**
  * Render children only once we KNOW the visitor is signed out (`isPending` has
  * cleared and there is no user). Hidden while the session is still loading.
@@ -32,6 +40,7 @@ export function SignedOut({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** ログイン画面へクライアント側で移動する。全ページ再読込はしない。 */
 /**
  * Client-side redirect to the sign-in route (TanStack `<Navigate>` — NOT a full
  * `window.location` reload). A hard navigation re-bootstraps the SPA and re-runs
@@ -44,6 +53,7 @@ export function RedirectToSignIn({ to = SIGN_IN_PATH }: { to?: string }) {
   return <Navigate to={to} />;
 }
 
+/** 名前とログアウトボタン。このアプリの画面では account-chip を使っている。 */
 /**
  * Minimal signed-in identity chip + sign-out. Restyle freely (see the
  * `design-ui` skill). Sign-out is only shown when auth is enabled (the

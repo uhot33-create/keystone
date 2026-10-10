@@ -1,3 +1,9 @@
+/**
+ * サーバー関数用の認証ミドルウェア。呼び出し元の userId を context に載せる。
+ * プレビューでは bearer トークンを転送する。本番はクッキーが自動で付く。
+ * 認証オフ（VITE_AUTH_ENABLED=false）かつ DATABASE_URL ありだと拒否する。
+ * ユーザーごとのデータは必ず context.userId で絞る。
+ */
 import { createMiddleware } from "@tanstack/react-start";
 
 /**
@@ -25,6 +31,7 @@ import { createMiddleware } from "@tanstack/react-start";
  * all. On the auth-on path, use it on every server function that touches
  * per-user data and scope every query by `context.userId`.
  */
+/** サーバー関数に付ける。通ると context.userId が使える。 */
 export const authMiddleware = createMiddleware({ type: "function" })
   .client(async ({ next }) => {
     // Live preview (partitioned iframe): the session rides a bearer token, not a

@@ -1,4 +1,9 @@
 /**
+ * プレビュー親画面と、このアプリ（iframe）の postMessage 橋。ゲスト側。
+ * 許可された親に埋め込まれたときだけ動く。普通のタブや本番では何もしない。
+ * 親の許可リストは preview-embedder-origin.ts。経路の自動候補は collectRoutePathsFromTree。
+ */
+/**
  * Guest side of the grok-web ↔ sandbox preview postMessage bridge.
  *
  * Activates only when this page is framed by an allowlisted Grok embedder.
@@ -14,7 +19,9 @@ export {
   resolveParentEmbedderOrigin,
 } from "./preview-embedder-origin";
 
+/** 親と子で揃えるチャンネル名。変えるとプレビュー側とつながらなくなる。 */
 export const PREVIEW_BRIDGE_CHANNEL = "grok-preview-bridge" as const;
+/** メッセージの版。親と違うと無視する。 */
 export const PREVIEW_BRIDGE_VERSION = 1 as const;
 
 const EnvelopeSchema = z.object({
@@ -37,6 +44,7 @@ const HistorySchema = EnvelopeSchema.extend({
   delta: z.union([z.literal(-1), z.literal(1)]),
 });
 
+/** 橋に渡す移動関数と、登録済みパスの取得。 */
 export type PreviewHostBridgeOptions = {
   /** Prefer the app router when available; falls back to history.pushState. */
   navigate?: (path: string) => void;
@@ -44,6 +52,7 @@ export type PreviewHostBridgeOptions = {
   getRoutePaths?: () => string[];
 };
 
+/** アプリ内の相対パスだけ通す。// や別オリジンは拒否。 */
 export function isSafeBridgePath(path: string): boolean {
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
     return false;
@@ -56,6 +65,7 @@ export function isSafeBridgePath(path: string): boolean {
   }
 }
 
+/** 親とのメッセージを張り、解除関数を返す。埋め込みでなければ何もしない関数。 */
 /**
  * Install host↔guest messaging. Returns a dispose function.
  * Noops (returns a no-op dispose) when not embedded under a Grok parent.
@@ -246,6 +256,7 @@ export function installPreviewHostBridge(
   };
 }
 
+/** ルート木からパス文字列を集める。プレビューの候補表示用。 */
 /** Collect static path patterns from a TanStack route tree (best-effort). */
 export function collectRoutePathsFromTree(routeTree: unknown): string[] {
   const paths = new Set<string>();

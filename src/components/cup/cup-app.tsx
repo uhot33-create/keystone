@@ -1,3 +1,10 @@
+/**
+ * カップ麺の画面本体。
+ * 画面は /cup。タブは在庫・登録・品名。
+ * 期限まで30日以内（0日を含む）の在庫カードを強調する。過ぎたものは「期限切れ」。
+ * 画像は枠の長押しペーストか「選択」。送信先は /api/cup/image。
+ * 品名は100文字まで。個数は0未満にしない。
+ */
 import { useEffect, useRef, useState, type ClipboardEvent, type FormEvent } from "react";
 import { todayJst } from "@/lib/calorie/formula";
 import {
@@ -20,6 +27,7 @@ import { Label } from "@/components/ui/label";
 
 type Tab = "stock" | "add" | "items";
 
+/** 今日から期限日までの日数。強調は StockTab で 0〜30。 */
 function daysUntil(expiresOn: string, today: string): number {
   const from = Date.parse(`${today}T00:00:00Z`);
   const to = Date.parse(`${expiresOn}T00:00:00Z`);
@@ -49,6 +57,7 @@ async function uploadImage(file: File): Promise<{ url: string; pathname: string 
   return { url: json.url, pathname: json.pathname };
 }
 
+/** 在庫・登録・品名の切替と、保存後の再読込。 */
 export function CupApp() {
   const [tab, setTab] = useState<Tab>("stock");
   const [items, setItems] = useState<CupItem[] | null>(null);
@@ -180,6 +189,7 @@ export function CupApp() {
   );
 }
 
+/** 在庫一覧。期限まで 0〜30 日のカードを強調する。 */
 function StockTab({
   items,
   stocks,

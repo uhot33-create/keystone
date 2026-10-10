@@ -1,3 +1,8 @@
+/**
+ * トップページ。未ログインはログイン画面、ログイン後はメニュー。
+ * 項目の名前と順番は lib/app-meta.ts の MENUS。アイコンは下の ICONS を同じパスで揃える。
+ * アイコン並びか一覧かは lib/menu-layout.ts。色は styles.css。
+ */
 import { createFileRoute, Link, useRouteContext } from "@tanstack/react-router";
 import { ChevronRight, Cigarette, Footprints, PawPrint, Soup, Stethoscope } from "lucide-react";
 import { MENUS } from "@/lib/app-meta";
@@ -7,8 +12,10 @@ import { AppShell } from "@/components/app-shell";
 import { AuthSplash, LoginScreen } from "@/components/login-form";
 import { DeskPanel } from "@/components/desk-panel";
 
+/** / 。セッションがあればメニュー、無ければログイン。 */
 export const Route = createFileRoute("/")({ component: Home });
 
+/** パスとアイコンの対応。MENUS に項目を足したら、同じパスをここにも足す。 */
 const ICONS = {
   "/calorie": PawPrint,
   "/smoking": Cigarette,

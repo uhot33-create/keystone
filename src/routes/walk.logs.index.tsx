@@ -1,3 +1,10 @@
+/**
+ * 散歩ログの一覧（/walk/logs）。年・月でたたんで、距離のバーを出す。
+ * GPX の取り込みは parseGpxFile のあと saveWalkLog。上限 8MB は gpx.ts。
+ * 月の「地図」リンクは /walk/logs/month/$yearMonth。集計は毎日 0 時。
+ * 最初に開く年・月は日本時間の今年・今月。
+ * 距離の小数や時間表記は format.ts。
+ */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { WalkSubnav } from "@/components/walk/walk-subnav";
@@ -8,6 +15,7 @@ import { getWalkLogs, saveWalkLog, type WalkLog, type WalkLogList, type WalkMont
 import { formatDuration, formatKm } from "@/lib/walk-log/format";
 import { parseGpxFile } from "@/lib/walk-log/gpx";
 
+/** ログ一覧ルート。データは getWalkLogs（軌跡の中身は含まない）。 */
 export const Route = createFileRoute("/walk/logs/")({
   component: WalkLogsPage,
 });

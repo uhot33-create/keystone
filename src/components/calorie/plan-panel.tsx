@@ -1,3 +1,11 @@
+/**
+ * 「プラン」タブです。理想体重から1日の目安kcalと、ごはん／おやつの量を出します。
+ * 計算は formula.ts の restingEnergy × LIFE_STAGES の factor（dailyEnergy）です。
+ * おやつ割合は TREAT_RATIOS。保存すると dogs と calorie_period_guides（点線の目安）が更新されます。
+ * ステージ名を変えるなら LIFE_STAGES の label、係数を変えるなら factor です。
+ * 現在体重が理想の±5%を外れると suggestedStage が「減量／増量」を提案します（倍率は formula.ts）。
+ * 体重の数値そのものはプロフィール画面で変えます。この画面ではステージと割合だけ保存します。
+ */
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { saveDogProfile } from "@/lib/calorie/api";
 import {
@@ -17,6 +25,10 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
+/**
+ * 必要カロリーと「与える量の目安」です。目標は dailyEnergy、内訳は splitMealsAndTreats。
+ * 安静時の表示は restingEnergy を四捨五入し、係数は factorFor。保存は saveDogProfile です。
+ */
 export function PlanPanel({
   state,
   onChange,

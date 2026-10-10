@@ -1,4 +1,9 @@
 /**
+ * ライブプレビューのサインイン用ポップアップ。サーバー専用。クライアントから import しない。
+ * 開発サーバーの Vite プラグインが /auth/popup をここへ渡す。React のルートは作らない。
+ * 開き側は client.ts の signIn。認証の環境変数は server.ts。
+ */
+/**
  * Live-preview sign-in popup — server-only (NEVER import from the client).
  *
  * The sandbox preview runs the app in a partitioned iframe, so OAuth must happen
@@ -18,6 +23,7 @@
  */
 import { auth, SESSION_TOKEN_COOKIE } from "./server";
 
+/** ポップアップが親へ返すメッセージ。client.ts の型と揃える。 */
 /** Message shape the popup posts to the opener (must match `client.ts`). */
 type PopupMessage = {
   source: "grok-auth-popup";
@@ -25,6 +31,7 @@ type PopupMessage = {
   error?: string;
 };
 
+/** GET /auth/popup。開始は外部ログインへ 302、完了はトークンを postMessage して閉じる。 */
 /**
  * Handle `GET /auth/popup`. Invoked by the Vite `authPopupPlugin` (dev / live
  * preview). Do not re-export this from a React route file.

@@ -1,3 +1,10 @@
+/**
+ * ホームの机パネル用データ（何の日・格言・小話・犬・占い）。
+ * 画面は DeskPanel。出すかどうかの id は visibility.ts の DESK_ITEMS。
+ * メモリキャッシュは何の日・格言・小話が6時間、星座占いが3時間。
+ * 小話の話題リストは STORY_TOPICS。Wikipedia 失敗時は FALLBACK_STORIES。
+ * 星座は朝日新聞のHTML。血液型と干支はことわざAPIと、日付から作る1〜5点。
+ */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
@@ -7,7 +14,9 @@ import { loadDogNews } from "./dog-news";
 import type { DailyFortune, DailyQuote, DailyStory, FortuneKind, FortuneLine, OnThisDay } from "./types";
 import { BLOOD_OPTIONS, ETO_OPTIONS, FORTUNE_KINDS, ZODIAC_OPTIONS } from "./types";
 
+/** 外部サイトへ送る User-Agent。 */
 const UA = "KurashiCho/1.0 (https://github.com/uhot33-create/keystone)";
+/** 取得結果のメモリキャッシュ。期限（exp）まで同じ値を返す。 */
 const memory = new Map<string, { exp: number; value: unknown }>();
 
 function jstNow(ms = Date.now()) {
@@ -27,6 +36,7 @@ function jstNow(ms = Date.now()) {
   return { dateKey, dateLabel, year: year!, month: month!, day: day! };
 }
 
+/** ttlMs のあいだ key の結果を覚えておく。force なら必ず取り直す。何の日などは 6時間、星座は 3時間。 */
 function cached<T>(key: string, ttlMs: number, load: () => Promise<T>, force = false): Promise<T> {
   if (!force) {
     const hit = memory.get(key);
@@ -160,6 +170,7 @@ async function loadQuote(force = false): Promise<DailyQuote> {
   }, force);
 }
 
+/** 小話の題材。日付のハッシュで1日1件選び、更新のたびに次へ進む。 */
 const STORY_TOPICS = [
   "カモノハシ",
   "ナマケモノ",
@@ -237,6 +248,7 @@ const STORY_TOPICS = [
   "ウーパールーパー",
 ];
 
+/** Wikipedia が取れないときの短い小話。 */
 const FALLBACK_STORIES: DailyStory[] = [
   {
     title: "カモノハシ",
@@ -388,6 +400,7 @@ const deskInput = z.object({
   fortune: z.boolean().optional(),
 });
 
+/** 机の中身。data のフラグが true の項目だけ外部取得する。 */
 export const getDesk = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -439,14 +452,18 @@ export const getDesk = createServerFn({ method: "GET" })
     return { onThisDay, quote, story, dogFact, dogNews, fortune, errors };
   });
 
+/** 格言を取り直す。同じ文が返ったらもう一度だけ試す。 */
 export const refreshQuote = createServerFn({ method: "POST" }).handler(async () => loadQuote(true));
 
+/** 小話を次の話題に進めて取り直す。 */
 export const refreshStory = createServerFn({ method: "POST" }).handler(async () => loadStory(true));
 
+/** 犬の豆知識を、今日すでに見たもの以外から取り直す。 */
 export const refreshDogFact = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => loadDogFact(context.userId, true));
 
+/** 犬ネタをキャッシュを無視して取り直す。 */
 export const refreshDogNews = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async () => loadDogNews(true));

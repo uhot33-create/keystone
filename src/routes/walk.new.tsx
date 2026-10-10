@@ -1,3 +1,9 @@
+/**
+ * お散歩カードの新規画面（/walk/new）。
+ * フォームは MemoForm。犬種・色は getWalkState で取る。
+ * 項目・文字数・画像枚数を変えるなら MemoForm と lib/walk/api.ts。
+ * 画像を保存できるかは blobConfigured（Vercel Blob のトークン）。
+ */
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MemoForm } from "@/components/walk/memo-form";
@@ -5,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState } from "@/lib/walk/api";
 import type { DogBreed, DogColor } from "@/lib/walk/types";
 
+/** 新規ルート。保存後の移動は MemoForm が /walk へ行う。 */
 export const Route = createFileRoute("/walk/new")({ component: WalkNew });
 
 function WalkNew() {

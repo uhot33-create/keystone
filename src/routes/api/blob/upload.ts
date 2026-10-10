@@ -1,3 +1,10 @@
+/**
+ * 画像の別アップロード口（POST /api/blob/upload）。multipart の file。
+ * サイズ上限は lib/walk/image.ts の MAX_UPLOAD_BYTES（約 2.8MB）。
+ * 保存先は Vercel Blob の walk/{userId}/。アクセスは private。
+ * カード画面の通常の保存は lib/walk/api.ts の uploadWalkImage（base64）。
+ * ここはフォームの file を直接置く経路。形式は jpeg / png / webp。
+ */
 import { put } from "@vercel/blob";
 import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
@@ -10,6 +17,7 @@ function asUploadBlob(value: FormDataEntryValue | null): Blob | null {
   return value as Blob;
 }
 
+/** ログイン必須。大きすぎると 400。成功時は url と pathname。 */
 export const Route = createFileRoute("/api/blob/upload")({
   server: {
     handlers: {

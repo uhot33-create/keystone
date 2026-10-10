@@ -1,3 +1,10 @@
+/**
+ * お散歩カードの一覧（/walk）。
+ * 検索・並び・犬種は URL の search。絞り込みは filterMemos。
+ * 初期の並びは名前昇順（validateSearch）。選択肢は types.ts の SORT_OPTIONS。
+ * サムネは一覧のあと getWalkThumbs。肉球は touchWalkMemoMet。
+ * 追加ボタンは /walk/new。1 枚の見た目は MemoCard。
+ */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MemoCard } from "@/components/walk/memo-card";
@@ -11,6 +18,7 @@ import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
 import { applyWalkThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
+/** 一覧ルート。検索クエリは validateSearch で q / sort / breed に整える。 */
 export const Route = createFileRoute("/walk/")({
   validateSearch: (search: Record<string, unknown>): WalkSearch => ({
     q: typeof search.q === "string" ? search.q : "",
