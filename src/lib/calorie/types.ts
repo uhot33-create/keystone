@@ -38,6 +38,14 @@ export type CalorieStaple = {
   qty: number;
 };
 
+/** その日の投薬。givenAt が null なら、その日はまだ投与していない。 */
+export type DogMedicine = {
+  id: number;
+  name: string;
+  note: string;
+  givenAt: string | null;
+};
+
 /** その日に食べた1件。kcal は保存時点で小数第1位までに切り捨て済みです。 */
 export type CalorieLog = {
   id: number;
@@ -92,6 +100,7 @@ export type CalorieState = {
   dogs: DogProfile[];
   foods: DogFood[];
   staples: CalorieStaple[];
+  medicines: DogMedicine[];
   logs: CalorieLog[];
   week: DayTotal[];
   trend: DayTrend[];

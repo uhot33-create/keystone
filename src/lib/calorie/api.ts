@@ -13,7 +13,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, todayJst, truncKcal } from "./formula";
 import { attachGuides, attachWalks, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
-import type { CalorieLog, CalorieState, DayTrend, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
+import type { CalorieLog, CalorieState, DayTrend, DogMedicine, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -123,6 +123,22 @@ function isoDate(value: string): string {
   return value;
 }
 
+function asIso(value: unknown): string | null {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) return value.toISOString();
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function mapMedicine(row: { id: number; name: string; note?: string; given_at: unknown }): DogMedicine {
+  return {
+    id: row.id,
+    name: row.name,
+    note: row.note ?? "",
+    givenAt: asIso(row.given_at),
+  };
+}
+
 function asDateKey(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   const text = String(value ?? "").slice(0, 10);
@@ -140,6 +156,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
     dogs: unknown;
     foods: unknown;
     staples: unknown;
+    medicines: unknown;
     logs: unknown;
     today_weight: unknown;
   }>`
@@ -186,6 +203,18 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       ), '[]'::json) as staples,
       coalesce((
         select json_agg(json_build_object(
+          'id', m.id,
+          'name', m.name,
+          'note', m.note,
+          'given_at', d.given_at
+        ) order by m.sort_order, m.id)
+        from dog_medicines m
+        left join dog_medicine_doses d
+          on d.medicine_id = m.id and d.given_on = ${date}::date
+        where m.user_id = ${userId} and m.dog_id = (select id from selected)
+      ), '[]'::json) as medicines,
+      coalesce((
+        select json_agg(json_build_object(
           'id', l.id,
           'log_date', l.log_date,
           'label', l.label,
@@ -221,6 +250,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const dog = pickDog(dogs, dogId);
   const foods = asRows<FoodRow>(row?.foods);
   const staples = asRows<{ id: number; food_id: number; qty: unknown }>(row?.staples);
+  const medicines = asRows<{ id: number; name: string; note: string; given_at: unknown }>(row?.medicines);
   const logs = asRows<LogRow>(row?.logs);
   const trends: Record<TrendGrain, DayTrend[]> = { day: [], week: [], month: [], year: [] };
   return {
@@ -240,6 +270,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       foodId: item.food_id,
       qty: num(item.qty),
     })),
+    medicines: medicines.map(mapMedicine),
     logs: logs.map((item) => ({
       id: item.id,
       date: asDateKey(item.log_date) || String(item.log_date).slice(0, 10),
@@ -337,7 +368,7 @@ export const getCalorieDay = createServerFn({ method: "GET" })
     const date = isoDate(data.date);
     const sql = await getSql();
     const dog = data.dogId ? await requireDog(context.userId, data.dogId) : pickDog(await ensureDogs(context.userId));
-    const [logs, weights] = await Promise.all([
+    const [logs, weights, medicines] = await Promise.all([
       sql<LogRow>`
         select id, log_date, label, kcal, kind, food_id, amount, unit
         from calorie_logs
@@ -349,6 +380,14 @@ export const getCalorieDay = createServerFn({ method: "GET" })
         from dog_weight_logs
         where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
         limit 1
+      `,
+      sql<{ id: number; name: string; note: string; given_at: unknown }>`
+        select m.id, m.name, m.note, d.given_at
+        from dog_medicines m
+        left join dog_medicine_doses d
+          on d.medicine_id = m.id and d.given_on = ${date}::date
+        where m.user_id = ${context.userId} and m.dog_id = ${dog.id}
+        order by m.sort_order, m.id
       `,
     ]);
     const mapped: CalorieLog[] = logs.map((row) => ({
@@ -364,6 +403,7 @@ export const getCalorieDay = createServerFn({ method: "GET" })
     return {
       date,
       logs: mapped,
+      medicines: medicines.map(mapMedicine),
       todayWeightKg: weights[0] ? num(weights[0].weight_kg, 2) : null,
     };
   });
@@ -761,6 +801,98 @@ export const deleteCalorieStaple = createServerFn({ method: "POST" })
     const dog = await requireDog(context.userId, data.dogId);
     await sql`
       delete from calorie_staples
+      where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
+    `;
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+const medicineInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  dogId: z.number().int().positive(),
+  id: z.number().int().positive().optional(),
+  name: z.string().trim().min(1, "薬の名前を入力してください").max(30),
+  note: z.string().trim().max(40).optional(),
+});
+
+/** 薬の名前を登録・更新する。note は用量などのメモ。 */
+export const saveDogMedicine = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(medicineInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    const note = data.note?.trim() ?? "";
+    if (data.id) {
+      const updated = await sql<{ id: number }>`
+        update dog_medicines
+        set name = ${data.name}, note = ${note}
+        where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
+        returning id
+      `;
+      if (!updated[0]) throw new Error("薬が見つかりません");
+    } else {
+      await sql`
+        insert into dog_medicines (user_id, dog_id, name, note, sort_order)
+        values (
+          ${context.userId},
+          ${dog.id},
+          ${data.name},
+          ${note},
+          coalesce((
+            select max(sort_order) + 1 from dog_medicines where dog_id = ${dog.id}
+          ), 1)
+        )
+      `;
+    }
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+/** その日の投与を記録する。同じ薬・同じ日は1回だけ。 */
+export const giveDogMedicine = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(idDateInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    const medicine = await sql<{ id: number }>`
+      select id from dog_medicines
+      where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
+      limit 1
+    `;
+    if (!medicine[0]) throw new Error("薬が見つかりません");
+    await sql`
+      insert into dog_medicine_doses (user_id, dog_id, medicine_id, given_on, given_at)
+      values (${context.userId}, ${dog.id}, ${data.id}, ${data.date}::date, now())
+      on conflict (medicine_id, given_on) do nothing
+    `;
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+/** 押し間違い用。その日の投与記録だけ消す。 */
+export const undoDogMedicine = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(idDateInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    await sql`
+      delete from dog_medicine_doses
+      where medicine_id = ${data.id}
+        and user_id = ${context.userId}
+        and dog_id = ${dog.id}
+        and given_on = ${data.date}::date
+    `;
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+export const deleteDogMedicine = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(idDateInput, input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    await sql`
+      delete from dog_medicines
       where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
     `;
     return loadState(context.userId, data.date, dog.id);

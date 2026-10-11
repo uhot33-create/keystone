@@ -1,5 +1,5 @@
 /**
- * 「今日」タブです。さぶろうの体型、体重、ごはんの追加、定番、その日の記録、推移グラフです。
+ * 「今日」タブです。さぶろうの体型、体重、ごはんの追加、定番、おくすり、その日の記録、推移グラフです。
  * 触りやすいところ: QTY_STEPS（+15/+2/+4）、MENU のラベルとリンク、CHART_WINDOW
  * （日7・週12・月12・年5。summary.ts の WINDOW と同じにしてください）。
  * 14日より前は閲覧のみ。日数は formula.ts の CALORIE_EDIT_DAYS、文言は「2週間以上前…」です。
@@ -7,7 +7,7 @@
  * さぶろうの段階は saburo.ts（残り5kcal未満、超過10kcal以上）。体重は20時計測として保存します。
  */
 import { Link } from "@tanstack/react-router";
-import { ChartLine, Footprints, GripVertical, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
+import { ChartLine, Footprints, GripVertical, Pill, Plus, Scale, Stethoscope, Trash2, Utensils } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -27,6 +27,7 @@ import {
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
+import { MedicinePanel } from "@/components/calorie/medicine-panel";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ const MENU = [
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
   { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
+  { key: "meds", label: "おくすり", Icon: Pill, view: "meds" as const },
 ] as const;
 
 function moveId(ids: number[], from: number, to: number): number[] {
@@ -202,7 +204,7 @@ export function TodayPanel({
   const [stapleId, setStapleId] = useState<number | null>(null);
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
-  const [view, setView] = useState<"home" | "add" | "weight">("home");
+  const [view, setView] = useState<"home" | "add" | "weight" | "meds">("home");
   const skipScroll = useRef(true);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
   const stapleOrderRef = useRef<number[] | null>(null);
@@ -370,6 +372,7 @@ export function TodayPanel({
         ...state,
         date: next.date,
         logs: next.logs,
+        medicines: next.medicines,
         todayWeightKg: next.todayWeightKg,
       });
     } catch (err) {
@@ -491,6 +494,15 @@ export function TodayPanel({
             </div>
             </div>
           </section>
+          {(state.medicines ?? []).some((item) => !item.givenAt) ? (
+            <button
+              type="button"
+              className="rounded-md border border-danger/40 bg-surface px-3 py-2 text-left text-sm text-danger"
+              onClick={() => setView("meds")}
+            >
+              おくすりがまだです（{(state.medicines ?? []).filter((item) => !item.givenAt).length}）
+            </button>
+          ) : null}
 
           <DateBar
             date={state.date}
@@ -909,10 +921,11 @@ export function TodayPanel({
       </section>
       </div>
       ) : null}
+      {view === "meds" ? <MedicinePanel state={state} pending={pending} onRun={(action, label) => void run(action, label)} /> : null}
         </>
       )}
 
-      {view !== "add" ? (
+      {view === "home" || view === "weight" ? (
         <section className="rounded-lg border border-border bg-surface px-3 py-2">
           <div className="flex items-baseline gap-2 whitespace-nowrap">
             <p className="shrink-0 text-xs font-medium text-subtle">
