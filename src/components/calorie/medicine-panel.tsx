@@ -1,11 +1,11 @@
 /**
  * わんカロリーのおくすり画面。
- * 薬を登録し、表示中の日に「投与した」を押すとその日は済みになる。
- * 未投与はホームの案内からここへ来る。1日1回まで。取消でその日の記録だけ消える。
+ * 薬ごとに毎日の予定時刻を登録し、「投与した」でその日は済みになる。
+ * ホームの案内は、予定時刻を過ぎて未投与のものだけ。1日1回まで。
  */
 import { useState } from "react";
 import { deleteDogMedicine, giveDogMedicine, saveDogMedicine, undoDogMedicine } from "@/lib/calorie/api";
-import type { CalorieState } from "@/lib/calorie/types";
+import type { CalorieState, DogMedicine } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -15,6 +15,31 @@ function givenClock(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
+}
+
+function jstNow(now: Date): { date: string; clock: string } {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
+  return { date: `${pick("year")}-${pick("month")}-${pick("day")}`, clock: `${pick("hour")}:${pick("minute")}` };
+}
+
+/** 予定時刻を過ぎて、その日まだ投与していない薬。時刻なしと未来日は含めない。 */
+export function overdueMedicines(medicines: DogMedicine[], date: string, now = new Date()): DogMedicine[] {
+  const jst = jstNow(now);
+  return medicines.filter((item) => {
+    if (item.givenAt || !item.dueTime) return false;
+    if (date > jst.date) return false;
+    if (date < jst.date) return true;
+    return item.dueTime <= jst.clock;
+  });
 }
 
 export function MedicinePanel({
@@ -29,6 +54,7 @@ export function MedicinePanel({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
   const [name, setName] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [note, setNote] = useState("");
   const medicines = state.medicines ?? [];
   const waiting = medicines.filter((item) => !item.givenAt).length;
@@ -36,6 +62,7 @@ export function MedicinePanel({
   function resetForm() {
     setEditing(null);
     setName("");
+    setDueTime("");
     setNote("");
   }
 
@@ -46,13 +73,16 @@ export function MedicinePanel({
         <p className="text-xs text-muted">{waiting > 0 ? `未投与 ${waiting}` : medicines.length > 0 ? "投与済み" : ""}</p>
       </div>
       {medicines.length === 0 ? (
-        <p className="mt-2 text-xs text-muted">薬を登録すると、その日に投与したかが分かります。</p>
+        <p className="mt-2 text-xs text-muted">薬と時間を登録すると、時間を過ぎた未投与だけ案内します。</p>
       ) : (
         <ul className="mt-2 divide-y divide-border">
           {medicines.map((item) => (
             <li key={item.id} className="flex items-center gap-2 py-2">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-fg">{item.name}</p>
+                <p className="truncate text-sm text-fg">
+                  {item.dueTime ? <span className="mr-1.5 tabular-nums text-muted">{item.dueTime}</span> : null}
+                  {item.name}
+                </p>
                 {item.note ? <p className="truncate text-[11px] text-muted">{item.note}</p> : null}
               </div>
               {item.givenAt ? (
@@ -112,6 +142,12 @@ export function MedicinePanel({
             onChange={(event) => setName(event.target.value)}
           />
           <Input
+            type="time"
+            value={dueTime}
+            aria-label="予定時刻"
+            onChange={(event) => setDueTime(event.target.value)}
+          />
+          <Input
             value={note}
             maxLength={40}
             placeholder="用量など（任意）"
@@ -123,7 +159,7 @@ export function MedicinePanel({
               type="button"
               size="sm"
               className="flex-1"
-              disabled={pending || !name.trim()}
+              disabled={pending || !name.trim() || !dueTime}
               onClick={() =>
                 void onRun(async () => {
                   const next = await saveDogMedicine({
@@ -132,6 +168,7 @@ export function MedicinePanel({
                       dogId: state.dog.id,
                       id: editing ?? undefined,
                       name: name.trim(),
+                      dueTime,
                       note: note.trim(),
                     },
                   });
@@ -153,6 +190,7 @@ export function MedicinePanel({
               {medicines.map((item) => (
                 <li key={item.id} className="flex items-center gap-2 py-1">
                   <p className="min-w-0 flex-1 truncate text-xs text-fg">
+                    {item.dueTime ? `${item.dueTime} ` : ""}
                     {item.name}
                     {item.note ? ` ${item.note}` : ""}
                   </p>
@@ -163,6 +201,7 @@ export function MedicinePanel({
                     onClick={() => {
                       setEditing(item.id);
                       setName(item.name);
+                      setDueTime(item.dueTime ?? "");
                       setNote(item.note);
                     }}
                   >

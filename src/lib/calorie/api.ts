@@ -130,11 +130,21 @@ function asIso(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function mapMedicine(row: { id: number; name: string; note?: string; given_at: unknown }): DogMedicine {
+function asClock(value: unknown): string | null {
+  const match = String(value ?? "").match(/(\d{2}):(\d{2})/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return `${match[1]}:${match[2]}`;
+}
+
+function mapMedicine(row: { id: number; name: string; note?: string; due_time?: unknown; given_at: unknown }): DogMedicine {
   return {
     id: row.id,
     name: row.name,
     note: row.note ?? "",
+    dueTime: asClock(row.due_time),
     givenAt: asIso(row.given_at),
   };
 }
@@ -206,8 +216,9 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
           'id', m.id,
           'name', m.name,
           'note', m.note,
+          'due_time', to_char(m.due_time, 'HH24:MI'),
           'given_at', d.given_at
-        ) order by m.sort_order, m.id)
+        ) order by m.due_time nulls last, m.sort_order, m.id)
         from dog_medicines m
         left join dog_medicine_doses d
           on d.medicine_id = m.id and d.given_on = ${date}::date
@@ -250,7 +261,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const dog = pickDog(dogs, dogId);
   const foods = asRows<FoodRow>(row?.foods);
   const staples = asRows<{ id: number; food_id: number; qty: unknown }>(row?.staples);
-  const medicines = asRows<{ id: number; name: string; note: string; given_at: unknown }>(row?.medicines);
+  const medicines = asRows<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>(row?.medicines);
   const logs = asRows<LogRow>(row?.logs);
   const trends: Record<TrendGrain, DayTrend[]> = { day: [], week: [], month: [], year: [] };
   return {
@@ -381,13 +392,13 @@ export const getCalorieDay = createServerFn({ method: "GET" })
         where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
         limit 1
       `,
-      sql<{ id: number; name: string; note: string; given_at: unknown }>`
-        select m.id, m.name, m.note, d.given_at
+      sql<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>`
+        select m.id, m.name, m.note, to_char(m.due_time, 'HH24:MI') as due_time, d.given_at
         from dog_medicines m
         left join dog_medicine_doses d
           on d.medicine_id = m.id and d.given_on = ${date}::date
         where m.user_id = ${context.userId} and m.dog_id = ${dog.id}
-        order by m.sort_order, m.id
+        order by m.due_time nulls last, m.sort_order, m.id
       `,
     ]);
     const mapped: CalorieLog[] = logs.map((row) => ({
@@ -811,10 +822,11 @@ const medicineInput = z.object({
   dogId: z.number().int().positive(),
   id: z.number().int().positive().optional(),
   name: z.string().trim().min(1, "薬の名前を入力してください").max(30),
+  dueTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "時間を入力してください"),
   note: z.string().trim().max(40).optional(),
 });
 
-/** 薬の名前を登録・更新する。note は用量などのメモ。 */
+/** 薬の名前と毎日の予定時刻を登録・更新する。note は用量などのメモ。 */
 export const saveDogMedicine = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(medicineInput, input))
@@ -825,19 +837,20 @@ export const saveDogMedicine = createServerFn({ method: "POST" })
     if (data.id) {
       const updated = await sql<{ id: number }>`
         update dog_medicines
-        set name = ${data.name}, note = ${note}
+        set name = ${data.name}, note = ${note}, due_time = ${data.dueTime}::time
         where id = ${data.id} and user_id = ${context.userId} and dog_id = ${dog.id}
         returning id
       `;
       if (!updated[0]) throw new Error("薬が見つかりません");
     } else {
       await sql`
-        insert into dog_medicines (user_id, dog_id, name, note, sort_order)
+        insert into dog_medicines (user_id, dog_id, name, note, due_time, sort_order)
         values (
           ${context.userId},
           ${dog.id},
           ${data.name},
           ${note},
+          ${data.dueTime}::time,
           coalesce((
             select max(sort_order) + 1 from dog_medicines where dog_id = ${dog.id}
           ), 1)

@@ -38,11 +38,12 @@ export type CalorieStaple = {
   qty: number;
 };
 
-/** その日の投薬。givenAt が null なら、その日はまだ投与していない。 */
+/** その日の投薬。dueTime は毎日の予定時刻（HH:MM）。givenAt が null なら、その日はまだ投与していない。 */
 export type DogMedicine = {
   id: number;
   name: string;
   note: string;
+  dueTime: string | null;
   givenAt: string | null;
 };
 

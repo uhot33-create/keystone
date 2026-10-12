@@ -27,7 +27,7 @@ import {
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
-import { MedicinePanel } from "@/components/calorie/medicine-panel";
+import { MedicinePanel, overdueMedicines } from "@/components/calorie/medicine-panel";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -205,6 +205,7 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight" | "meds">("home");
+  const [clock, setClock] = useState(() => new Date());
   const skipScroll = useRef(true);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
   const stapleOrderRef = useRef<number[] | null>(null);
@@ -218,6 +219,11 @@ export function TodayPanel({
     }
     window.scrollTo(0, 0);
   }, [view]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setClock(new Date()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
@@ -433,6 +439,7 @@ export function TodayPanel({
   }
 
   const locked = isCalorieLocked(state.date);
+  const lateMedicines = overdueMedicines(state.medicines ?? [], state.date, clock);
 
   return (
     <div className={`flex flex-col ${view === "home" ? "gap-5" : "gap-2"}`}>
@@ -494,13 +501,13 @@ export function TodayPanel({
             </div>
             </div>
           </section>
-          {(state.medicines ?? []).some((item) => !item.givenAt) ? (
+          {(lateMedicines.length > 0) ? (
             <button
               type="button"
               className="rounded-md border border-danger/40 bg-surface px-3 py-2 text-left text-sm text-danger"
               onClick={() => setView("meds")}
             >
-              おくすりがまだです（{(state.medicines ?? []).filter((item) => !item.givenAt).length}）
+              おくすりがまだです（{lateMedicines.length}）
             </button>
           ) : null}
 
