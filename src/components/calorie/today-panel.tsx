@@ -6,7 +6,7 @@
  * 定番の並びはドラッグで reorderCalorieStaples に渡り、calorie_staples.sort_order になります。
  * 左の絵つきメニューは menu-board.tsx。暮らし帳のカード表示と同じです。
  */
-import { ChartLine, GripVertical, Plus, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -25,6 +25,7 @@ import {
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import { CalorieMenuBoard, takeCalorieOpenView } from "@/components/calorie/menu-board";
+import { DateBar } from "@/components/calorie/date-bar";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
 import { MedicinePanel, overdueMedicines } from "@/components/calorie/medicine-panel";
@@ -86,78 +87,6 @@ function chipText(food: DogFood): string {
 
 function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
-}
-
-/**
- * 日付バーです。左右スワイプは48px以上で前日・翌日。それ未満は無視します。
- * locked のとき「2週間以上前の記録は閲覧のみです」と出します。文言を変えてもロック日数は変わりません。
- */
-function DateBar({
-  date,
-  chartOpen,
-  locked,
-  onShift,
-  onToday,
-  onChart,
-  onBack,
-}: {
-  date: string;
-  chartOpen: boolean;
-  locked: boolean;
-  onShift: (days: -1 | 1) => void;
-  onToday: () => void;
-  onChart: () => void;
-  onBack?: () => void;
-}) {
-  const startX = useRef(0);
-  return (
-    <div>
-      <div
-        className="flex touch-pan-y items-center gap-1"
-        onPointerDown={(event) => {
-          startX.current = event.clientX;
-        }}
-        onPointerUp={(event) => {
-          const dx = event.clientX - startX.current;
-          if (Math.abs(dx) < 48) return;
-          onShift(dx < 0 ? 1 : -1);
-        }}
-      >
-        {onBack ? (
-          <button type="button" onClick={onBack} className="w-10 shrink-0 text-left text-xs font-medium text-primary">
-            戻る
-          </button>
-        ) : null}
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
-          <p className="truncate font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 min-h-8 px-2"
-            disabled={date === todayJst()}
-            onClick={onToday}
-          >
-            今日
-          </Button>
-          {chartOpen ? null : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              aria-label="グラフを表示"
-              onClick={onChart}
-            >
-              <ChartLine className="size-4" strokeWidth={1.75} />
-            </Button>
-          )}
-        </div>
-        {onBack ? <span className="w-10 shrink-0" aria-hidden /> : null}
-      </div>
-      {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
-    </div>
-  );
 }
 
 /**

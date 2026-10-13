@@ -13,10 +13,12 @@ import { AppShell } from "@/components/app-shell";
 import { AuthSplash, LoginScreen } from "@/components/login-form";
 import { DeskPanel } from "@/components/desk-panel";
 import { CalorieMenuBoard } from "@/components/calorie/menu-board";
+import { HomeCalorieDate } from "@/components/calorie/home-date";
 import { storedDogId } from "@/components/calorie/dog-switcher";
 import { getCalorieState } from "@/lib/calorie/api";
 import { dailyEnergy, todayJst, truncKcal } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
+import type { CalorieState } from "@/lib/calorie/types";
 
 /** / 。セッションがあればメニュー、無ければログイン。 */
 export const Route = createFileRoute("/")({ component: Home });
@@ -57,18 +59,22 @@ function MenuScreen() {
 }
 
 function CardMenu() {
-  const [dog, setDog] = useState({ src: "/calorie/saburo/01-standard.jpg", label: "今の体型" });
+  const [state, setState] = useState<CalorieState | null>(null);
+  const dog = state
+    ? calorieSaburoStage(
+        truncKcal(state.logs.reduce((sum, log) => sum + log.kcal, 0)),
+        dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage),
+      )
+    : { src: "/calorie/saburo/01-standard.jpg", label: "今の体型" };
 
   useEffect(() => {
     let cancelled = false;
     getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
-      .then((state) => {
-        if (cancelled) return;
-        const total = truncKcal(state.logs.reduce((sum, log) => sum + log.kcal, 0));
-        setDog(calorieSaburoStage(total, dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage)));
+      .then((next) => {
+        if (!cancelled) setState(next);
       })
       .catch(() => {
-        /* 絵が取れなくても標準のさぶろうでメニューは出す */
+        /* 取れなくてもメニューは出す */
       });
     return () => {
       cancelled = true;
@@ -76,9 +82,12 @@ function CardMenu() {
   }, []);
 
   return (
-    <nav aria-label="メインメニュー">
-      <CalorieMenuBoard dogSrc={dog.src} dogLabel={dog.label} />
-    </nav>
+    <div className="flex flex-col gap-5">
+      <nav aria-label="メインメニュー">
+        <CalorieMenuBoard dogSrc={dog.src} dogLabel={dog.label} />
+      </nav>
+      {state ? <HomeCalorieDate state={state} onChange={setState} /> : null}
+    </div>
   );
 }
 
