@@ -1,21 +1,21 @@
 /**
- * トップメニューをアイコンか一覧のどちらで出すか。localStorage に保存する。
- * キーは KEY。初期値は icons。切り替え UI は components/account-chip.tsx。
- * メニュー項目そのものは lib/app-meta.ts の MENUS。
+ * トップメニューをカードかアイコンのどちらで出すか。localStorage に保存する。
+ * カードはわんカロリーの絵つきメニュー。アイコンは暮らし帳の今のメニュー。
+ * 切り替え UI は components/account-chip.tsx。
  */
 import { useSyncExternalStore } from "react";
 
 /** localStorage のキー。変えると保存済みの並び方がリセットされる。 */
 const KEY = "kurashi-menu-layout";
-/** icons は格子、list は縦の一覧。 */
-export type MenuLayout = "icons" | "list";
+/** cards はわんカロリーのメニュー、icons は暮らし帳のアイコンメニュー。 */
+export type MenuLayout = "cards" | "icons";
 
 const listeners = new Set<() => void>();
 let current: MenuLayout = read();
 
 function read(): MenuLayout {
   if (typeof localStorage === "undefined") return "icons";
-  return localStorage.getItem(KEY) === "list" ? "list" : "icons";
+  return localStorage.getItem(KEY) === "cards" ? "cards" : "icons";
 }
 
 /** 表示を切り替えて保存し、見ている画面へ知らせる。 */

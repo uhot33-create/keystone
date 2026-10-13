@@ -1,6 +1,6 @@
 /**
  * 画面右上のアカウントメニュー。
- * 配色・メニューのアイコン/一覧・メニュー下の表示オンオフ・ログアウトをここから操作する。
+ * 配色・メニューのカード/アイコン・メニュー下の表示オンオフ・ログアウトをここから操作する。
  * 表示項目の一覧は lib/desk/visibility.ts、配色の候補は lib/theme.ts、色の実体は styles.css。
  */
 import { Link } from "@tanstack/react-router";
@@ -79,19 +79,19 @@ export function AccountChip() {
           <div className="grid grid-cols-2 rounded-md bg-surface-2 p-0.5" role="group" aria-label="メニューの表示">
             <button
               type="button"
+              aria-pressed={menuLayout === "cards"}
+              className={`h-8 rounded-sm px-2.5 text-xs font-medium ${menuLayout === "cards" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
+              onClick={() => setMenuLayout("cards")}
+            >
+              カード
+            </button>
+            <button
+              type="button"
               aria-pressed={menuLayout === "icons"}
               className={`h-8 rounded-sm px-2.5 text-xs font-medium ${menuLayout === "icons" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
               onClick={() => setMenuLayout("icons")}
             >
               アイコン
-            </button>
-            <button
-              type="button"
-              aria-pressed={menuLayout === "list"}
-              className={`h-8 rounded-sm px-2.5 text-xs font-medium ${menuLayout === "list" ? "bg-surface text-fg shadow-card" : "text-muted"}`}
-              onClick={() => setMenuLayout("list")}
-            >
-              一覧
             </button>
           </div>
         </div>

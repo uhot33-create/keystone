@@ -4,11 +4,10 @@
  * （日7・週12・月12・年5。summary.ts の WINDOW と同じにしてください）。
  * 14日より前は閲覧のみ。日数は formula.ts の CALORIE_EDIT_DAYS、文言は「2週間以上前…」です。
  * 定番の並びはドラッグで reorderCalorieStaples に渡り、calorie_staples.sort_order になります。
- * 左の絵を横にスワイプすると、犬のメニューと人のメニュー（喫煙管理・カップ麺）が切り替わります。
+ * 左の絵つきメニューは menu-board.tsx。暮らし帳のカード表示と同じです。
  */
-import { Link } from "@tanstack/react-router";
-import { ChartLine, Cigarette, Footprints, GripVertical, Pill, Plus, Scale, Soup, Stethoscope, Trash2, Utensils } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from "react";
+import { ChartLine, GripVertical, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import { chartWindowStart } from "@/lib/calorie/summary";
@@ -25,7 +24,7 @@ import {
   isCalorieLocked,
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
-import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
+import { CalorieMenuBoard, takeCalorieOpenView } from "@/components/calorie/menu-board";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
 import { MedicinePanel, overdueMedicines } from "@/components/calorie/medicine-panel";
@@ -38,24 +37,6 @@ import { Select } from "@/components/ui/select";
 const QTY_STEPS = [15, 2, 4] as const;
 /** グラフ1ページの件数です。summary.ts の WINDOW と同じにしてください。片方だけ変えると、読み込み幅と表示幅がずれます。 */
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
-
-/**
- * さぶろうの右に並ぶメニューです。label が表示文言。to があると別ページへ、view だとこの画面の中を切り替えます。
- * 項目を足すときは key をユニークにし、view を足すなら下の表示分岐も追加してください。
- */
-const MENU = [
-  { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
-  { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
-  { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk" as const },
-  { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
-  { key: "meds", label: "おくすり", Icon: Pill, view: "meds" as const },
-] as const;
-
-/** 犬の絵をスワイプしたあとのメニュー。人の絵のときに出す。 */
-const PERSON_MENU = [
-  { key: "smoke", label: "喫煙管理", Icon: Cigarette, to: "/smoking" as const },
-  { key: "cup", label: "カップ麺", Icon: Soup, to: "/cup" as const },
-] as const;
 
 function moveId(ids: number[], from: number, to: number): number[] {
   if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return ids;
@@ -212,9 +193,7 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight" | "meds">("home");
-  const [board, setBoard] = useState<"dog" | "person">("dog");
   const [clock, setClock] = useState(() => new Date());
-  const portraitSwipe = useRef<{ x: number; y: number } | null>(null);
   const skipScroll = useRef(true);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
   const stapleOrderRef = useRef<number[] | null>(null);
@@ -232,6 +211,11 @@ export function TodayPanel({
   useEffect(() => {
     const id = window.setInterval(() => setClock(new Date()), 30_000);
     return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const next = takeCalorieOpenView();
+    if (next !== "home") setView(next);
   }, []);
 
   useEffect(() => {
@@ -450,22 +434,6 @@ export function TodayPanel({
 
   const locked = isCalorieLocked(state.date);
   const lateMedicines = overdueMedicines(state.medicines ?? [], state.date, state.medicineAddedOn, clock);
-  const activeMenu = board === "dog" ? MENU : PERSON_MENU;
-
-  function onPortraitDown(event: PointerEvent<HTMLDivElement>) {
-    portraitSwipe.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onPortraitUp(event: PointerEvent<HTMLDivElement>) {
-    const start = portraitSwipe.current;
-    portraitSwipe.current = null;
-    if (!start) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy)) return;
-    setBoard((current) => (current === "dog" ? "person" : "dog"));
-  }
 
   return (
     <div className={`flex flex-col ${view === "home" ? "gap-5" : "gap-2"}`}>
@@ -487,65 +455,7 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <section className="rounded-sm bg-surface p-1 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_16px_32px_-22px_var(--color-fg)] ring-1 ring-fg/80">
-            <div className="rounded-[2px] border border-fg/40 p-1">
-            <div className="flex h-[15.5rem] items-stretch gap-3 overflow-hidden border border-fg/15 bg-surface-2">
-              <div
-                className="relative w-40 shrink-0 self-stretch touch-pan-y overflow-hidden border-r border-fg/20 bg-surface"
-                onPointerDown={onPortraitDown}
-                onPointerUp={onPortraitUp}
-                onPointerCancel={() => {
-                  portraitSwipe.current = null;
-                }}
-              >
-                <img
-                  src={board === "dog" ? saburo.src : "/calorie/person.jpg"}
-                  alt={board === "dog" ? saburo.label : "人"}
-                  draggable={false}
-                  className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-                />
-                <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-surface/80 py-0.5 text-[11px] leading-tight text-muted">
-                  <span>{board === "dog" ? saburo.label : "自分"}</span>
-                  <span className="inline-flex gap-1" aria-hidden>
-                    <span className={`size-1.5 rounded-full ${board === "dog" ? "bg-fg" : "bg-fg/30"}`} />
-                    <span className={`size-1.5 rounded-full ${board === "person" ? "bg-fg" : "bg-fg/30"}`} />
-                  </span>
-                </p>
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-3 pr-3">
-                {activeMenu.map((item) => {
-                  const className =
-                    "flex h-10 items-center gap-2 border border-fg/25 bg-surface px-2.5 text-sm font-semibold text-fg shadow-card outline-none hover:bg-primary hover:text-primary-fg focus-visible:ring-2 focus-visible:ring-ring/35";
-                  const face = (
-                    <>
-                      <span aria-hidden className="text-[10px]">
-                        ▶
-                      </span>
-                      <item.Icon className="size-4 shrink-0" strokeWidth={1.75} />
-                      <span className="truncate">{item.label}</span>
-                    </>
-                  );
-                  if ("to" in item && item.to === "/walk") {
-                    return (
-                      <Link key={item.key} to="/walk" search={DEFAULT_WALK_SEARCH} className={className}>
-                        {face}
-                      </Link>
-                    );
-                  }
-                  return "to" in item ? (
-                    <Link key={item.key} to={item.to} className={className}>
-                      {face}
-                    </Link>
-                  ) : (
-                    <button key={item.key} type="button" className={className} onClick={() => setView(item.view)}>
-                      {face}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            </div>
-          </section>
+          <CalorieMenuBoard dogSrc={saburo.src} dogLabel={saburo.label} onView={setView} />
           {(lateMedicines.length > 0) ? (
             <button
               type="button"
