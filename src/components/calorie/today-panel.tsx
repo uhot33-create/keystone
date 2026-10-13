@@ -4,9 +4,10 @@
  * （日7・週12・月12・年5。summary.ts の WINDOW と同じにしてください）。
  * 14日より前は閲覧のみ。日数は formula.ts の CALORIE_EDIT_DAYS、文言は「2週間以上前…」です。
  * 定番の並びはドラッグで reorderCalorieStaples に渡り、calorie_staples.sort_order になります。
- * 左の絵つきメニューは menu-board.tsx。暮らし帳のカード表示と同じです。
+ * 左の絵つきメニューは menu-board.tsx。体重・ごはん・おくすりの「戻る」は暮らし帳（/）へ移る。
  */
 import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
@@ -102,6 +103,7 @@ export function TodayPanel({
   onChange: (next: CalorieState) => void;
   onOpenFoods: () => void;
 }) {
+  const navigate = useNavigate();
   const [kind, setKind] = useState<FoodKind>("food");
   const [foodId, setFoodId] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -378,7 +380,7 @@ export function TodayPanel({
             void selectDate(todayJst());
           }}
           onChart={() => void openChart()}
-          onBack={() => setView("home")}
+          onBack={() => void navigate({ to: "/" })}
         />
       ) : null}
 
