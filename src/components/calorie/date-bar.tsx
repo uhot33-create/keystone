@@ -15,7 +15,6 @@ export function DateBar({
   onShift,
   onToday,
   onChart,
-  onBack,
 }: {
   date: string;
   chartOpen: boolean;
@@ -23,7 +22,6 @@ export function DateBar({
   onShift: (days: -1 | 1) => void;
   onToday: () => void;
   onChart: () => void;
-  onBack?: () => void;
 }) {
   const startX = useRef(0);
   return (
@@ -39,11 +37,6 @@ export function DateBar({
           onShift(dx < 0 ? 1 : -1);
         }}
       >
-        {onBack ? (
-          <button type="button" onClick={onBack} className="w-10 shrink-0 text-left text-xs font-medium text-primary">
-            戻る
-          </button>
-        ) : null}
         <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
           <p className="truncate font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
           <Button
@@ -69,7 +62,6 @@ export function DateBar({
             </Button>
           )}
         </div>
-        {onBack ? <span className="w-10 shrink-0" aria-hidden /> : null}
       </div>
       {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
     </div>
