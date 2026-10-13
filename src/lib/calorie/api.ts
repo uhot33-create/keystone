@@ -14,6 +14,7 @@ import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, todayJst, truncKcal } from "./formula";
 import { attachGuides, attachWalks, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
 import type { CalorieLog, CalorieState, DayTrend, DogMedicine, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
+import { MEDICINE_LOG_START } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -865,6 +866,7 @@ export const giveDogMedicine = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
+    if (data.date < MEDICINE_LOG_START) throw new Error("この日の投与は記録しません");
     const sql = await getSql();
     const dog = await requireDog(context.userId, data.dogId);
     const medicine = await sql<{ id: number }>`
@@ -886,6 +888,7 @@ export const undoDogMedicine = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
+    if (data.date < MEDICINE_LOG_START) throw new Error("この日の投与は記録しません");
     const sql = await getSql();
     const dog = await requireDog(context.userId, data.dogId);
     await sql`

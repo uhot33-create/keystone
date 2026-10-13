@@ -38,6 +38,9 @@ export type CalorieStaple = {
   qty: number;
 };
 
+/** この日以降だけ投与の記録がある。それより前は機能追加前なので状態は「—」。 */
+export const MEDICINE_LOG_START = "2026-10-12";
+
 /** その日の投薬。dueTime は毎日の予定時刻（HH:MM）。givenAt が null なら、その日はまだ投与していない。 */
 export type DogMedicine = {
   id: number;
