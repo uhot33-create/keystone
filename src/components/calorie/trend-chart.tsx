@@ -6,7 +6,7 @@
  * 散歩の上限刻み（日1km・年20km・それ以外5km）、左右スワイプの判定48px。
  * ボタンの「日／週／月／年」は types.ts の TREND_GRAINS。見出しは grainTitle です。
  */
-import { useRef, type PointerEvent } from "react";
+import { useRef, useState, type PointerEvent } from "react";
 import { formatKcal } from "@/lib/calorie/formula";
 import { TREND_GRAINS, type DayTrend, type TrendGrain } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,8 @@ function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined):
 }
 
 /**
- * 渡された days を1枚のグラフに描きます。点をタップすると onSelect（その期間の最終日）です。
+ * 渡された days を1枚のグラフに描きます。おさんぽの棒をタップすると onSelect（その期間の最終日）です。
+ * カロリーと体重の点は押しません。押した棒の数値は見出しの右に出します。
  * 右スワイプで過去、左スワイプで未来。canOlder / canNewer が false の方向には動きません。
  * kcal の刻みは日が100・それ以外500、散歩は日1km・年20km・それ以外5km。ここの数字が縦軸の粗さです。
  */
@@ -118,6 +119,8 @@ export function TrendChart({
   const barW = Math.max(3, Math.min(12, slot * 0.46));
   const baseline = pad.top + innerH;
   const latest = days[days.length - 1];
+  const [picked, setPicked] = useState<string | null>(null);
+  const shown = days.find((day) => day.date === picked) ?? days.find((day) => day.date === activeDate) ?? latest;
   const startX = useRef<number | null>(null);
   const swiped = useRef(false);
 
@@ -141,9 +144,9 @@ export function TrendChart({
         <p className="shrink-0 whitespace-nowrap font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
         <div className="flex min-w-0 items-center gap-2">
           <p className="min-w-0 truncate whitespace-nowrap text-right text-xs text-muted">
-            {latest ? `${formatKcal(latest.kcal)} kcal` : "—"}
-            {latest?.weightKg != null ? ` / ${latest.weightKg.toFixed(2)} kg` : ""}
-            {latest && (latest.walkKm ?? 0) > 0 ? ` / ${walkLabel(latest.walkKm)} km` : ""}
+            {shown ? `${formatKcal(shown.kcal)} kcal` : "—"}
+            {shown?.weightKg != null ? ` / ${shown.weightKg.toFixed(2)} kg` : ""}
+            {shown && (shown.walkKm ?? 0) > 0 ? ` / ${walkLabel(shown.walkKm)} km` : ""}
           </p>
           <Button type="button" variant="ghost" size="sm" onClick={onToday} disabled={isToday}>
             今日
@@ -194,7 +197,15 @@ export function TrendChart({
           if (!(km > 0)) return null;
           const top = yWalk(km);
           return (
-            <g key={`walk-${day.start}`}>
+            <g
+              key={`walk-${day.start}`}
+              className="cursor-pointer"
+              onClick={() => {
+                if (swiped.current) return;
+                setPicked(day.date);
+                onSelect(day.date);
+              }}
+            >
               <rect
                 x={x(index) - barW / 2}
                 y={top}
@@ -202,7 +213,7 @@ export function TrendChart({
                 height={Math.max(1, baseline - top)}
                 rx="1"
                 fill="#6b5344"
-                fillOpacity="0.35"
+                fillOpacity={day.date === shown?.date ? 0.8 : 0.35}
               />
               <text x={x(index)} y={Math.max(top - 4, pad.top + 8)} textAnchor="middle" fill="#6b5344" fontSize="8">
                 {walkLabel(km)}
@@ -262,20 +273,6 @@ export function TrendChart({
                 {axisTick(grain, day, days[index - 1])}
               </text>
             ) : null}
-            <rect
-              x={x(index) - innerW / days.length / 2}
-              y={pad.top}
-              width={innerW / days.length}
-              height={innerH}
-              fill="transparent"
-              className="cursor-pointer"
-              onClick={() => {
-                if (swiped.current) return;
-                onSelect(day.date);
-              }}
-            >
-              <title>{`${day.label} ${formatKcal(day.kcal)}kcal / 目安 ${formatKcal(guides[index] ?? 0)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}${(day.walkKm ?? 0) > 0 ? ` おさんぽ ${walkLabel(day.walkKm)}km` : ""}`}</title>
-            </rect>
           </g>
         ))}
         <text x={4} y={pad.top + 4} fill="var(--color-subtle)" fontSize="9">
@@ -293,7 +290,7 @@ export function TrendChart({
       </svg>
       </div>
       <p className="mt-1 text-center text-xs text-subtle">
-        左右にスライドで期間を移動。点をタップするとその期間の最終日へ。
+        左右にスライドで期間を移動。おさんぽの棒をタップすると、その値を上に出してその日へ移ります。
       </p>
     </div>
   );
