@@ -1,5 +1,5 @@
 /**
- * わんカロリーの絵つきメニュー。犬と人は横スワイプで切り替える。
+ * 犬の絵はタップ、または横スワイプで人の絵とメニューに切り替わる。もう一度で犬に戻る。
  * 犬は体重・ごはん・お散歩ログ・通院履歴・おくすり。人は喫煙管理・カップ麺。
  * onView があるとき（わんカロリーの今日画面）は体重・ごはん・おくすりをその場で開く。
  * 無いとき（暮らし帳のカード表示）は /calorie を開き、開く画面を sessionStorage に残す。
@@ -74,7 +74,9 @@ export function CalorieMenuBoard({
     if (!start) return;
     const dx = event.clientX - start.x;
     const dy = event.clientY - start.y;
-    if (Math.abs(dx) < 36 || Math.abs(dx) < Math.abs(dy)) return;
+    const tap = Math.abs(dx) < 12 && Math.abs(dy) < 12;
+    const swipeAcross = Math.abs(dx) >= 36 && Math.abs(dx) > Math.abs(dy);
+    if (!tap && !swipeAcross) return;
     setBoard((current) => (current === "dog" ? "person" : "dog"));
   }
 
@@ -83,7 +85,9 @@ export function CalorieMenuBoard({
       <div className="rounded-[2px] border border-fg/40 p-1">
         <div className="flex h-[15.5rem] items-stretch gap-3 overflow-hidden border border-fg/15 bg-surface-2">
           <div
-            className="relative w-40 shrink-0 self-stretch touch-pan-y overflow-hidden border-r border-fg/20 bg-surface"
+            className="relative w-40 shrink-0 cursor-pointer self-stretch touch-pan-y overflow-hidden border-r border-fg/20 bg-surface"
+            role="button"
+            aria-label={board === "dog" ? "人のメニューに切り替え" : "犬のメニューに切り替え"}
             onPointerDown={onDown}
             onPointerUp={onUp}
             onPointerCancel={() => {
