@@ -389,7 +389,7 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <CalorieMenuBoard dogSrc={saburo.src} dogLabel={saburo.label} onView={setView} />
+          <CalorieMenuBoard dogSrc={saburo.src} dogName={state.dog.name} dogLabel={saburo.label} onView={setView} />
           {(lateMedicines.length > 0) ? (
             <button
               type="button"

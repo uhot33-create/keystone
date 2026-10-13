@@ -52,10 +52,12 @@ function face(Icon: (typeof MENU)[number]["Icon"], label: string): ReactNode {
 
 export function CalorieMenuBoard({
   dogSrc,
+  dogName,
   dogLabel,
   onView,
 }: {
   dogSrc: string;
+  dogName: string;
   dogLabel: string;
   onView?: (view: CalorieMenuView) => void;
 }) {
@@ -74,12 +76,17 @@ export function CalorieMenuBoard({
           >
             <img
               src={board === "dog" ? dogSrc : "/calorie/person.jpg"}
-              alt={board === "dog" ? dogLabel : "人"}
+              alt={board === "dog" ? dogName : "人"}
               draggable={false}
               className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
             />
+            {board === "dog" ? (
+              <p className="pointer-events-none absolute inset-x-1 bottom-6 text-center text-[11px] leading-tight text-fg [text-shadow:0_1px_2px_rgba(255,255,255,0.9)]">
+                {dogLabel}
+              </p>
+            ) : null}
             <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-surface/80 py-0.5 text-[11px] leading-tight text-muted">
-              <span>{board === "dog" ? dogLabel : "自分"}</span>
+              <span className="min-w-0 truncate">{board === "dog" ? dogName : "自分"}</span>
               <span className="inline-flex gap-1" aria-hidden>
                 <span className={`size-1.5 rounded-full ${board === "dog" ? "bg-fg" : "bg-fg/30"}`} />
                 <span className={`size-1.5 rounded-full ${board === "person" ? "bg-fg" : "bg-fg/30"}`} />

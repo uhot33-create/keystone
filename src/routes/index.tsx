@@ -69,7 +69,7 @@ function CardMenu() {
   return (
     <div className="flex flex-col gap-5">
       <nav aria-label="メインメニュー">
-        <CalorieMenuBoard dogSrc={dog.src} dogLabel={dog.label} />
+        <CalorieMenuBoard dogSrc={dog.src} dogName={state?.dog.name || "うちの子"} dogLabel={dog.label} />
       </nav>
       {state ? <HomeCalorieDate state={state} onChange={setState} /> : null}
     </div>
