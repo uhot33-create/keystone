@@ -10,7 +10,8 @@ import { AuthSplash, LoginScreen } from "@/components/login-form";
 import { DeskPanel } from "@/components/desk-panel";
 import { CalorieMenuBoard } from "@/components/calorie/menu-board";
 import { HomeCalorieDate } from "@/components/calorie/home-date";
-import { storedDogId } from "@/components/calorie/dog-switcher";
+import { rememberDogId, storedDogId } from "@/components/calorie/dog-switcher";
+import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { getCalorieState } from "@/lib/calorie/api";
 import { dailyEnergy, todayJst, truncKcal } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
@@ -46,6 +47,7 @@ function MenuScreen() {
 
 function CardMenu() {
   const [state, setState] = useState<CalorieState | null>(null);
+  const [busy, setBusy] = useState(false);
   const dog = state
     ? calorieSaburoStage(
         truncKcal(state.logs.reduce((sum, log) => sum + log.kcal, 0)),
@@ -67,14 +69,31 @@ function CardMenu() {
     };
   }, []);
 
+  async function selectDog(dogId: number) {
+    if (!state || dogId === state.dog.id) return;
+    setBusy(true);
+    try {
+      rememberDogId(dogId);
+      setState(await getCalorieState({ data: { date: state.date, dogId } }));
+    } catch {
+      /* 失敗しても今の犬のまま */
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col gap-5">
+    <div className="relative flex flex-col gap-5">
+      <BusyOverlay show={busy} label="読み込み中…" />
       <nav aria-label="メインメニュー">
         <CalorieMenuBoard
           dogSrc={dogMenuSrc(state?.dog.portraitId, dog.src)}
           personSrc={personMenuSrc(state?.personPortrait)}
           dogName={state?.dog.name || "うちの子"}
           dogLabel={dog.label}
+          dogs={state?.dogs}
+          dogId={state?.dog.id}
+          onSelectDog={(id) => void selectDog(id)}
         />
       </nav>
       {state ? <HomeCalorieDate state={state} onChange={setState} /> : null}

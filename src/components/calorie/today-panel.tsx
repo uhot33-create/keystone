@@ -9,7 +9,7 @@
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
-import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
+import { addCalorieLog, deleteCalorieLog, deleteCalorieStaple, getCalorieChart, getCalorieDay, getCalorieState, getCalorieTrend, reorderCalorieStaples, saveCalorieStaple, saveWeightLog } from "@/lib/calorie/api";
 import { chartWindowStart } from "@/lib/calorie/summary";
 import {
   formatJaDayWeek,
@@ -26,6 +26,7 @@ import {
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
 import { CalorieMenuBoard, takeCalorieOpenView, type CalorieMenuTab } from "@/components/calorie/menu-board";
+import { rememberDogId } from "@/components/calorie/dog-switcher";
 import { MenuDayNotes } from "@/components/calorie/menu-day-notes";
 import { DateBar } from "@/components/calorie/date-bar";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
@@ -204,6 +205,20 @@ export function TodayPanel({
     setQty("");
     setKcalText("");
     setKcalTouched(false);
+  }
+
+  async function selectMenuDog(dogId: number) {
+    if (dogId === state.dog.id) return;
+    setBusy("読み込み中…");
+    setError(null);
+    try {
+      rememberDogId(dogId);
+      onChange(await getCalorieState({ data: { date: state.date, dogId } }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "読み込みに失敗しました");
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function run(action: () => Promise<CalorieState>, label = "保存中…") {
@@ -391,6 +406,9 @@ export function TodayPanel({
             personSrc={personMenuSrc(state.personPortrait)}
             dogName={state.dog.name}
             dogLabel={saburo.label}
+            dogs={state.dogs}
+            dogId={state.dog.id}
+            onSelectDog={(id) => void selectMenuDog(id)}
             onView={setView}
             onTab={onTab}
           />

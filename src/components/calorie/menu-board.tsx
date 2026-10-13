@@ -1,7 +1,7 @@
 /**
- * 犬の絵をタップすると人の絵とメニューに切り替わる。もう一度タップで犬に戻る。
- * 歯車はプロフィール、プラン、フード。犬のメニューはごはん、体重、おくすり、おさんぽメモ、おさんぽログ、通院履歴。
- * 人は喫煙管理・カップ麺。
+ * 犬の絵をタップすると、次の犬、最後に人のメニューへ進む。人の次は最初の犬。
+ * 犬が3匹以上のときは、左上の「人」で人のメニューへ直接移る。
+ * 歯車はプロフィール、プラン、フード。
  */
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -72,6 +72,9 @@ export function CalorieMenuBoard({
   dogName,
   dogLabel,
   personSrc = "/calorie/person.jpg",
+  dogs = [],
+  dogId,
+  onSelectDog,
   onView,
   onTab,
 }: {
@@ -79,6 +82,9 @@ export function CalorieMenuBoard({
   dogName: string;
   dogLabel: string;
   personSrc?: string;
+  dogs?: { id: number; name: string }[];
+  dogId?: number;
+  onSelectDog?: (id: number) => void;
   onView?: (view: CalorieMenuView) => void;
   onTab?: (tab: CalorieMenuTab) => void;
 }) {
@@ -86,6 +92,22 @@ export function CalorieMenuBoard({
   const [board, setBoard] = useState<"dog" | "person">("dog");
   const [settings, setSettings] = useState(false);
   const showSettings = board === "dog" && settings;
+  const dogIndex = dogs.findIndex((dog) => dog.id === dogId);
+  const nextDog = dogIndex >= 0 ? dogs[dogIndex + 1] : undefined;
+
+  function onPortrait() {
+    if (board === "person") {
+      const first = dogs[0];
+      if (first && first.id !== dogId) onSelectDog?.(first.id);
+      setBoard("dog");
+      return;
+    }
+    if (nextDog) {
+      onSelectDog?.(nextDog.id);
+      return;
+    }
+    setBoard("person");
+  }
 
   function openTab(tab: CalorieMenuTab) {
     if (onTab) {
@@ -108,8 +130,10 @@ export function CalorieMenuBoard({
             <button
               type="button"
               className="absolute inset-0 cursor-pointer"
-              aria-label={board === "dog" ? "人のメニューに切り替え" : "犬のメニューに切り替え"}
-              onClick={() => setBoard((current) => (current === "dog" ? "person" : "dog"))}
+              aria-label={
+                board === "person" ? "最初の犬のメニューに切り替え" : nextDog ? `${nextDog.name}のメニューに切り替え` : "人のメニューに切り替え"
+              }
+              onClick={onPortrait}
             />
             <img
               src={board === "dog" ? dogSrc : personSrc}
@@ -117,6 +141,16 @@ export function CalorieMenuBoard({
               draggable={false}
               className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
             />
+            {board === "dog" && dogs.length >= 3 ? (
+              <button
+                type="button"
+                className="absolute left-1 top-1 z-10 h-7 rounded-full bg-surface/90 px-2 text-[11px] font-medium text-fg shadow-card"
+                aria-label="人のメニューへ"
+                onClick={() => setBoard("person")}
+              >
+                人
+              </button>
+            ) : null}
             {board === "dog" ? (
               <button
                 type="button"
