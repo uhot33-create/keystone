@@ -25,6 +25,7 @@ import {
   isCalorieLocked,
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
+import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
 import { MedicinePanel, overdueMedicines } from "@/components/calorie/medicine-panel";
@@ -45,7 +46,7 @@ const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, 
 const MENU = [
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
-  { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk/logs" as const },
+  { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
   { key: "meds", label: "おくすり", Icon: Pill, view: "meds" as const },
 ] as const;
@@ -524,6 +525,13 @@ export function TodayPanel({
                       <span className="truncate">{item.label}</span>
                     </>
                   );
+                  if ("to" in item && item.to === "/walk") {
+                    return (
+                      <Link key={item.key} to="/walk" search={DEFAULT_WALK_SEARCH} className={className}>
+                        {face}
+                      </Link>
+                    );
+                  }
                   return "to" in item ? (
                     <Link key={item.key} to={item.to} className={className}>
                       {face}
