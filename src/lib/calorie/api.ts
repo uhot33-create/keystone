@@ -12,6 +12,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, todayJst, truncKcal } from "./formula";
+import { DEFAULT_DOG_PORTRAIT, DEFAULT_PERSON_PORTRAIT, isDogPortrait, isPersonPortrait } from "./portraits";
 import { attachGuides, attachWalks, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
 import type { CalorieLog, CalorieState, DayTrend, DogMedicine, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
 
@@ -46,6 +47,7 @@ type DogRow = {
   ideal_weight_kg: unknown;
   life_stage: string;
   treat_ratio: unknown;
+  portrait_id: string | null;
 };
 
 type FoodRow = {
@@ -76,13 +78,14 @@ function mapDog(row: DogRow): DogProfile {
     idealWeightKg: num(row.ideal_weight_kg, 2),
     lifeStage: isLifeStageId(row.life_stage) ? row.life_stage : "adult_neutered",
     treatRatio: num(row.treat_ratio, 2) || 0.1,
+    portraitId: row.portrait_id && isDogPortrait(row.portrait_id) ? row.portrait_id : DEFAULT_DOG_PORTRAIT,
   };
 }
 
 async function listDogs(userId: string): Promise<DogProfile[]> {
   const sql = await getSql();
   const rows = await sql<DogRow>`
-    select id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio
+    select id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio, portrait_id
     from dogs
     where user_id = ${userId}
     order by id asc
@@ -97,7 +100,7 @@ async function ensureDogs(userId: string): Promise<DogProfile[]> {
   const created = await sql<DogRow>`
     insert into dogs (user_id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio)
     values (${userId}, ${"うちの子"}, 0, 0, ${"adult_neutered"}, 0.10)
-    returning id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio
+    returning id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio, portrait_id
   `;
   const row = created[0];
   if (!row) throw new Error("愛犬プロフィールを作成できませんでした");
@@ -178,6 +181,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
     medicines: unknown;
     logs: unknown;
     today_weight: unknown;
+    person_portrait: string | null;
   }>`
     with selected as (
       select id
@@ -194,7 +198,8 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
           'current_weight_kg', d.current_weight_kg,
           'ideal_weight_kg', d.ideal_weight_kg,
           'life_stage', d.life_stage,
-          'treat_ratio', d.treat_ratio
+          'treat_ratio', d.treat_ratio,
+          'portrait_id', d.portrait_id
         ) order by d.id)
         from dogs d
         where d.user_id = ${userId}
@@ -256,7 +261,13 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
           and w.dog_id = (select id from selected)
           and w.log_date = ${date}
         limit 1
-      ) as today_weight
+      ) as today_weight,
+      (
+        select person_portrait
+        from user_settings
+        where user_id = ${userId}
+        limit 1
+      ) as person_portrait
   `;
   const row = bundle[0];
   const dogs = asRows<DogRow>(row?.dogs).map(mapDog);
@@ -306,6 +317,10 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
     trend: [],
     trends,
     todayWeightKg: row?.today_weight == null ? null : num(row.today_weight, 2),
+    personPortrait:
+      row?.person_portrait && isPersonPortrait(row.person_portrait)
+        ? row.person_portrait
+        : DEFAULT_PERSON_PORTRAIT,
   };
 }
 
@@ -638,6 +653,55 @@ export const saveDogProfile = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 犬の絵テンプレートだけを保存します。カロリーの目安は変えません。 */
+export const saveDogPortrait = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+        dogId: z.number().int().positive(),
+        portraitId: z.string().refine(isDogPortrait, "犬の絵を選んでください"),
+      }),
+      input,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const dog = await requireDog(context.userId, data.dogId);
+    await sql`
+      update dogs
+      set portrait_id = ${data.portraitId}, updated_at = now()
+      where id = ${dog.id} and user_id = ${context.userId}
+    `;
+    return loadState(context.userId, data.date, dog.id);
+  });
+
+/** 人の絵テンプレートを保存します。机の表示設定は変えません。 */
+export const savePersonPortrait = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+        dogId: z.number().int().positive().optional(),
+        portraitId: z.string().refine(isPersonPortrait, "人の絵を選んでください"),
+      }),
+      input,
+    ),
+  )
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    await sql`
+      insert into user_settings (user_id, person_portrait, updated_at)
+      values (${context.userId}, ${data.portraitId}, now())
+      on conflict (user_id) do update set
+        person_portrait = excluded.person_portrait,
+        updated_at = now()
+    `;
+    return loadState(context.userId, data.date, data.dogId);
+  });
+
 /**
  * 犬を1頭足します。10頭まで。初期値は体重0、adult_neutered、おやつ10%です。
  * 11頭目はこのエラーになります。初期ステージを変えるならここの life_stage です。
@@ -660,7 +724,7 @@ export const addDog = createServerFn({ method: "POST" })
     const created = await sql<DogRow>`
       insert into dogs (user_id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio)
       values (${context.userId}, ${data.name}, 0, 0, ${"adult_neutered"}, 0.10)
-      returning id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio
+      returning id, name, current_weight_kg, ideal_weight_kg, life_stage, treat_ratio, portrait_id
     `;
     const row = created[0];
     if (!row) throw new Error("愛犬プロフィールを作成できませんでした");

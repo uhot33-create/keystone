@@ -24,6 +24,7 @@ import {
   isCalorieLocked,
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
+import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
 import { CalorieMenuBoard, takeCalorieOpenView, type CalorieMenuTab } from "@/components/calorie/menu-board";
 import { MenuDayNotes } from "@/components/calorie/menu-day-notes";
 import { DateBar } from "@/components/calorie/date-bar";
@@ -386,7 +387,8 @@ export function TodayPanel({
       {view === "home" ? (
         <>
           <CalorieMenuBoard
-            dogSrc={saburo.src}
+            dogSrc={dogMenuSrc(state.dog.portraitId, saburo.src)}
+            personSrc={personMenuSrc(state.personPortrait)}
             dogName={state.dog.name}
             dogLabel={saburo.label}
             onView={setView}

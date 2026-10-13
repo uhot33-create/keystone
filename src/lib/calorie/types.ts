@@ -19,6 +19,8 @@ export type DogProfile = {
   idealWeightKg: number;
   lifeStage: string;
   treatRatio: number;
+  /** portraits.ts の犬テンプレート id。未設定はチワワ／スムース。 */
+  portraitId: string;
 };
 
 /** dog_foods の1行。kcal はその amount（例: 100g）あたりのカロリーです。 */
@@ -110,4 +112,6 @@ export type CalorieState = {
   trend: DayTrend[];
   trends: Record<TrendGrain, DayTrend[]>;
   todayWeightKg: number | null;
+  /** portraits.ts の人テンプレート id。未設定は大人（女性）。 */
+  personPortrait: string;
 };

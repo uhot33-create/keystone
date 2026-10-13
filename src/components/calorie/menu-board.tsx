@@ -71,12 +71,14 @@ export function CalorieMenuBoard({
   dogSrc,
   dogName,
   dogLabel,
+  personSrc = "/calorie/person.jpg",
   onView,
   onTab,
 }: {
   dogSrc: string;
   dogName: string;
   dogLabel: string;
+  personSrc?: string;
   onView?: (view: CalorieMenuView) => void;
   onTab?: (tab: CalorieMenuTab) => void;
 }) {
@@ -110,7 +112,7 @@ export function CalorieMenuBoard({
               onClick={() => setBoard((current) => (current === "dog" ? "person" : "dog"))}
             />
             <img
-              src={board === "dog" ? dogSrc : "/calorie/person.jpg"}
+              src={board === "dog" ? dogSrc : personSrc}
               alt={board === "dog" ? dogName : "人"}
               draggable={false}
               className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"

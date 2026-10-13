@@ -7,7 +7,8 @@
  * 追加時の仮名は「うちの子2」のように頭数+1です。名前が空だと「うちの子」で保存します。
  */
 import { useEffect, useState, type FormEvent } from "react";
-import { addDog, deleteDog, saveDogProfile } from "@/lib/calorie/api";
+import { addDog, deleteDog, saveDogPortrait, saveDogProfile, savePersonPortrait } from "@/lib/calorie/api";
+import { DOG_PORTRAITS, PERSON_PORTRAITS } from "@/lib/calorie/portraits";
 import type { CalorieState } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
@@ -115,6 +116,80 @@ export function ProfilePanel({
         <Button type="submit" className="mt-4 w-full" disabled={pending}>
           保存
         </Button>
+      </div>
+      <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
+        <p className="font-display text-lg font-semibold text-fg">絵</p>
+        <p className="mt-1 text-sm text-muted">メニューの犬と人を、テンプレートから選びます。</p>
+        <p className="mt-4 text-sm font-medium text-fg">犬の絵</p>
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+          {DOG_PORTRAITS.map((item) => {
+            const active = dog.portraitId === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled={pending}
+                aria-pressed={active}
+                className={`w-16 shrink-0 text-center ${active ? "text-primary" : "text-muted"}`}
+                onClick={() => {
+                  if (active) return;
+                  setPending(true);
+                  setError(null);
+                  setMessage(null);
+                  void saveDogPortrait({ data: { date: state.date, dogId: dog.id, portraitId: item.id } })
+                    .then((next) => {
+                      onChange(next);
+                      setMessage("犬の絵を保存しました");
+                    })
+                    .catch((err: unknown) => setError(err instanceof Error ? err.message : "保存できませんでした"))
+                    .finally(() => setPending(false));
+                }}
+              >
+                <img
+                  src={item.src}
+                  alt={item.label}
+                  className={`h-16 w-16 rounded-md object-cover ${active ? "ring-2 ring-primary" : "ring-1 ring-border"}`}
+                />
+                <span className="mt-1 block text-[10px] leading-tight">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-sm font-medium text-fg">人の絵</p>
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+          {PERSON_PORTRAITS.map((item) => {
+            const active = state.personPortrait === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                disabled={pending}
+                aria-pressed={active}
+                className={`w-16 shrink-0 text-center ${active ? "text-primary" : "text-muted"}`}
+                onClick={() => {
+                  if (active) return;
+                  setPending(true);
+                  setError(null);
+                  setMessage(null);
+                  void savePersonPortrait({ data: { date: state.date, dogId: dog.id, portraitId: item.id } })
+                    .then((next) => {
+                      onChange(next);
+                      setMessage("人の絵を保存しました");
+                    })
+                    .catch((err: unknown) => setError(err instanceof Error ? err.message : "保存できませんでした"))
+                    .finally(() => setPending(false));
+                }}
+              >
+                <img
+                  src={item.src}
+                  alt={item.label}
+                  className={`h-16 w-16 rounded-md object-cover ${active ? "ring-2 ring-primary" : "ring-1 ring-border"}`}
+                />
+                <span className="mt-1 block text-[10px] leading-tight">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
         <p className="font-display text-lg font-semibold text-fg">多頭飼い</p>

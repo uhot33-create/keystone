@@ -14,6 +14,7 @@ import { storedDogId } from "@/components/calorie/dog-switcher";
 import { getCalorieState } from "@/lib/calorie/api";
 import { dailyEnergy, todayJst, truncKcal } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
+import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
 import type { CalorieState } from "@/lib/calorie/types";
 
 /** / 。セッションがあればメニュー、無ければログイン。 */
@@ -69,7 +70,12 @@ function CardMenu() {
   return (
     <div className="flex flex-col gap-5">
       <nav aria-label="メインメニュー">
-        <CalorieMenuBoard dogSrc={dog.src} dogName={state?.dog.name || "うちの子"} dogLabel={dog.label} />
+        <CalorieMenuBoard
+          dogSrc={dogMenuSrc(state?.dog.portraitId, dog.src)}
+          personSrc={personMenuSrc(state?.personPortrait)}
+          dogName={state?.dog.name || "うちの子"}
+          dogLabel={dog.label}
+        />
       </nav>
       {state ? <HomeCalorieDate state={state} onChange={setState} /> : null}
     </div>
