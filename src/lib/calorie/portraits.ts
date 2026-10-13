@@ -28,6 +28,8 @@ export const PERSON_PORTRAITS = [
   { id: "boy", label: "男の子", src: "/calorie/portraits/people/boy.jpg" },
   { id: "woman", label: "大人（女性）", src: "/calorie/person.jpg" },
   { id: "man", label: "大人（男性）", src: "/calorie/portraits/people/man.jpg" },
+  { id: "wild-woman", label: "ワイルドな大人（女性）", src: "/calorie/portraits/people/wild-woman.jpg" },
+  { id: "wild-man", label: "ワイルドな大人（男性）", src: "/calorie/portraits/people/wild-man.jpg" },
   { id: "obasan", label: "おばさん", src: "/calorie/portraits/people/obasan.jpg" },
   { id: "ojisan", label: "おじさん", src: "/calorie/portraits/people/ojisan.jpg" },
   { id: "elder-woman", label: "老人（女性）", src: "/calorie/portraits/people/elder-woman.jpg" },
