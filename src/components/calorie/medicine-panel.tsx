@@ -2,11 +2,11 @@
  * わんカロリーのおくすり画面。
  * 薬ごとに毎日の予定時刻を登録し、「投与した」でその日は済みになる。
  * ホームの案内は、予定時刻を過ぎて未投与のものだけ。1日1回まで。
- * 2026-10-11以前は機能追加前なので、投与状態は「—」。
+ * 記録開始日（tracked_from）より前は「—」。開始日は薬のデータの値。
  */
 import { useState } from "react";
 import { deleteDogMedicine, giveDogMedicine, saveDogMedicine, undoDogMedicine } from "@/lib/calorie/api";
-import { MEDICINE_LOG_START, type CalorieState, type DogMedicine } from "@/lib/calorie/types";
+import type { CalorieState, DogMedicine } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -32,11 +32,11 @@ function jstNow(now: Date): { date: string; clock: string } {
   return { date: `${pick("year")}-${pick("month")}-${pick("day")}`, clock: `${pick("hour")}:${pick("minute")}` };
 }
 
-/** 予定時刻を過ぎて、その日まだ投与していない薬。時刻なしと未来日は含めない。 */
+/** 予定時刻を過ぎて、その日まだ投与していない薬。記録開始前・時刻なし・未来日は含めない。 */
 export function overdueMedicines(medicines: DogMedicine[], date: string, now = new Date()): DogMedicine[] {
   const jst = jstNow(now);
   return medicines.filter((item) => {
-    if (date < MEDICINE_LOG_START) return false;
+    if (item.trackedFrom && date < item.trackedFrom) return false;
     if (item.givenAt || !item.dueTime) return false;
     if (date > jst.date) return false;
     if (date < jst.date) return true;
@@ -59,8 +59,9 @@ export function MedicinePanel({
   const [dueTime, setDueTime] = useState("");
   const [note, setNote] = useState("");
   const medicines = state.medicines ?? [];
-  const beforeLog = state.date < MEDICINE_LOG_START;
-  const waiting = medicines.filter((item) => !item.givenAt).length;
+  const beforeTracking = (item: DogMedicine) => Boolean(item.trackedFrom && state.date < item.trackedFrom && !item.givenAt);
+  const waiting = medicines.filter((item) => !item.givenAt && !beforeTracking(item)).length;
+  const unmarked = medicines.length > 0 && medicines.every(beforeTracking);
 
   function resetForm() {
     setEditing(null);
@@ -74,7 +75,7 @@ export function MedicinePanel({
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-display text-base font-semibold text-fg">おくすり</p>
         <p className="text-xs text-muted">
-          {beforeLog ? "—" : waiting > 0 ? `未投与 ${waiting}` : medicines.length > 0 ? "投与済み" : ""}
+          {unmarked ? "—" : waiting > 0 ? `未投与 ${waiting}` : medicines.length > 0 ? "投与済み" : ""}
         </p>
       </div>
       {medicines.length === 0 ? (
@@ -90,7 +91,7 @@ export function MedicinePanel({
                 </p>
                 {item.note ? <p className="truncate text-[11px] text-muted">{item.note}</p> : null}
               </div>
-              {beforeLog ? (
+              {beforeTracking(item) ? (
                 <span className="shrink-0 text-xs tabular-nums text-muted">—</span>
               ) : item.givenAt ? (
                 <>

@@ -14,7 +14,6 @@ import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, todayJst, truncKcal } from "./formula";
 import { attachGuides, attachWalks, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
 import type { CalorieLog, CalorieState, DayTrend, DogMedicine, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
-import { MEDICINE_LOG_START } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -140,12 +139,13 @@ function asClock(value: unknown): string | null {
   return `${match[1]}:${match[2]}`;
 }
 
-function mapMedicine(row: { id: number; name: string; note?: string; due_time?: unknown; given_at: unknown }): DogMedicine {
+function mapMedicine(row: { id: number; name: string; note?: string; due_time?: unknown; tracked_from?: unknown; given_at: unknown }): DogMedicine {
   return {
     id: row.id,
     name: row.name,
     note: row.note ?? "",
     dueTime: asClock(row.due_time),
+    trackedFrom: asDateKey(row.tracked_from) || null,
     givenAt: asIso(row.given_at),
   };
 }
@@ -218,6 +218,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
           'name', m.name,
           'note', m.note,
           'due_time', to_char(m.due_time, 'HH24:MI'),
+          'tracked_from', to_char(m.tracked_from, 'YYYY-MM-DD'),
           'given_at', d.given_at
         ) order by m.due_time nulls last, m.sort_order, m.id)
         from dog_medicines m
@@ -262,7 +263,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const dog = pickDog(dogs, dogId);
   const foods = asRows<FoodRow>(row?.foods);
   const staples = asRows<{ id: number; food_id: number; qty: unknown }>(row?.staples);
-  const medicines = asRows<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>(row?.medicines);
+  const medicines = asRows<{ id: number; name: string; note: string; due_time: unknown; tracked_from: unknown; given_at: unknown }>(row?.medicines);
   const logs = asRows<LogRow>(row?.logs);
   const trends: Record<TrendGrain, DayTrend[]> = { day: [], week: [], month: [], year: [] };
   return {
@@ -393,8 +394,8 @@ export const getCalorieDay = createServerFn({ method: "GET" })
         where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
         limit 1
       `,
-      sql<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>`
-        select m.id, m.name, m.note, to_char(m.due_time, 'HH24:MI') as due_time, d.given_at
+      sql<{ id: number; name: string; note: string; due_time: unknown; tracked_from: unknown; given_at: unknown }>`
+        select m.id, m.name, m.note, to_char(m.due_time, 'HH24:MI') as due_time, to_char(m.tracked_from, 'YYYY-MM-DD') as tracked_from, d.given_at
         from dog_medicines m
         left join dog_medicine_doses d
           on d.medicine_id = m.id and d.given_on = ${date}::date
@@ -845,13 +846,14 @@ export const saveDogMedicine = createServerFn({ method: "POST" })
       if (!updated[0]) throw new Error("薬が見つかりません");
     } else {
       await sql`
-        insert into dog_medicines (user_id, dog_id, name, note, due_time, sort_order)
+        insert into dog_medicines (user_id, dog_id, name, note, due_time, tracked_from, sort_order)
         values (
           ${context.userId},
           ${dog.id},
           ${data.name},
           ${note},
           ${data.dueTime}::time,
+          ${todayJst()}::date,
           coalesce((
             select max(sort_order) + 1 from dog_medicines where dog_id = ${dog.id}
           ), 1)
@@ -866,7 +868,6 @@ export const giveDogMedicine = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
-    if (data.date < MEDICINE_LOG_START) throw new Error("この日の投与は記録しません");
     const sql = await getSql();
     const dog = await requireDog(context.userId, data.dogId);
     const medicine = await sql<{ id: number }>`
@@ -888,7 +889,6 @@ export const undoDogMedicine = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
   .handler(async ({ context, data }) => {
-    if (data.date < MEDICINE_LOG_START) throw new Error("この日の投与は記録しません");
     const sql = await getSql();
     const dog = await requireDog(context.userId, data.dogId);
     await sql`
