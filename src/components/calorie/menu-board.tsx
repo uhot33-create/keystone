@@ -1,10 +1,10 @@
 /**
- * 犬の絵はタップ、または横スワイプで人の絵とメニューに切り替わる。もう一度で犬に戻る。
+ * 犬の絵をタップすると人の絵とメニューに切り替わる。もう一度タップで犬に戻る。
  * 犬は体重・ごはん・お散歩ログ・通院履歴・おくすり。人は喫煙管理・カップ麺。
  * onView があるとき（わんカロリーの今日画面）は体重・ごはん・おくすりをその場で開く。
  * 無いとき（暮らし帳のカード表示）は /calorie を開き、開く画面を sessionStorage に残す。
  */
-import { useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Cigarette, Footprints, Pill, Scale, Soup, Stethoscope, Utensils } from "lucide-react";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
@@ -60,39 +60,17 @@ export function CalorieMenuBoard({
   onView?: (view: CalorieMenuView) => void;
 }) {
   const [board, setBoard] = useState<"dog" | "person">("dog");
-  const swipe = useRef<{ x: number; y: number } | null>(null);
   const items = board === "dog" ? MENU : PERSON_MENU;
-
-  function onDown(event: PointerEvent<HTMLDivElement>) {
-    swipe.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function onUp(event: PointerEvent<HTMLDivElement>) {
-    const start = swipe.current;
-    swipe.current = null;
-    if (!start) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    const tap = Math.abs(dx) < 12 && Math.abs(dy) < 12;
-    const swipeAcross = Math.abs(dx) >= 36 && Math.abs(dx) > Math.abs(dy);
-    if (!tap && !swipeAcross) return;
-    setBoard((current) => (current === "dog" ? "person" : "dog"));
-  }
 
   return (
     <section className="rounded-sm bg-surface p-1 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_16px_32px_-22px_var(--color-fg)] ring-1 ring-fg/80">
       <div className="rounded-[2px] border border-fg/40 p-1">
         <div className="flex h-[15.5rem] items-stretch gap-3 overflow-hidden border border-fg/15 bg-surface-2">
-          <div
-            className="relative w-40 shrink-0 cursor-pointer self-stretch touch-pan-y overflow-hidden border-r border-fg/20 bg-surface"
-            role="button"
+          <button
+            type="button"
+            className="relative w-40 shrink-0 cursor-pointer self-stretch overflow-hidden border-r border-fg/20 bg-surface p-0"
             aria-label={board === "dog" ? "人のメニューに切り替え" : "犬のメニューに切り替え"}
-            onPointerDown={onDown}
-            onPointerUp={onUp}
-            onPointerCancel={() => {
-              swipe.current = null;
-            }}
+            onClick={() => setBoard((current) => (current === "dog" ? "person" : "dog"))}
           >
             <img
               src={board === "dog" ? dogSrc : "/calorie/person.jpg"}
@@ -107,7 +85,7 @@ export function CalorieMenuBoard({
                 <span className={`size-1.5 rounded-full ${board === "person" ? "bg-fg" : "bg-fg/30"}`} />
               </span>
             </p>
-          </div>
+          </button>
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-3 pr-3">
             {items.map((item) => {
               const body = face(item.Icon, item.label);
