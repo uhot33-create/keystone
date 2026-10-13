@@ -1,6 +1,6 @@
 /**
  * 散歩ログのサーバー処理。一覧・1 件・保存・削除・月の地図。
- * 画面は /walk/logs、/walk/logs/$id、/walk/logs/month/$yearMonth。
+ * 画面は /dogwalklogs、/dogwalklogs/$id、/dogwalklogs/month/$yearMonth。
  * 月のまとめは日本時間。並びは開始が新しい順。
  * GPX の距離・時間・軌跡の上限は saveInput。町名は address.server.ts。
  * 月地図のまとまり（700m）は merge.ts。線の切れ目は gpx.ts の TRACK_GAP_M。

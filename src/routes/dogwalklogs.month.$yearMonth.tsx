@@ -1,5 +1,5 @@
 /**
- * ある月の散歩を地図で重ねる（/walk/logs/month/$yearMonth）。
+ * ある月の散歩を地図で重ねる（/dogwalklogs/month/$yearMonth）。
  * データは集計済みの getWalkMonth。未集計ならエラー文になる。
  * 同じ地図に載せる範囲は 700m（merge.ts の REGION_CELL_M）。説明文もこの画面。
  * 線を切る距離は gpx.ts の TRACK_GAP_M。地図部品は TrackMap。
@@ -7,14 +7,13 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
-import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkMonth, type WalkMonthTrack } from "@/lib/walk-log/api";
 import { formatDuration, formatKm } from "@/lib/walk-log/format";
 
 /** 月地図ルート。yearMonth は YYYY-MM。 */
-export const Route = createFileRoute("/walk/logs/month/$yearMonth")({
+export const Route = createFileRoute("/dogwalklogs/month/$yearMonth")({
   component: WalkMonthPage,
 });
 
@@ -47,8 +46,7 @@ function WalkMonthPage() {
       <div>
         <h1 className="font-display text-3xl font-semibold text-fg">{label}</h1>
       </div>
-      <WalkSubnav current="logs" />
-      <Link to="/walk/logs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+      <Link to="/dogwalklogs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
         ログ一覧へ
       </Link>
       {error ? (

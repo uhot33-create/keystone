@@ -1,6 +1,6 @@
 /**
  * 散歩ログを月ごとにまとめ、離れた地域は別の地図にする。
- * 画面は /walk/logs/month。データの作り直しは rebuildAllWalkMonths（毎日の集計）。
+ * 画面は /dogwalklogs/month。データの作り直しは rebuildAllWalkMonths（毎日の集計）。
  * 同じ地図に載せる範囲は REGION_CELL_M（700m 四方）。変えたあとは再集計が要る。
  * 線を切る距離はここではない。gpx.ts の TRACK_GAP_M。
  * 地域名は軌跡の中心に一番近い都道府県。

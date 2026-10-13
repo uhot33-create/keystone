@@ -6,7 +6,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Cigarette, Footprints, Pill, Scale, Soup, Stethoscope, Utensils } from "lucide-react";
+import { Cigarette, Footprints, Map, Pill, Scale, Soup, Stethoscope, Utensils } from "lucide-react";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 const OPEN_VIEW_KEY = "calorie-open-view";
@@ -25,7 +25,8 @@ export function takeCalorieOpenView(): "home" | CalorieMenuView {
 const MENU = [
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
-  { key: "walk", label: "お散歩ログ", Icon: Footprints, to: "/walk" as const },
+  { key: "memo", label: "お散歩メモ", Icon: Footprints, to: "/dogfriend" as const },
+  { key: "logs", label: "散歩ログ", Icon: Map, to: "/dogwalklogs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
   { key: "meds", label: "おくすり", Icon: Pill, view: "meds" as const },
 ] as const;
@@ -36,7 +37,7 @@ const PERSON_MENU = [
 ] as const;
 
 const itemClass =
-  "flex h-10 items-center gap-2 border border-fg/25 bg-surface px-2.5 text-sm font-semibold text-fg shadow-card outline-none hover:bg-primary hover:text-primary-fg focus-visible:ring-2 focus-visible:ring-ring/35";
+  "flex h-8 items-center gap-2 border border-fg/25 bg-surface px-2.5 text-sm font-semibold text-fg shadow-card outline-none hover:bg-primary hover:text-primary-fg focus-visible:ring-2 focus-visible:ring-ring/35";
 
 function face(Icon: (typeof MENU)[number]["Icon"], label: string): ReactNode {
   return (
@@ -96,9 +97,9 @@ export function CalorieMenuBoard({
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-3 pr-3">
             {items.map((item) => {
               const body = face(item.Icon, item.label);
-              if ("to" in item && item.to === "/walk") {
+              if ("to" in item && item.to === "/dogfriend") {
                 return (
-                  <Link key={item.key} to="/walk" search={DEFAULT_WALK_SEARCH} className={itemClass}>
+                  <Link key={item.key} to="/dogfriend" search={DEFAULT_WALK_SEARCH} className={itemClass}>
                     {body}
                   </Link>
                 );

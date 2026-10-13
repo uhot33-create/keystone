@@ -12,28 +12,28 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalorieRouteImport } from './routes/calorie'
 import { Route as CupRouteImport } from './routes/cup'
+import { Route as DogfriendRouteImport } from './routes/dogfriend'
+import { Route as DogwalklogsRouteImport } from './routes/dogwalklogs'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PasswordRouteImport } from './routes/password'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SmokingRouteImport } from './routes/smoking'
 import { Route as VetRouteImport } from './routes/vet'
-import { Route as WalkRouteImport } from './routes/walk'
+import { Route as DogfriendIndexRouteImport } from './routes/dogfriend.index'
+import { Route as DogfriendNewRouteImport } from './routes/dogfriend.new'
+import { Route as DogwalklogsIndexRouteImport } from './routes/dogwalklogs.index'
+import { Route as DogwalklogsIdRouteImport } from './routes/dogwalklogs.$id'
 import { Route as VetIndexRouteImport } from './routes/vet.index'
 import { Route as VetNewRouteImport } from './routes/vet.new'
-import { Route as WalkIndexRouteImport } from './routes/walk.index'
-import { Route as WalkLogsRouteImport } from './routes/walk.logs'
-import { Route as WalkNewRouteImport } from './routes/walk.new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiBlobUploadRouteImport } from './routes/api/blob/upload'
 import { Route as ApiCronCalorieSummaryRouteImport } from './routes/api/cron/calorie-summary'
 import { Route as ApiCupImageRouteImport } from './routes/api/cup/image'
 import { Route as ApiWalkImageRouteImport } from './routes/api/walk/image'
+import { Route as DogfriendIdEditRouteImport } from './routes/dogfriend.$id.edit'
+import { Route as DogwalklogsMonthYearMonthRouteImport } from './routes/dogwalklogs.month.$yearMonth'
 import { Route as VetIdEditRouteImport } from './routes/vet.$id.edit'
-import { Route as WalkIdEditRouteImport } from './routes/walk.$id.edit'
-import { Route as WalkLogsIndexRouteImport } from './routes/walk.logs.index'
-import { Route as WalkLogsIdRouteImport } from './routes/walk.logs.$id'
-import { Route as WalkLogsMonthYearMonthRouteImport } from './routes/walk.logs.month.$yearMonth'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -48,6 +48,16 @@ const CalorieRoute = CalorieRouteImport.update({
 const CupRoute = CupRouteImport.update({
   id: '/cup',
   path: '/cup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DogfriendRoute = DogfriendRouteImport.update({
+  id: '/dogfriend',
+  path: '/dogfriend',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DogwalklogsRoute = DogwalklogsRouteImport.update({
+  id: '/dogwalklogs',
+  path: '/dogwalklogs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -80,10 +90,25 @@ const VetRoute = VetRouteImport.update({
   path: '/vet',
   getParentRoute: () => rootRouteImport,
 } as any)
-const WalkRoute = WalkRouteImport.update({
-  id: '/walk',
-  path: '/walk',
-  getParentRoute: () => rootRouteImport,
+const DogfriendIndexRoute = DogfriendIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DogfriendRoute,
+} as any)
+const DogfriendNewRoute = DogfriendNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => DogfriendRoute,
+} as any)
+const DogwalklogsIndexRoute = DogwalklogsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DogwalklogsRoute,
+} as any)
+const DogwalklogsIdRoute = DogwalklogsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DogwalklogsRoute,
 } as any)
 const VetIndexRoute = VetIndexRouteImport.update({
   id: '/',
@@ -94,21 +119,6 @@ const VetNewRoute = VetNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => VetRoute,
-} as any)
-const WalkIndexRoute = WalkIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => WalkRoute,
-} as any)
-const WalkLogsRoute = WalkLogsRouteImport.update({
-  id: '/logs',
-  path: '/logs',
-  getParentRoute: () => WalkRoute,
-} as any)
-const WalkNewRoute = WalkNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => WalkRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -135,58 +145,49 @@ const ApiWalkImageRoute = ApiWalkImageRouteImport.update({
   path: '/api/walk/image',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DogfriendIdEditRoute = DogfriendIdEditRouteImport.update({
+  id: '/$id/edit',
+  path: '/$id/edit',
+  getParentRoute: () => DogfriendRoute,
+} as any)
+const DogwalklogsMonthYearMonthRoute =
+  DogwalklogsMonthYearMonthRouteImport.update({
+    id: '/month/$yearMonth',
+    path: '/month/$yearMonth',
+    getParentRoute: () => DogwalklogsRoute,
+  } as any)
 const VetIdEditRoute = VetIdEditRouteImport.update({
   id: '/$id/edit',
   path: '/$id/edit',
   getParentRoute: () => VetRoute,
-} as any)
-const WalkIdEditRoute = WalkIdEditRouteImport.update({
-  id: '/$id/edit',
-  path: '/$id/edit',
-  getParentRoute: () => WalkRoute,
-} as any)
-const WalkLogsIndexRoute = WalkLogsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => WalkLogsRoute,
-} as any)
-const WalkLogsIdRoute = WalkLogsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => WalkLogsRoute,
-} as any)
-const WalkLogsMonthYearMonthRoute = WalkLogsMonthYearMonthRouteImport.update({
-  id: '/month/$yearMonth',
-  path: '/month/$yearMonth',
-  getParentRoute: () => WalkLogsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
   '/cup': typeof CupRoute
+  '/dogfriend': typeof DogfriendRouteWithChildren
+  '/dogwalklogs': typeof DogwalklogsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/password': typeof PasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
   '/vet': typeof VetRouteWithChildren
-  '/walk': typeof WalkRouteWithChildren
+  '/dogfriend/new': typeof DogfriendNewRoute
+  '/dogwalklogs/$id': typeof DogwalklogsIdRoute
   '/vet/new': typeof VetNewRoute
-  '/walk/logs': typeof WalkLogsRouteWithChildren
-  '/walk/new': typeof WalkNewRoute
+  '/dogfriend/': typeof DogfriendIndexRoute
+  '/dogwalklogs/': typeof DogwalklogsIndexRoute
   '/vet/': typeof VetIndexRoute
-  '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/cup/image': typeof ApiCupImageRoute
   '/api/walk/image': typeof ApiWalkImageRoute
+  '/dogfriend/$id/edit': typeof DogfriendIdEditRoute
+  '/dogwalklogs/month/$yearMonth': typeof DogwalklogsMonthYearMonthRoute
   '/vet/$id/edit': typeof VetIdEditRoute
-  '/walk/$id/edit': typeof WalkIdEditRoute
-  '/walk/logs/$id': typeof WalkLogsIdRoute
-  '/walk/logs/month/$yearMonth': typeof WalkLogsMonthYearMonthRoute
-  '/walk/logs/': typeof WalkLogsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -197,48 +198,48 @@ export interface FileRoutesByTo {
   '/password': typeof PasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
+  '/dogfriend/new': typeof DogfriendNewRoute
+  '/dogwalklogs/$id': typeof DogwalklogsIdRoute
   '/vet/new': typeof VetNewRoute
-  '/walk/new': typeof WalkNewRoute
+  '/dogfriend': typeof DogfriendIndexRoute
+  '/dogwalklogs': typeof DogwalklogsIndexRoute
   '/vet': typeof VetIndexRoute
-  '/walk': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/cup/image': typeof ApiCupImageRoute
   '/api/walk/image': typeof ApiWalkImageRoute
+  '/dogfriend/$id/edit': typeof DogfriendIdEditRoute
+  '/dogwalklogs/month/$yearMonth': typeof DogwalklogsMonthYearMonthRoute
   '/vet/$id/edit': typeof VetIdEditRoute
-  '/walk/$id/edit': typeof WalkIdEditRoute
-  '/walk/logs/$id': typeof WalkLogsIdRoute
-  '/walk/logs/month/$yearMonth': typeof WalkLogsMonthYearMonthRoute
-  '/walk/logs': typeof WalkLogsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
   '/cup': typeof CupRoute
+  '/dogfriend': typeof DogfriendRouteWithChildren
+  '/dogwalklogs': typeof DogwalklogsRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/password': typeof PasswordRoute
   '/reset-password': typeof ResetPasswordRoute
   '/smoking': typeof SmokingRoute
   '/vet': typeof VetRouteWithChildren
-  '/walk': typeof WalkRouteWithChildren
+  '/dogfriend/new': typeof DogfriendNewRoute
+  '/dogwalklogs/$id': typeof DogwalklogsIdRoute
   '/vet/new': typeof VetNewRoute
-  '/walk/logs': typeof WalkLogsRouteWithChildren
-  '/walk/new': typeof WalkNewRoute
+  '/dogfriend/': typeof DogfriendIndexRoute
+  '/dogwalklogs/': typeof DogwalklogsIndexRoute
   '/vet/': typeof VetIndexRoute
-  '/walk/': typeof WalkIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/blob/upload': typeof ApiBlobUploadRoute
   '/api/cron/calorie-summary': typeof ApiCronCalorieSummaryRoute
   '/api/cup/image': typeof ApiCupImageRoute
   '/api/walk/image': typeof ApiWalkImageRoute
+  '/dogfriend/$id/edit': typeof DogfriendIdEditRoute
+  '/dogwalklogs/month/$yearMonth': typeof DogwalklogsMonthYearMonthRoute
   '/vet/$id/edit': typeof VetIdEditRoute
-  '/walk/$id/edit': typeof WalkIdEditRoute
-  '/walk/logs/$id': typeof WalkLogsIdRoute
-  '/walk/logs/month/$yearMonth': typeof WalkLogsMonthYearMonthRoute
-  '/walk/logs/': typeof WalkLogsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -246,28 +247,28 @@ export interface FileRouteTypes {
     | '/'
     | '/calorie'
     | '/cup'
+    | '/dogfriend'
+    | '/dogwalklogs'
     | '/forgot-password'
     | '/login'
     | '/password'
     | '/reset-password'
     | '/smoking'
     | '/vet'
-    | '/walk'
+    | '/dogfriend/new'
+    | '/dogwalklogs/$id'
     | '/vet/new'
-    | '/walk/logs'
-    | '/walk/new'
+    | '/dogfriend/'
+    | '/dogwalklogs/'
     | '/vet/'
-    | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
     | '/api/cup/image'
     | '/api/walk/image'
+    | '/dogfriend/$id/edit'
+    | '/dogwalklogs/month/$yearMonth'
     | '/vet/$id/edit'
-    | '/walk/$id/edit'
-    | '/walk/logs/$id'
-    | '/walk/logs/month/$yearMonth'
-    | '/walk/logs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -278,60 +279,61 @@ export interface FileRouteTypes {
     | '/password'
     | '/reset-password'
     | '/smoking'
+    | '/dogfriend/new'
+    | '/dogwalklogs/$id'
     | '/vet/new'
-    | '/walk/new'
+    | '/dogfriend'
+    | '/dogwalklogs'
     | '/vet'
-    | '/walk'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
     | '/api/cup/image'
     | '/api/walk/image'
+    | '/dogfriend/$id/edit'
+    | '/dogwalklogs/month/$yearMonth'
     | '/vet/$id/edit'
-    | '/walk/$id/edit'
-    | '/walk/logs/$id'
-    | '/walk/logs/month/$yearMonth'
-    | '/walk/logs'
   id:
     | '__root__'
     | '/'
     | '/calorie'
     | '/cup'
+    | '/dogfriend'
+    | '/dogwalklogs'
     | '/forgot-password'
     | '/login'
     | '/password'
     | '/reset-password'
     | '/smoking'
     | '/vet'
-    | '/walk'
+    | '/dogfriend/new'
+    | '/dogwalklogs/$id'
     | '/vet/new'
-    | '/walk/logs'
-    | '/walk/new'
+    | '/dogfriend/'
+    | '/dogwalklogs/'
     | '/vet/'
-    | '/walk/'
     | '/api/auth/$'
     | '/api/blob/upload'
     | '/api/cron/calorie-summary'
     | '/api/cup/image'
     | '/api/walk/image'
+    | '/dogfriend/$id/edit'
+    | '/dogwalklogs/month/$yearMonth'
     | '/vet/$id/edit'
-    | '/walk/$id/edit'
-    | '/walk/logs/$id'
-    | '/walk/logs/month/$yearMonth'
-    | '/walk/logs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalorieRoute: typeof CalorieRoute
   CupRoute: typeof CupRoute
+  DogfriendRoute: typeof DogfriendRouteWithChildren
+  DogwalklogsRoute: typeof DogwalklogsRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   PasswordRoute: typeof PasswordRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SmokingRoute: typeof SmokingRoute
   VetRoute: typeof VetRouteWithChildren
-  WalkRoute: typeof WalkRouteWithChildren
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiBlobUploadRoute: typeof ApiBlobUploadRoute
   ApiCronCalorieSummaryRoute: typeof ApiCronCalorieSummaryRoute
@@ -360,6 +362,20 @@ declare module '@tanstack/react-router' {
       path: '/cup'
       fullPath: '/cup'
       preLoaderRoute: typeof CupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dogfriend': {
+      id: '/dogfriend'
+      path: '/dogfriend'
+      fullPath: '/dogfriend'
+      preLoaderRoute: typeof DogfriendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dogwalklogs': {
+      id: '/dogwalklogs'
+      path: '/dogwalklogs'
+      fullPath: '/dogwalklogs'
+      preLoaderRoute: typeof DogwalklogsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -404,12 +420,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VetRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/walk': {
-      id: '/walk'
-      path: '/walk'
-      fullPath: '/walk'
-      preLoaderRoute: typeof WalkRouteImport
-      parentRoute: typeof rootRouteImport
+    '/dogfriend/': {
+      id: '/dogfriend/'
+      path: '/'
+      fullPath: '/dogfriend/'
+      preLoaderRoute: typeof DogfriendIndexRouteImport
+      parentRoute: typeof DogfriendRoute
+    }
+    '/dogfriend/new': {
+      id: '/dogfriend/new'
+      path: '/new'
+      fullPath: '/dogfriend/new'
+      preLoaderRoute: typeof DogfriendNewRouteImport
+      parentRoute: typeof DogfriendRoute
+    }
+    '/dogwalklogs/': {
+      id: '/dogwalklogs/'
+      path: '/'
+      fullPath: '/dogwalklogs/'
+      preLoaderRoute: typeof DogwalklogsIndexRouteImport
+      parentRoute: typeof DogwalklogsRoute
+    }
+    '/dogwalklogs/$id': {
+      id: '/dogwalklogs/$id'
+      path: '/$id'
+      fullPath: '/dogwalklogs/$id'
+      preLoaderRoute: typeof DogwalklogsIdRouteImport
+      parentRoute: typeof DogwalklogsRoute
     }
     '/vet/': {
       id: '/vet/'
@@ -424,27 +461,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/vet/new'
       preLoaderRoute: typeof VetNewRouteImport
       parentRoute: typeof VetRoute
-    }
-    '/walk/': {
-      id: '/walk/'
-      path: '/'
-      fullPath: '/walk/'
-      preLoaderRoute: typeof WalkIndexRouteImport
-      parentRoute: typeof WalkRoute
-    }
-    '/walk/logs': {
-      id: '/walk/logs'
-      path: '/logs'
-      fullPath: '/walk/logs'
-      preLoaderRoute: typeof WalkLogsRouteImport
-      parentRoute: typeof WalkRoute
-    }
-    '/walk/new': {
-      id: '/walk/new'
-      path: '/new'
-      fullPath: '/walk/new'
-      preLoaderRoute: typeof WalkNewRouteImport
-      parentRoute: typeof WalkRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -481,6 +497,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiWalkImageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dogfriend/$id/edit': {
+      id: '/dogfriend/$id/edit'
+      path: '/$id/edit'
+      fullPath: '/dogfriend/$id/edit'
+      preLoaderRoute: typeof DogfriendIdEditRouteImport
+      parentRoute: typeof DogfriendRoute
+    }
+    '/dogwalklogs/month/$yearMonth': {
+      id: '/dogwalklogs/month/$yearMonth'
+      path: '/month/$yearMonth'
+      fullPath: '/dogwalklogs/month/$yearMonth'
+      preLoaderRoute: typeof DogwalklogsMonthYearMonthRouteImport
+      parentRoute: typeof DogwalklogsRoute
+    }
     '/vet/$id/edit': {
       id: '/vet/$id/edit'
       path: '/$id/edit'
@@ -488,36 +518,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VetIdEditRouteImport
       parentRoute: typeof VetRoute
     }
-    '/walk/$id/edit': {
-      id: '/walk/$id/edit'
-      path: '/$id/edit'
-      fullPath: '/walk/$id/edit'
-      preLoaderRoute: typeof WalkIdEditRouteImport
-      parentRoute: typeof WalkRoute
-    }
-    '/walk/logs/': {
-      id: '/walk/logs/'
-      path: '/'
-      fullPath: '/walk/logs/'
-      preLoaderRoute: typeof WalkLogsIndexRouteImport
-      parentRoute: typeof WalkLogsRoute
-    }
-    '/walk/logs/$id': {
-      id: '/walk/logs/$id'
-      path: '/$id'
-      fullPath: '/walk/logs/$id'
-      preLoaderRoute: typeof WalkLogsIdRouteImport
-      parentRoute: typeof WalkLogsRoute
-    }
-    '/walk/logs/month/$yearMonth': {
-      id: '/walk/logs/month/$yearMonth'
-      path: '/month/$yearMonth'
-      fullPath: '/walk/logs/month/$yearMonth'
-      preLoaderRoute: typeof WalkLogsMonthYearMonthRouteImport
-      parentRoute: typeof WalkLogsRoute
-    }
   }
 }
+
+interface DogfriendRouteChildren {
+  DogfriendNewRoute: typeof DogfriendNewRoute
+  DogfriendIndexRoute: typeof DogfriendIndexRoute
+  DogfriendIdEditRoute: typeof DogfriendIdEditRoute
+}
+
+const DogfriendRouteChildren: DogfriendRouteChildren = {
+  DogfriendNewRoute: DogfriendNewRoute,
+  DogfriendIndexRoute: DogfriendIndexRoute,
+  DogfriendIdEditRoute: DogfriendIdEditRoute,
+}
+
+const DogfriendRouteWithChildren = DogfriendRoute._addFileChildren(
+  DogfriendRouteChildren,
+)
+
+interface DogwalklogsRouteChildren {
+  DogwalklogsIdRoute: typeof DogwalklogsIdRoute
+  DogwalklogsIndexRoute: typeof DogwalklogsIndexRoute
+  DogwalklogsMonthYearMonthRoute: typeof DogwalklogsMonthYearMonthRoute
+}
+
+const DogwalklogsRouteChildren: DogwalklogsRouteChildren = {
+  DogwalklogsIdRoute: DogwalklogsIdRoute,
+  DogwalklogsIndexRoute: DogwalklogsIndexRoute,
+  DogwalklogsMonthYearMonthRoute: DogwalklogsMonthYearMonthRoute,
+}
+
+const DogwalklogsRouteWithChildren = DogwalklogsRoute._addFileChildren(
+  DogwalklogsRouteChildren,
+)
 
 interface VetRouteChildren {
   VetNewRoute: typeof VetNewRoute
@@ -533,49 +567,18 @@ const VetRouteChildren: VetRouteChildren = {
 
 const VetRouteWithChildren = VetRoute._addFileChildren(VetRouteChildren)
 
-interface WalkLogsRouteChildren {
-  WalkLogsMonthYearMonthRoute: typeof WalkLogsMonthYearMonthRoute
-  WalkLogsIdRoute: typeof WalkLogsIdRoute
-  WalkLogsIndexRoute: typeof WalkLogsIndexRoute
-}
-
-const WalkLogsRouteChildren: WalkLogsRouteChildren = {
-  WalkLogsMonthYearMonthRoute: WalkLogsMonthYearMonthRoute,
-  WalkLogsIdRoute: WalkLogsIdRoute,
-  WalkLogsIndexRoute: WalkLogsIndexRoute,
-}
-
-const WalkLogsRouteWithChildren = WalkLogsRoute._addFileChildren(
-  WalkLogsRouteChildren,
-)
-
-interface WalkRouteChildren {
-  WalkLogsRoute: typeof WalkLogsRouteWithChildren
-  WalkNewRoute: typeof WalkNewRoute
-  WalkIndexRoute: typeof WalkIndexRoute
-  WalkIdEditRoute: typeof WalkIdEditRoute
-}
-
-const WalkRouteChildren: WalkRouteChildren = {
-  WalkLogsRoute: WalkLogsRouteWithChildren,
-  WalkNewRoute: WalkNewRoute,
-  WalkIndexRoute: WalkIndexRoute,
-  WalkIdEditRoute: WalkIdEditRoute,
-}
-
-const WalkRouteWithChildren = WalkRoute._addFileChildren(WalkRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalorieRoute: CalorieRoute,
   CupRoute: CupRoute,
+  DogfriendRoute: DogfriendRouteWithChildren,
+  DogwalklogsRoute: DogwalklogsRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   PasswordRoute: PasswordRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SmokingRoute: SmokingRoute,
   VetRoute: VetRouteWithChildren,
-  WalkRoute: WalkRouteWithChildren,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiBlobUploadRoute: ApiBlobUploadRoute,
   ApiCronCalorieSummaryRoute: ApiCronCalorieSummaryRoute,

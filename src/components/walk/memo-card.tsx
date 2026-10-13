@@ -1,6 +1,6 @@
 /**
  * お散歩カード一覧の 1 枚。
- * 画面は /walk。名前タップで編集、肉球で「今日会った」、写真で拡大。
+ * 画面は /dogfriend。名前タップで編集、肉球で「今日会った」、写真で拡大。
  * 年齢表示は age.ts の displayAge。画像の有無と URL は image.ts。
  * 同じ飼い主の他犬は mates（filter.ts の householdMates）を「ほか」に出す。
  * 虹渡りアイコンと、今日済みの肉球の見た目もここ。
@@ -61,7 +61,7 @@ export function MemoCard({
         <div className="min-w-0 flex-1 px-4 py-3">
           <div className="flex items-center gap-1.5">
             <Link
-              to="/walk/$id/edit"
+              to="/dogfriend/$id/edit"
               params={{ id: memo.id }}
               className="min-w-0 truncate font-display text-base font-semibold text-fg outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/35"
             >
@@ -84,7 +84,7 @@ export function MemoCard({
             ) : null}
           </div>
           <Link
-            to="/walk/$id/edit"
+            to="/dogfriend/$id/edit"
             params={{ id: memo.id }}
             className="mt-0.5 block outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
           >

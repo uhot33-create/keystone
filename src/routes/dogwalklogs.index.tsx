@@ -1,13 +1,12 @@
 /**
- * 散歩ログの一覧（/walk/logs）。年・月でたたんで、距離のバーを出す。
+ * 散歩ログの一覧（/dogwalklogs）。年・月でたたんで、距離のバーを出す。
  * GPX の取り込みは parseGpxFile のあと saveWalkLog。上限 8MB は gpx.ts。
- * 月の「地図」リンクは /walk/logs/month/$yearMonth。集計は毎日 0 時。
+ * 月の「地図」リンクは /dogwalklogs/month/$yearMonth。集計は毎日 0 時。
  * 最初に開く年・月は日本時間の今年・今月。
  * 距離の小数や時間表記は format.ts。
  */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,7 +15,7 @@ import { formatDuration, formatKm } from "@/lib/walk-log/format";
 import { parseGpxFile } from "@/lib/walk-log/gpx";
 
 /** ログ一覧ルート。データは getWalkLogs（軌跡の中身は含まない）。 */
-export const Route = createFileRoute("/walk/logs/")({
+export const Route = createFileRoute("/dogwalklogs/")({
   component: WalkLogsPage,
 });
 
@@ -73,7 +72,6 @@ function WalkLogsPage() {
           GPS アプリから書き出した GPX を入れて、距離と軌跡を残します。
         </p>
       </div>
-      <WalkSubnav current="logs" />
 
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
         <Label className="inline-flex h-11 cursor-pointer items-center rounded-md border border-border bg-primary px-4 text-sm font-medium text-primary-fg shadow-card">
@@ -207,7 +205,7 @@ function MonthBlock({
           <DistanceBar value={month.distanceM} max={maxDistance} />
         </button>
         <Link
-          to="/walk/logs/month/$yearMonth"
+          to="/dogwalklogs/month/$yearMonth"
           params={{ yearMonth: month.yearMonth }}
           className="shrink-0 text-xs font-medium text-primary underline-offset-4 hover:underline"
         >
@@ -256,7 +254,7 @@ function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
   return (
     <li>
       <Link
-        to="/walk/logs/$id"
+        to="/dogwalklogs/$id"
         params={{ id: log.id }}
         className="block py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
       >

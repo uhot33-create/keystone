@@ -1,6 +1,6 @@
 /**
  * お散歩カードの新規・編集フォーム。
- * 画面は /walk/new と /walk/$id/edit。保存は createWalkMemo / updateWalkMemo。
+ * 画面は /dogfriend/new と /dogfriend/$id/edit。保存は createWalkMemo / updateWalkMemo。
  * 画像は最大 MAX_MEMO_IMAGES 枚。縮小は prepareImageFile、サムネは makeListThumb。
  * 一覧に出す写真は「一覧に表示」のラジオ（coverIndex）。
  * 生年月日を入れると年齢を自動計算。文字数の上限は各欄の maxLength と api.ts。
@@ -283,7 +283,7 @@ export function MemoForm({
       } else {
         await createWalkMemo({ data: payload });
       }
-      await navigate({ to: "/walk", search: DEFAULT_WALK_SEARCH });
+      await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
     } finally {
@@ -298,7 +298,7 @@ export function MemoForm({
     setError(null);
     try {
       await deleteWalkMemo({ data: { id: memo.id } });
-      await navigate({ to: "/walk", search: DEFAULT_WALK_SEARCH });
+      await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除できませんでした");
       setPending("idle");
@@ -555,7 +555,7 @@ export function MemoForm({
             <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
               <div className="mx-auto flex max-w-3xl gap-2 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 <Button type="button" variant="outline" className="flex-1" asChild>
-                  <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+                  <Link to="/dogfriend" search={DEFAULT_WALK_SEARCH}>
                     一覧へ
                   </Link>
                 </Button>
@@ -563,7 +563,7 @@ export function MemoForm({
                   {pending === "uploading" ? "送信中…" : pending === "saving" ? "保存中…" : "保存"}
                 </Button>
                 <Button type="button" variant="outline" className="flex-1" asChild>
-                  <Link to="/walk" search={DEFAULT_WALK_SEARCH}>
+                  <Link to="/dogfriend" search={DEFAULT_WALK_SEARCH}>
                     キャンセル
                   </Link>
                 </Button>

@@ -1,6 +1,6 @@
 /**
  * お散歩カード一覧の検索バー。
- * 画面は /walk。検索語はボタンを押したときに確定し、URL の search に載る。
+ * 画面は /dogfriend。検索語はボタンを押したときに確定し、URL の search に載る。
  * 並びの選択肢は types.ts の SORT_OPTIONS。犬種はマスタの一覧。
  * 実際に絞り込む処理は filter.ts の filterMemos。ここは入力 UI だけ。
  * 件数は「total件中 shown件」。

@@ -1,5 +1,5 @@
 /**
- * お散歩カードの編集画面（/walk/$id/edit）。
+ * お散歩カードの編集画面（/dogfriend/$id/edit）。
  * 保存の中身は MemoForm。このファイルは読み込みと見出しだけ。
  * 対象の id は URL。データは getWalkMemo。見つからないときはエラー文。
  * 項目や画像の上限を変えるなら MemoForm と lib/walk/api.ts。
@@ -12,7 +12,7 @@ import { getWalkMemo } from "@/lib/walk/api";
 import type { DogBreed, DogColor, WalkMemo } from "@/lib/walk/types";
 
 /** 編集ルート。中身のコンポーネントは WalkEdit。 */
-export const Route = createFileRoute("/walk/$id/edit")({ component: WalkEdit });
+export const Route = createFileRoute("/dogfriend/$id/edit")({ component: WalkEdit });
 
 function WalkEdit() {
   const { id } = Route.useParams();

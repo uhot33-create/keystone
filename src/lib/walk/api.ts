@@ -1,6 +1,6 @@
 /**
  * お散歩カード（メモ）のサーバー処理。一覧・新規・編集・削除・画像アップロード。
- * 画面は /walk、/walk/new、/walk/$id/edit。ログインした自分の行だけ触る。
+ * 画面は /dogfriend、/dogfriend/new、/dogfriend/$id/edit。ログインした自分の行だけ触る。
  * 名前の文字数、年齢 0〜30、メモ 2000 文字、画像枚数は memoInput。
  * 犬種・色の初期リストは BREED_SEED と COLOR_SEED。表が空のときだけ入れる。
  * 画像の送信サイズは MAX_B64。枚数の上限は types.ts の MAX_MEMO_IMAGES。

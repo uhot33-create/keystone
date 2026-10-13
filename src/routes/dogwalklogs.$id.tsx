@@ -1,5 +1,5 @@
 /**
- * 散歩ログの 1 件（/walk/logs/$id）。
+ * 散歩ログの 1 件（/dogwalklogs/$id）。
  * 距離・時間・軌跡と、前後のログへの移動。削除は deleteWalkLog。
  * 地図は TrackMap。線の切れ目は gpx.ts の TRACK_GAP_M。
  * 表示の km と時間は format.ts。名前は取り込み時の町名か GPX 名。
@@ -7,7 +7,6 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
-import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +14,7 @@ import { deleteWalkLog, getWalkLog, type WalkLogDetail } from "@/lib/walk-log/ap
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
 
 /** 詳細ルート。id は URL。前後は getWalkLog の prevId / nextId。 */
-export const Route = createFileRoute("/walk/logs/$id")({
+export const Route = createFileRoute("/dogwalklogs/$id")({
   component: WalkLogDetail,
 });
 
@@ -48,7 +47,7 @@ function WalkLogDetail() {
     try {
       await deleteWalkLog({ data: { id: log.id } });
       const fallback = log.nextId || log.prevId;
-      await navigate(fallback ? { to: "/walk/logs/$id", params: { id: fallback } } : { to: "/walk/logs" });
+      await navigate(fallback ? { to: "/dogwalklogs/$id", params: { id: fallback } } : { to: "/dogwalklogs" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除できませんでした");
       setPending(false);
@@ -61,8 +60,7 @@ function WalkLogDetail() {
       <div>
         <h1 className="font-display text-3xl font-semibold text-fg">{log?.name ?? "散歩ログ"}</h1>
       </div>
-      <WalkSubnav current="logs" />
-      <Link to="/walk/logs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+      <Link to="/dogwalklogs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
         ログ一覧へ
       </Link>
       <LogNav prevId={log?.prevId} nextId={log?.nextId} />
@@ -97,7 +95,7 @@ function LogNav({ prevId, nextId }: { prevId?: string | null; nextId?: string | 
     <div className="flex gap-2">
       {prevId ? (
         <Button asChild variant="outline" className="flex-1">
-          <Link to="/walk/logs/$id" params={{ id: prevId }}>
+          <Link to="/dogwalklogs/$id" params={{ id: prevId }}>
             前のログ
           </Link>
         </Button>
@@ -108,7 +106,7 @@ function LogNav({ prevId, nextId }: { prevId?: string | null; nextId?: string | 
       )}
       {nextId ? (
         <Button asChild variant="outline" className="flex-1">
-          <Link to="/walk/logs/$id" params={{ id: nextId }}>
+          <Link to="/dogwalklogs/$id" params={{ id: nextId }}>
             次のログ
           </Link>
         </Button>

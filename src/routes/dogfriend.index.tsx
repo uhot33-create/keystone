@@ -1,15 +1,14 @@
 /**
- * お散歩カードの一覧（/walk）。
+ * お散歩カードの一覧（/dogfriend）。
  * 検索・並び・犬種は URL の search。絞り込みは filterMemos。
  * 初期の並びは名前昇順（validateSearch）。選択肢は types.ts の SORT_OPTIONS。
  * サムネは一覧のあと getWalkThumbs。肉球は touchWalkMemoMet。
- * 追加ボタンは /walk/new。1 枚の見た目は MemoCard。
+ * 追加ボタンは /dogfriend/new。1 枚の見た目は MemoCard。
  */
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MemoCard } from "@/components/walk/memo-card";
 import { MemoToolbar } from "@/components/walk/memo-toolbar";
-import { WalkSubnav } from "@/components/walk/walk-subnav";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +18,7 @@ import { applyWalkThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
 /** 一覧ルート。検索クエリは validateSearch で q / sort / breed に整える。 */
-export const Route = createFileRoute("/walk/")({
+export const Route = createFileRoute("/dogfriend/")({
   validateSearch: (search: Record<string, unknown>): WalkSearch => ({
     q: typeof search.q === "string" ? search.q : "",
     sort: isSortKey(search.sort) ? search.sort : "name_asc",
@@ -101,11 +100,9 @@ function WalkIndex() {
           <p className="mt-3 max-w-prose text-sm text-muted">出会った子のカードを、静かに残します。</p>
         </div>
         <Button asChild>
-          <Link to="/walk/new">追加</Link>
+          <Link to="/dogfriend/new">追加</Link>
         </Button>
       </div>
-
-      <WalkSubnav current="cards" />
 
       <MemoToolbar
         search={search}

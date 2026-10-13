@@ -1,6 +1,6 @@
 /**
  * 一覧にサムネをあとから合成する。
- * 画面は /walk のカード一覧。文字を先に出し、getWalkThumbs の結果をカバー画像へ載せる。
+ * 画面は /dogfriend のカード一覧。文字を先に出し、getWalkThumbs の結果をカバー画像へ載せる。
  * サムネの作り方は image.ts の makeListThumb と api.ts の uploadWalkImage。
  * ここは合成だけ。サイズや画質は変えない。
  */

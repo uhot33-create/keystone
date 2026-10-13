@@ -1,6 +1,6 @@
 /**
  * お散歩カード一覧の検索・並び・多頭飼いのつながり。
- * 画面は /walk。ツールバー（MemoToolbar）の条件をここで絞り込む。
+ * 画面は /dogfriend。ツールバー（MemoToolbar）の条件をここで絞り込む。
  * 検索対象を変えるなら filterMemos の hay（名前・飼い主・メモ・犬種・色）。
  * 並びの種類を増やすなら types.ts の SORT_OPTIONS と、ここの switch。
  * ひらがなとカタカナは同じ文字として探す（foldJa）。
