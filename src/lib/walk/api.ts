@@ -2,7 +2,7 @@
  * お散歩カード（メモ）のサーバー処理。一覧・新規・編集・削除・画像アップロード。
  * 画面は /dogfriend、/dogfriend/new、/dogfriend/$id/edit。ログインした自分の行だけ触る。
  * 名前の文字数、年齢 0〜30、メモ 2000 文字、画像枚数は memoInput。
- * 犬種・色の初期リストは BREED_SEED と COLOR_SEED。表が空のときだけ入れる。
+ * 犬種は表が空でなくても、リストに無い名前だけ足す。色は表が空のときだけ。
  * 画像の送信サイズは MAX_B64。枚数の上限は types.ts の MAX_MEMO_IMAGES。
  */
 import { createServerFn } from "@tanstack/react-start";
@@ -163,7 +163,7 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
   ["a1000000-0000-4000-8000-000000000004", "ミニチュアダックスフンド", 40],
   ["a1000000-0000-4000-8000-000000000005", "シー・ズー", 50],
   ["a1000000-0000-4000-8000-000000000006", "ヨークシャーテリア", 60],
-  ["a1000000-0000-4000-8000-000000000028", "ジャックラッセルテリア", 65],
+  ["a1000000-0000-4000-8000-000000000029", "ジャックラッセルテリア", 65],
   ["a1000000-0000-4000-8000-000000000007", "マルチーズ", 70],
   ["a1000000-0000-4000-8000-000000000008", "パピヨン", 80],
   ["a1000000-0000-4000-8000-000000000009", "ペキニーズ", 90],
@@ -186,15 +186,15 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
 
 async function listBreeds(): Promise<DogBreed[]> {
   const sql = await getSql();
-  const count = await sql<{ n: number }>`select count(*)::int as n from dog_breeds`;
-  if ((count[0]?.n ?? 0) === 0) {
-    for (const breed of BREED_SEED) {
-      await sql`
-        insert into dog_breeds (id, name, sort_order)
-        values (${breed.id}, ${breed.name}, ${breed.sort})
-        on conflict (name) do nothing
-      `;
-    }
+  const existing = await sql<{ name: string }>`select name from dog_breeds`;
+  const names = new Set(existing.map((row) => row.name));
+  for (const breed of BREED_SEED) {
+    if (names.has(breed.name)) continue;
+    await sql`
+      insert into dog_breeds (id, name, sort_order)
+      values (${breed.id}, ${breed.name}, ${breed.sort})
+      on conflict (name) do nothing
+    `;
   }
   const rows = await sql<BreedRow>`
     select id, name, sort_order
