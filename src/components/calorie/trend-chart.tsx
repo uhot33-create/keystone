@@ -37,8 +37,8 @@ function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined):
 }
 
 /**
- * 渡された days を1枚のグラフに描きます。おさんぽの棒をタップすると onSelect（その期間の最終日）です。
- * カロリーと体重の点は押しません。押した棒の数値は見出しの右に出します。
+ * 渡された days を1枚のグラフに描きます。横軸の日付をタップすると onSelect（その期間の最終日）です。
+ * 点やおさんぽの棒は押しません。押した日付の数値は見出しの右に出します。
  * 右スワイプで過去、左スワイプで未来。canOlder / canNewer が false の方向には動きません。
  * kcal の刻みは日が100・それ以外500、散歩は日1km・年20km・それ以外5km。ここの数字が縦軸の粗さです。
  */
@@ -197,15 +197,7 @@ export function TrendChart({
           if (!(km > 0)) return null;
           const top = yWalk(km);
           return (
-            <g
-              key={`walk-${day.start}`}
-              className="cursor-pointer"
-              onClick={() => {
-                if (swiped.current) return;
-                setPicked(day.date);
-                onSelect(day.date);
-              }}
-            >
+            <g key={`walk-${day.start}`}>
               <rect
                 x={x(index) - barW / 2}
                 y={top}
@@ -263,15 +255,25 @@ export function TrendChart({
               fill="var(--color-primary)"
             />
             {index % showEvery === 0 || index === days.length - 1 ? (
-              <text
-                x={x(index)}
-                y={height - 10}
-                textAnchor="middle"
-                fill={day.date === activeDate ? "var(--color-fg)" : "var(--color-subtle)"}
-                fontSize="8"
+              <g
+                className="cursor-pointer"
+                onClick={() => {
+                  if (swiped.current) return;
+                  setPicked(day.date);
+                  onSelect(day.date);
+                }}
               >
-                {axisTick(grain, day, days[index - 1])}
-              </text>
+                <rect x={x(index) - 14} y={height - 22} width={28} height={20} fill="transparent" />
+                <text
+                  x={x(index)}
+                  y={height - 10}
+                  textAnchor="middle"
+                  fill={day.date === shown?.date ? "var(--color-fg)" : "var(--color-subtle)"}
+                  fontSize="8"
+                >
+                  {axisTick(grain, day, days[index - 1])}
+                </text>
+              </g>
             ) : null}
           </g>
         ))}
@@ -290,7 +292,7 @@ export function TrendChart({
       </svg>
       </div>
       <p className="mt-1 text-center text-xs text-subtle">
-        左右にスライドで期間を移動。おさんぽの棒をタップすると、その値を上に出してその日へ移ります。
+        左右にスライドで期間を移動。日付をタップすると、その値を上に出してその日へ移ります。
       </p>
     </div>
   );
