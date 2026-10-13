@@ -2,7 +2,7 @@
  * 暮らし帳のカードメニューの下に出す日付行とグラフ。
  * スワイプで前日・翌日。「今日」で今日へ。グラフアイコンで推移を開く。
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { flushSync } from "react-dom";
 import { DateBar } from "@/components/calorie/date-bar";
@@ -55,18 +55,22 @@ export function HomeCalorieDate({
   const [chartOpen, setChartOpen] = useState(false);
   const [grain, setGrain] = useState<TrendGrain>("day");
   const [chartEnd, setChartEnd] = useState(todayJst);
+  const [notesPending, setNotesPending] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const dayRequest = useRef(0);
 
   async function selectDate(date: string) {
     if (date === state.date) return;
-    flushSync(() => {
-      setBusy("読み込み中…");
-      setError(null);
-    });
+    const request = dayRequest.current + 1;
+    dayRequest.current = request;
+    setNotesPending(true);
+    setError(null);
+    onChange({ ...state, date, logs: [], todayWeightKg: null });
     try {
       const next = await getCalorieDay({ data: { date, dogId: state.dog.id } });
+      if (dayRequest.current !== request) return;
       onChange({
         ...state,
         date: next.date,
@@ -76,9 +80,10 @@ export function HomeCalorieDate({
         todayWeightKg: next.todayWeightKg,
       });
     } catch (err) {
+      if (dayRequest.current !== request) return;
       setError(err instanceof Error ? err.message : "読み込みに失敗しました");
     } finally {
-      setBusy(null);
+      if (dayRequest.current === request) setNotesPending(false);
     }
   }
 
@@ -149,6 +154,7 @@ export function HomeCalorieDate({
       />
       <MenuDayNotes
         state={state}
+        pending={notesPending}
         onOpenMeds={() => {
           try {
             sessionStorage.setItem("calorie-open-view", "meds");

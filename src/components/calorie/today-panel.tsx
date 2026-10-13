@@ -130,6 +130,7 @@ export function TodayPanel({
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight" | "meds">("home");
   const skipScroll = useRef(true);
+  const dayRequest = useRef(0);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
   const stapleOrderRef = useRef<number[] | null>(null);
   const [stapleOrder, setStapleOrder] = useState<number[] | null>(null);
@@ -308,13 +309,14 @@ export function TodayPanel({
 
   async function selectDate(date: string) {
     if (date === state.date) return;
-    flushSync(() => {
-      setPending(true);
-      setBusy("読み込み中…");
-      setError(null);
-    });
+    const request = dayRequest.current + 1;
+    dayRequest.current = request;
+    setPending(true);
+    setError(null);
+    onChange({ ...state, date, logs: [], todayWeightKg: null });
     try {
       const next = await getCalorieDay({ data: { date, dogId: state.dog.id } });
+      if (dayRequest.current !== request) return;
       onChange({
         ...state,
         date: next.date,
@@ -324,10 +326,10 @@ export function TodayPanel({
         todayWeightKg: next.todayWeightKg,
       });
     } catch (err) {
+      if (dayRequest.current !== request) return;
       setError(err instanceof Error ? err.message : "読み込みに失敗しました");
     } finally {
-      setPending(false);
-      setBusy(null);
+      if (dayRequest.current === request) setPending(false);
     }
   }
 
@@ -800,7 +802,9 @@ export function TodayPanel({
             {formatKcal(total)} kcal　{remainText}
           </p>
         </div>
-        {state.logs.length === 0 ? (
+        {pending && state.logs.length === 0 ? (
+          <p className="mt-1 text-xs text-muted">読み込み中…</p>
+        ) : state.logs.length === 0 ? (
           <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
         ) : (
           <ul className="mt-1">
@@ -847,7 +851,9 @@ export function TodayPanel({
               {state.todayWeightKg != null && state.todayWeightKg > 0 ? `${state.todayWeightKg.toFixed(2)} kg` : "—"}
             </p>
           </div>
-          {state.logs.length === 0 ? (
+          {pending && state.logs.length === 0 ? (
+          <p className="mt-1 text-xs text-muted">読み込み中…</p>
+        ) : state.logs.length === 0 ? (
             <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
           ) : (
             <ul className="mt-1">

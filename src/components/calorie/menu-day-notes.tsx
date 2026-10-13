@@ -14,9 +14,11 @@ function kindLabel(kind: string): string {
 export function MenuDayNotes({
   state,
   onOpenMeds,
+  pending = false,
 }: {
   state: CalorieState;
   onOpenMeds: () => void;
+  pending?: boolean;
 }) {
   const [clock, setClock] = useState(() => new Date());
 
@@ -46,7 +48,9 @@ export function MenuDayNotes({
             {formatKcal(total)} kcal　{remainText}
           </p>
         </div>
-        {state.logs.length === 0 ? (
+        {pending ? (
+          <p className="mt-1 text-xs text-muted">読み込み中…</p>
+        ) : state.logs.length === 0 ? (
           <p className="mt-1 text-xs text-muted">まだ記録がありません</p>
         ) : (
           <ul className="mt-1">

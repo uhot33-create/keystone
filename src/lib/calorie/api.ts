@@ -395,7 +395,7 @@ export const getCalorieState = createServerFn({ method: "GET" })
 
 /**
  * 日付を変えたときに今日画面が使う、その日の記録と体重だけです。
- * フードや定番は取り直さないので、軽い切り替えになります。kcal は truncKcal 済みです。
+ * 犬一覧やフードは取り直さず、記録・体重・おくすりを一度に取ります。kcal は truncKcal 済みです。
  */
 export const getCalorieDay = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -403,18 +403,23 @@ export const getCalorieDay = createServerFn({ method: "GET" })
   .handler(async ({ context, data }) => {
     const date = isoDate(data.date);
     const sql = await getSql();
-    const dog = data.dogId ? await requireDog(context.userId, data.dogId) : pickDog(await ensureDogs(context.userId));
-    const [logs, weights, medicines] = await Promise.all([
+    const dogId = data.dogId ?? pickDog(await ensureDogs(context.userId)).id;
+    const [owned, logs, weights, medicines, addedOn] = await Promise.all([
+      sql<{ id: number }>`
+        select id from dogs
+        where user_id = ${context.userId} and id = ${dogId}
+        limit 1
+      `,
       sql<LogRow>`
         select id, log_date, label, kcal, kind, food_id, amount, unit
         from calorie_logs
-        where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
+        where user_id = ${context.userId} and dog_id = ${dogId} and log_date = ${date}
         order by id asc
       `,
       sql<{ weight_kg: unknown }>`
         select weight_kg
         from dog_weight_logs
-        where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
+        where user_id = ${context.userId} and dog_id = ${dogId} and log_date = ${date}
         limit 1
       `,
       sql<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>`
@@ -422,10 +427,12 @@ export const getCalorieDay = createServerFn({ method: "GET" })
         from dog_medicines m
         left join dog_medicine_doses d
           on d.medicine_id = m.id and d.given_on = ${date}::date
-        where m.user_id = ${context.userId} and m.dog_id = ${dog.id}
+        where m.user_id = ${context.userId} and m.dog_id = ${dogId}
         order by m.due_time nulls last, m.sort_order, m.id
       `,
+      medicineAddedOn(sql),
     ]);
+    if (!owned[0]) throw new Error("愛犬が見つかりません");
     const mapped: CalorieLog[] = logs.map((row) => ({
       id: row.id,
       date: asDateKey(row.log_date) || row.log_date,
@@ -440,7 +447,7 @@ export const getCalorieDay = createServerFn({ method: "GET" })
       date,
       logs: mapped,
       medicines: medicines.map(mapMedicine),
-      medicineAddedOn: await medicineAddedOn(sql),
+      medicineAddedOn: addedOn,
       todayWeightKg: weights[0] ? num(weights[0].weight_kg, 2) : null,
     };
   });
