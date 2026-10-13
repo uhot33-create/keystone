@@ -177,7 +177,7 @@ export function TrendChart({
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block h-2.5 w-2 rounded-sm bg-[#6b5344]/70" />
-          散歩の距離
+          おさんぽの距離
         </span>
       </div>
       <div
@@ -188,7 +188,7 @@ export function TrendChart({
           startX.current = null;
         }}
       >
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重と散歩距離の推移">
+      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
         {days.map((day, index) => {
           const km = day.walkKm ?? 0;
           if (!(km > 0)) return null;
@@ -274,7 +274,7 @@ export function TrendChart({
                 onSelect(day.date);
               }}
             >
-              <title>{`${day.label} ${formatKcal(day.kcal)}kcal / 目安 ${formatKcal(guides[index] ?? 0)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}${(day.walkKm ?? 0) > 0 ? ` 散歩 ${walkLabel(day.walkKm)}km` : ""}`}</title>
+              <title>{`${day.label} ${formatKcal(day.kcal)}kcal / 目安 ${formatKcal(guides[index] ?? 0)}kcal${day.weightKg != null ? ` ${day.weightKg.toFixed(2)}kg` : ""}${(day.walkKm ?? 0) > 0 ? ` おさんぽ ${walkLabel(day.walkKm)}km` : ""}`}</title>
             </rect>
           </g>
         ))}

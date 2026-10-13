@@ -58,7 +58,7 @@ function WalkLogDetail() {
     <div className="stagger-in flex flex-1 flex-col gap-6">
       <BusyOverlay show={pending || !log} label={pending ? "処理中…" : "読み込み中…"} />
       <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">{log?.name ?? "散歩ログ"}</h1>
+        <h1 className="font-display text-3xl font-semibold text-fg">{log?.name ?? "おさんぽログ"}</h1>
       </div>
       <Link to="/dogwalklogs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
         ログ一覧へ

@@ -24,11 +24,12 @@ import {
   isCalorieLocked,
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
-import { CalorieMenuBoard, takeCalorieOpenView } from "@/components/calorie/menu-board";
+import { CalorieMenuBoard, takeCalorieOpenView, type CalorieMenuTab } from "@/components/calorie/menu-board";
+import { MenuDayNotes } from "@/components/calorie/menu-day-notes";
 import { DateBar } from "@/components/calorie/date-bar";
 import type { CalorieState, DayTrend, DogFood, FoodKind, TrendGrain } from "@/lib/calorie/types";
 import { TrendChart } from "@/components/calorie/trend-chart";
-import { MedicinePanel, overdueMedicines } from "@/components/calorie/medicine-panel";
+import { MedicinePanel } from "@/components/calorie/medicine-panel";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -98,11 +99,13 @@ export function TodayPanel({
   onChange,
   onOpenFoods,
   onHeading,
+  onTab,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
   onOpenFoods: () => void;
   onHeading?: (title: string) => void;
+  onTab?: (tab: CalorieMenuTab) => void;
 }) {
   const [kind, setKind] = useState<FoodKind>("food");
   const [foodId, setFoodId] = useState<number | null>(null);
@@ -124,7 +127,6 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight" | "meds">("home");
-  const [clock, setClock] = useState(() => new Date());
   const skipScroll = useRef(true);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
   const stapleOrderRef = useRef<number[] | null>(null);
@@ -138,11 +140,6 @@ export function TodayPanel({
     }
     window.scrollTo(0, 0);
   }, [view]);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setClock(new Date()), 30_000);
-    return () => window.clearInterval(id);
-  }, []);
 
   useEffect(() => {
     const next = takeCalorieOpenView();
@@ -368,7 +365,6 @@ export function TodayPanel({
   }
 
   const locked = isCalorieLocked(state.date);
-  const lateMedicines = overdueMedicines(state.medicines ?? [], state.date, state.medicineAddedOn, clock);
 
   return (
     <div className={`flex flex-col ${view === "home" ? "gap-5" : "gap-2"}`}>
@@ -389,17 +385,13 @@ export function TodayPanel({
 
       {view === "home" ? (
         <>
-          <CalorieMenuBoard dogSrc={saburo.src} dogName={state.dog.name} dogLabel={saburo.label} onView={setView} />
-          {(lateMedicines.length > 0) ? (
-            <button
-              type="button"
-              className="rounded-md border border-danger/40 bg-surface px-3 py-2 text-left text-sm text-danger"
-              onClick={() => setView("meds")}
-            >
-              おくすりがまだです（{lateMedicines.length}）
-            </button>
-          ) : null}
-
+          <CalorieMenuBoard
+            dogSrc={saburo.src}
+            dogName={state.dog.name}
+            dogLabel={saburo.label}
+            onView={setView}
+            onTab={onTab}
+          />
           <DateBar
             date={state.date}
             chartOpen={chartOpen}
@@ -411,6 +403,7 @@ export function TodayPanel({
             }}
             onChart={() => void openChart()}
           />
+          <MenuDayNotes state={state} onOpenMeds={() => setView("meds")} />
         </>
       ) : (
         <>
@@ -821,7 +814,7 @@ export function TodayPanel({
         </>
       )}
 
-      {view === "home" || view === "weight" ? (
+      {view === "weight" ? (
         <section className="rounded-lg border border-border bg-surface px-3 py-2">
           <div className="flex items-baseline gap-2 whitespace-nowrap">
             <p className="shrink-0 text-xs font-medium text-subtle">

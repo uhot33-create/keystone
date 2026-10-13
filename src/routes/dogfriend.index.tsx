@@ -96,7 +96,7 @@ function WalkIndex() {
       <BusyOverlay show={memos === null} label="読み込み中…" />
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-fg sm:text-4xl">お散歩メモ</h1>
+          <h1 className="font-display text-3xl font-semibold text-fg sm:text-4xl">おさんぽメモ</h1>
           <p className="mt-3 max-w-prose text-sm text-muted">出会った子のカードを、静かに残します。</p>
         </div>
         <Button asChild>
@@ -130,7 +130,7 @@ function WalkIndex() {
         <div className="rounded-xl border border-border bg-surface px-5 py-8 shadow-card">
           <p className="font-display text-lg font-semibold text-fg">まだカードがありません</p>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            散歩で出会った子の名前と、覚えておきたいことを残してください。画像はあとからでも足せます。
+            おさんぽで出会った子の名前と、覚えておきたいことを残してください。画像はあとからでも足せます。
           </p>
         </div>
       ) : shown.length === 0 ? (

@@ -14,6 +14,7 @@ import { FoodsPanel } from "@/components/calorie/foods-panel";
 import { PlanPanel } from "@/components/calorie/plan-panel";
 import { ProfilePanel } from "@/components/calorie/profile-panel";
 import { TodayPanel } from "@/components/calorie/today-panel";
+import { takeCalorieOpenTab } from "@/components/calorie/menu-board";
 import { Protected } from "@/components/protected";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -52,6 +53,11 @@ function CalorieApp() {
   const [busy, setBusy] = useState<string | null>(null);
   const [todayHeading, setTodayHeading] = useState("わんカロリー");
   const onHeading = useCallback((title: string) => setTodayHeading(title), []);
+
+  useEffect(() => {
+    const next = takeCalorieOpenTab();
+    if (next) setTab(next);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,11 +108,13 @@ function CalorieApp() {
         <div className="flex flex-col gap-3">
           <div>
             <div className="flex items-start justify-between gap-3">
-              <h1 className="font-display text-3xl font-semibold text-fg">
-                {tab === "today" ? todayHeading : "わんカロリー"}
-              </h1>
+              {tab === "today" && (todayHeading === "体重" || todayHeading === "ごはん") ? (
+                <h1 className="font-display text-3xl font-semibold text-fg">{todayHeading}</h1>
+              ) : null}
             </div>
-            <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
+            <p className={`text-sm text-muted ${tab === "today" && (todayHeading === "体重" || todayHeading === "ごはん") ? "mt-1" : ""}`}>
+              {state?.dog.name || "うちの子"}
+            </p>
           </div>
           {state ? (
             <DogSwitcher state={state} onChange={onChange} onBusy={setBusy} onError={setError} />
@@ -134,6 +142,7 @@ function CalorieApp() {
                 onChange={onChange}
                 onOpenFoods={() => setTab("foods")}
                 onHeading={onHeading}
+                onTab={setTab}
               />
             ) : tab === "plan" ? (
               <PlanPanel state={state} onChange={onChange} />

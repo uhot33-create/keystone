@@ -1,17 +1,18 @@
 /**
  * 犬の絵をタップすると人の絵とメニューに切り替わる。もう一度タップで犬に戻る。
- * 犬は体重・ごはん・お散歩ログ・通院履歴・おくすり。人は喫煙管理・カップ麺。
- * onView があるとき（わんカロリーの今日画面）は体重・ごはん・おくすりをその場で開く。
- * 無いとき（暮らし帳のカード表示）は /calorie を開き、開く画面を sessionStorage に残す。
+ * 歯車はプロフィール、プラン、フード。犬のメニューはごはん、体重、おくすり、おさんぽメモ、おさんぽログ、通院履歴。
+ * 人は喫煙管理・カップ麺。
  */
 import { useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { Cigarette, Footprints, Map, Pill, Scale, Soup, Stethoscope, Utensils } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { Bone, CalendarDays, Cigarette, Footprints, Map, PawPrint, Pill, Scale, Settings, Soup, Stethoscope, Utensils } from "lucide-react";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 const OPEN_VIEW_KEY = "calorie-open-view";
+const OPEN_TAB_KEY = "calorie-open-tab";
 
 export type CalorieMenuView = "weight" | "add" | "meds";
+export type CalorieMenuTab = "profile" | "plan" | "foods";
 
 /** 暮らし帳から開いたあと、今日画面が一度だけ読む。読んだら消す。 */
 export function takeCalorieOpenView(): "home" | CalorieMenuView {
@@ -22,13 +23,28 @@ export function takeCalorieOpenView(): "home" | CalorieMenuView {
   return "home";
 }
 
+/** 歯車から開いたタブ。一度だけ読む。 */
+export function takeCalorieOpenTab(): CalorieMenuTab | null {
+  if (typeof sessionStorage === "undefined") return null;
+  const value = sessionStorage.getItem(OPEN_TAB_KEY);
+  sessionStorage.removeItem(OPEN_TAB_KEY);
+  if (value === "profile" || value === "plan" || value === "foods") return value;
+  return null;
+}
+
 const MENU = [
-  { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
-  { key: "memo", label: "お散歩メモ", Icon: Footprints, to: "/dogfriend" as const },
-  { key: "logs", label: "散歩ログ", Icon: Map, to: "/dogwalklogs" as const },
-  { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
+  { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
   { key: "meds", label: "おくすり", Icon: Pill, view: "meds" as const },
+  { key: "memo", label: "おさんぽメモ", Icon: Footprints, to: "/dogfriend" as const },
+  { key: "logs", label: "おさんぽログ", Icon: Map, to: "/dogwalklogs" as const },
+  { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
+] as const;
+
+const SETTINGS = [
+  { key: "profile", label: "プロフィール", Icon: PawPrint, tab: "profile" as const },
+  { key: "plan", label: "プラン", Icon: CalendarDays, tab: "plan" as const },
+  { key: "foods", label: "フード", Icon: Bone, tab: "foods" as const },
 ] as const;
 
 const PERSON_MENU = [
@@ -56,25 +72,43 @@ export function CalorieMenuBoard({
   dogName,
   dogLabel,
   onView,
+  onTab,
 }: {
   dogSrc: string;
   dogName: string;
   dogLabel: string;
   onView?: (view: CalorieMenuView) => void;
+  onTab?: (tab: CalorieMenuTab) => void;
 }) {
+  const navigate = useNavigate();
   const [board, setBoard] = useState<"dog" | "person">("dog");
-  const items = board === "dog" ? MENU : PERSON_MENU;
+  const [settings, setSettings] = useState(false);
+  const showSettings = board === "dog" && settings;
+
+  function openTab(tab: CalorieMenuTab) {
+    if (onTab) {
+      onTab(tab);
+      return;
+    }
+    try {
+      sessionStorage.setItem(OPEN_TAB_KEY, tab);
+    } catch {
+      /* 保存できなくても画面は開く */
+    }
+    void navigate({ to: "/calorie" });
+  }
 
   return (
     <section className="rounded-sm bg-surface p-1 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_16px_32px_-22px_var(--color-fg)] ring-1 ring-fg/80">
       <div className="rounded-[2px] border border-fg/40 p-1">
         <div className="flex h-[15.5rem] items-stretch gap-3 overflow-hidden border border-fg/15 bg-surface-2">
-          <button
-            type="button"
-            className="relative w-40 shrink-0 cursor-pointer self-stretch overflow-hidden border-r border-fg/20 bg-surface p-0"
-            aria-label={board === "dog" ? "人のメニューに切り替え" : "犬のメニューに切り替え"}
-            onClick={() => setBoard((current) => (current === "dog" ? "person" : "dog"))}
-          >
+          <div className="relative w-40 shrink-0 self-stretch overflow-hidden border-r border-fg/20 bg-surface">
+            <button
+              type="button"
+              className="absolute inset-0 cursor-pointer"
+              aria-label={board === "dog" ? "人のメニューに切り替え" : "犬のメニューに切り替え"}
+              onClick={() => setBoard((current) => (current === "dog" ? "person" : "dog"))}
+            />
             <img
               src={board === "dog" ? dogSrc : "/calorie/person.jpg"}
               alt={board === "dog" ? dogName : "人"}
@@ -82,20 +116,37 @@ export function CalorieMenuBoard({
               className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
             />
             {board === "dog" ? (
+              <button
+                type="button"
+                className="absolute right-1 top-1 z-10 grid size-7 place-items-center rounded-full bg-surface/90 text-fg shadow-card"
+                aria-pressed={settings}
+                aria-label={settings ? "メニューに戻す" : "設定"}
+                onClick={() => setSettings((current) => !current)}
+              >
+                <Settings className="size-4" strokeWidth={1.75} />
+              </button>
+            ) : null}
+            {board === "dog" ? (
               <p className="pointer-events-none absolute inset-x-1 bottom-6 text-center text-[11px] leading-tight text-fg [text-shadow:0_1px_2px_rgba(255,255,255,0.9)]">
                 {dogLabel}
               </p>
             ) : null}
-            <p className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-surface/80 py-0.5 text-[11px] leading-tight text-muted">
+            <p className="pointer-events-none absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-surface/80 py-0.5 text-[11px] leading-tight text-muted">
               <span className="min-w-0 truncate">{board === "dog" ? dogName : "自分"}</span>
               <span className="inline-flex gap-1" aria-hidden>
                 <span className={`size-1.5 rounded-full ${board === "dog" ? "bg-fg" : "bg-fg/30"}`} />
                 <span className={`size-1.5 rounded-full ${board === "person" ? "bg-fg" : "bg-fg/30"}`} />
               </span>
             </p>
-          </button>
+          </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-3 pr-3">
-            {items.map((item) => {
+            {showSettings
+              ? SETTINGS.map((item) => (
+                  <button key={item.key} type="button" className={itemClass} onClick={() => openTab(item.tab)}>
+                    {face(item.Icon, item.label)}
+                  </button>
+                ))
+              : (board === "dog" ? MENU : PERSON_MENU).map((item) => {
               const body = face(item.Icon, item.label);
               if ("to" in item && item.to === "/dogfriend") {
                 return (
@@ -127,7 +178,7 @@ export function CalorieMenuBoard({
                     try {
                       sessionStorage.setItem(OPEN_VIEW_KEY, item.view);
                     } catch {
-                      /* 保存できなくてもわんカロリーは開く */
+                      /* 保存できなくても画面は開く */
                     }
                   }}
                 >

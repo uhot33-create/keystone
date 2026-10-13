@@ -3,8 +3,10 @@
  * スワイプで前日・翌日。「今日」で今日へ。グラフアイコンで推移を開く。
  */
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { flushSync } from "react-dom";
 import { DateBar } from "@/components/calorie/date-bar";
+import { MenuDayNotes } from "@/components/calorie/menu-day-notes";
 import { TrendChart } from "@/components/calorie/trend-chart";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { getCalorieChart, getCalorieDay, getCalorieTrend } from "@/lib/calorie/api";
@@ -55,6 +57,7 @@ export function HomeCalorieDate({
   const [chartEnd, setChartEnd] = useState(todayJst);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   async function selectDate(date: string) {
     if (date === state.date) return;
@@ -143,6 +146,17 @@ export function HomeCalorieDate({
           void selectDate(todayJst());
         }}
         onChart={() => void openChart()}
+      />
+      <MenuDayNotes
+        state={state}
+        onOpenMeds={() => {
+          try {
+            sessionStorage.setItem("calorie-open-view", "meds");
+          } catch {
+            /* 保存できなくても画面は開く */
+          }
+          void navigate({ to: "/calorie" });
+        }}
       />
       {chartOpen ? (
         <TrendChart

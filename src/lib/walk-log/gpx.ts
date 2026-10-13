@@ -56,7 +56,7 @@ export async function parseGpxFile(file: File): Promise<ParsedGpx> {
     doc.querySelector("trk > name")?.textContent?.trim() ||
     doc.querySelector("metadata > name")?.textContent?.trim() ||
     "";
-  const sourceName = file.name.replace(/\.gpx$/i, "") || "散歩";
+  const sourceName = file.name.replace(/\.gpx$/i, "") || "おさんぽ";
   const startedMs = times[0];
   const endedMs = times[times.length - 1];
   return {
