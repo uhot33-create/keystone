@@ -38,7 +38,7 @@ export type CalorieStaple = {
   qty: number;
 };
 
-/** その日の投薬。dueTime は毎日の予定時刻（HH:MM）。trackedFrom より前は記録対象外で「—」。givenAt が null なら、その日はまだ投与していない。 */
+/** その日の投薬。dueTime は毎日の予定時刻（HH:MM）。済か未かは投与記録、機能追加前かは app_settings.medicine_added_on と比べる。 */
 export type DogMedicine = {
   id: number;
   name: string;
@@ -103,6 +103,8 @@ export type CalorieState = {
   foods: DogFood[];
   staples: CalorieStaple[];
   medicines: DogMedicine[];
+  /** app_settings.medicine_added_on。この日以前は投与状態を「—」にする。 */
+  medicineAddedOn: string | null;
   logs: CalorieLog[];
   week: DayTotal[];
   trend: DayTrend[];

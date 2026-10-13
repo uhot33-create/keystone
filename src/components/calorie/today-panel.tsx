@@ -379,6 +379,7 @@ export function TodayPanel({
         date: next.date,
         logs: next.logs,
         medicines: next.medicines,
+        medicineAddedOn: next.medicineAddedOn,
         todayWeightKg: next.todayWeightKg,
       });
     } catch (err) {
@@ -439,7 +440,7 @@ export function TodayPanel({
   }
 
   const locked = isCalorieLocked(state.date);
-  const lateMedicines = overdueMedicines(state.medicines ?? [], state.date, clock);
+  const lateMedicines = overdueMedicines(state.medicines ?? [], state.date, state.medicineAddedOn, clock);
 
   return (
     <div className={`flex flex-col ${view === "home" ? "gap-5" : "gap-2"}`}>

@@ -139,15 +139,23 @@ function asClock(value: unknown): string | null {
   return `${match[1]}:${match[2]}`;
 }
 
-function mapMedicine(row: { id: number; name: string; note?: string; due_time?: unknown; tracked_from?: unknown; given_at: unknown }): DogMedicine {
+function mapMedicine(row: { id: number; name: string; note?: string; due_time?: unknown; given_at: unknown }): DogMedicine {
   return {
     id: row.id,
     name: row.name,
     note: row.note ?? "",
     dueTime: asClock(row.due_time),
-    trackedFrom: asDateKey(row.tracked_from) || null,
+    trackedFrom: null,
     givenAt: asIso(row.given_at),
   };
+}
+
+async function medicineAddedOn(sql: Awaited<ReturnType<typeof getSql>>): Promise<string | null> {
+  const rows = await sql<{ value: string }>`
+    select value from app_settings where key = 'medicine_added_on' limit 1
+  `;
+  const value = String(rows[0]?.value ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
 function asDateKey(value: unknown): string {
@@ -218,7 +226,6 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
           'name', m.name,
           'note', m.note,
           'due_time', to_char(m.due_time, 'HH24:MI'),
-          'tracked_from', to_char(m.tracked_from, 'YYYY-MM-DD'),
           'given_at', d.given_at
         ) order by m.due_time nulls last, m.sort_order, m.id)
         from dog_medicines m
@@ -263,7 +270,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   const dog = pickDog(dogs, dogId);
   const foods = asRows<FoodRow>(row?.foods);
   const staples = asRows<{ id: number; food_id: number; qty: unknown }>(row?.staples);
-  const medicines = asRows<{ id: number; name: string; note: string; due_time: unknown; tracked_from: unknown; given_at: unknown }>(row?.medicines);
+  const medicines = asRows<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>(row?.medicines);
   const logs = asRows<LogRow>(row?.logs);
   const trends: Record<TrendGrain, DayTrend[]> = { day: [], week: [], month: [], year: [] };
   return {
@@ -284,6 +291,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
       qty: num(item.qty),
     })),
     medicines: medicines.map(mapMedicine),
+    medicineAddedOn: await medicineAddedOn(sql),
     logs: logs.map((item) => ({
       id: item.id,
       date: asDateKey(item.log_date) || String(item.log_date).slice(0, 10),
@@ -394,8 +402,8 @@ export const getCalorieDay = createServerFn({ method: "GET" })
         where user_id = ${context.userId} and dog_id = ${dog.id} and log_date = ${date}
         limit 1
       `,
-      sql<{ id: number; name: string; note: string; due_time: unknown; tracked_from: unknown; given_at: unknown }>`
-        select m.id, m.name, m.note, to_char(m.due_time, 'HH24:MI') as due_time, to_char(m.tracked_from, 'YYYY-MM-DD') as tracked_from, d.given_at
+      sql<{ id: number; name: string; note: string; due_time: unknown; given_at: unknown }>`
+        select m.id, m.name, m.note, to_char(m.due_time, 'HH24:MI') as due_time, d.given_at
         from dog_medicines m
         left join dog_medicine_doses d
           on d.medicine_id = m.id and d.given_on = ${date}::date
@@ -417,6 +425,7 @@ export const getCalorieDay = createServerFn({ method: "GET" })
       date,
       logs: mapped,
       medicines: medicines.map(mapMedicine),
+      medicineAddedOn: await medicineAddedOn(sql),
       todayWeightKg: weights[0] ? num(weights[0].weight_kg, 2) : null,
     };
   });
