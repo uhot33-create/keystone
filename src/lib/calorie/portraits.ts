@@ -32,6 +32,7 @@ export const PERSON_PORTRAITS = [
   { id: "wild-man", label: "ワイルドな大人（男性）", src: "/calorie/portraits/people/wild-man.jpg" },
   { id: "obasan", label: "おばさん", src: "/calorie/portraits/people/obasan.jpg" },
   { id: "ojisan", label: "おじさん", src: "/calorie/portraits/people/ojisan.jpg" },
+  { id: "wild-ojisan", label: "ワイルドなおじさん", src: "/calorie/portraits/people/wild-ojisan.jpg" },
   { id: "elder-woman", label: "老人（女性）", src: "/calorie/portraits/people/elder-woman.jpg" },
   { id: "elder-man", label: "老人（男性）", src: "/calorie/portraits/people/elder-man.jpg" },
 ] as const;
