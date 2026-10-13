@@ -98,10 +98,12 @@ export function TodayPanel({
   state,
   onChange,
   onOpenFoods,
+  onHeading,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
   onOpenFoods: () => void;
+  onHeading?: (title: string) => void;
 }) {
   const navigate = useNavigate();
   const [kind, setKind] = useState<FoodKind>("food");
@@ -148,6 +150,10 @@ export function TodayPanel({
     const next = takeCalorieOpenView();
     if (next !== "home") setView(next);
   }, []);
+
+  useEffect(() => {
+    onHeading?.(view === "weight" ? "体重" : view === "add" ? "ごはん" : "わんカロリー");
+  }, [view, onHeading]);
 
   useEffect(() => {
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");

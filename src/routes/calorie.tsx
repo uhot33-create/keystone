@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { DogSwitcher, rememberDogId, storedDogId } from "@/components/calorie/dog-switcher";
 import { FoodsPanel } from "@/components/calorie/foods-panel";
 import { PlanPanel } from "@/components/calorie/plan-panel";
@@ -50,6 +50,8 @@ function CalorieApp() {
   const [state, setState] = useState<CalorieState | null>(loaded);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [todayHeading, setTodayHeading] = useState("わんカロリー");
+  const onHeading = useCallback((title: string) => setTodayHeading(title), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +102,9 @@ function CalorieApp() {
         <div className="flex flex-col gap-3">
           <div>
             <div className="flex items-start justify-between gap-3">
-              <h1 className="font-display text-3xl font-semibold text-fg">わんカロリー</h1>
+              <h1 className="font-display text-3xl font-semibold text-fg">
+                {tab === "today" ? todayHeading : "わんカロリー"}
+              </h1>
             </div>
             <p className="mt-1 text-sm text-muted">{state?.dog.name || "うちの子"}</p>
           </div>
@@ -129,6 +133,7 @@ function CalorieApp() {
                 state={state}
                 onChange={onChange}
                 onOpenFoods={() => setTab("foods")}
+                onHeading={onHeading}
               />
             ) : tab === "plan" ? (
               <PlanPanel state={state} onChange={onChange} />
