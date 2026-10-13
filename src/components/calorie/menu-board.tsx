@@ -1,18 +1,17 @@
 /**
  * 犬の絵をタップすると、次の犬、最後に人のメニューへ進む。人の次は最初の犬。
  * 犬が3匹以上のときは、左上の「人」で人のメニューへ直接移る。
- * 歯車はプロフィール、プラン、フード。
+ * 歯車はプロフィール画面を開く。メニューの並びは変えない。
  */
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Bone, CalendarDays, Cigarette, Footprints, Map, PawPrint, Pill, Scale, Settings, Soup, Stethoscope, Utensils } from "lucide-react";
+import { Cigarette, Footprints, Map, Pill, Scale, Settings, Soup, Stethoscope, Utensils } from "lucide-react";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 const OPEN_VIEW_KEY = "calorie-open-view";
 const OPEN_TAB_KEY = "calorie-open-tab";
 
 export type CalorieMenuView = "weight" | "add" | "meds";
-export type CalorieMenuTab = "profile" | "plan" | "foods";
 
 /** 暮らし帳から開いたあと、今日画面が一度だけ読む。読んだら消す。 */
 export function takeCalorieOpenView(): "home" | CalorieMenuView {
@@ -23,13 +22,12 @@ export function takeCalorieOpenView(): "home" | CalorieMenuView {
   return "home";
 }
 
-/** 歯車から開いたタブ。一度だけ読む。 */
-export function takeCalorieOpenTab(): CalorieMenuTab | null {
+/** 歯車から開いたプロフィール。一度だけ読む。 */
+export function takeCalorieOpenTab(): "profile" | null {
   if (typeof sessionStorage === "undefined") return null;
   const value = sessionStorage.getItem(OPEN_TAB_KEY);
   sessionStorage.removeItem(OPEN_TAB_KEY);
-  if (value === "profile" || value === "plan" || value === "foods") return value;
-  return null;
+  return value === "profile" ? "profile" : null;
 }
 
 const MENU = [
@@ -39,12 +37,6 @@ const MENU = [
   { key: "memo", label: "おさんぽメモ", Icon: Footprints, to: "/dogfriend" as const },
   { key: "logs", label: "おさんぽログ", Icon: Map, to: "/dogwalklogs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
-] as const;
-
-const SETTINGS = [
-  { key: "profile", label: "プロフィール", Icon: PawPrint, tab: "profile" as const },
-  { key: "plan", label: "プラン", Icon: CalendarDays, tab: "plan" as const },
-  { key: "foods", label: "フード", Icon: Bone, tab: "foods" as const },
 ] as const;
 
 const PERSON_MENU = [
@@ -76,7 +68,7 @@ export function CalorieMenuBoard({
   dogId,
   onSelectDog,
   onView,
-  onTab,
+  onOpenProfile,
 }: {
   dogSrc: string;
   dogName: string;
@@ -86,12 +78,10 @@ export function CalorieMenuBoard({
   dogId?: number;
   onSelectDog?: (id: number) => void;
   onView?: (view: CalorieMenuView) => void;
-  onTab?: (tab: CalorieMenuTab) => void;
+  onOpenProfile?: () => void;
 }) {
   const navigate = useNavigate();
   const [board, setBoard] = useState<"dog" | "person">("dog");
-  const [settings, setSettings] = useState(false);
-  const showSettings = board === "dog" && settings;
   const dogIndex = dogs.findIndex((dog) => dog.id === dogId);
   const nextDog = dogIndex >= 0 ? dogs[dogIndex + 1] : undefined;
 
@@ -109,13 +99,13 @@ export function CalorieMenuBoard({
     setBoard("person");
   }
 
-  function openTab(tab: CalorieMenuTab) {
-    if (onTab) {
-      onTab(tab);
+  function openProfile() {
+    if (onOpenProfile) {
+      onOpenProfile();
       return;
     }
     try {
-      sessionStorage.setItem(OPEN_TAB_KEY, tab);
+      sessionStorage.setItem(OPEN_TAB_KEY, "profile");
     } catch {
       /* 保存できなくても画面は開く */
     }
@@ -155,9 +145,8 @@ export function CalorieMenuBoard({
               <button
                 type="button"
                 className="absolute right-1 top-1 z-10 grid size-7 place-items-center rounded-full bg-surface/90 text-fg shadow-card"
-                aria-pressed={settings}
-                aria-label={settings ? "メニューに戻す" : "設定"}
-                onClick={() => setSettings((current) => !current)}
+                aria-label="プロフィール"
+                onClick={openProfile}
               >
                 <Settings className="size-4" strokeWidth={1.75} />
               </button>
@@ -176,13 +165,7 @@ export function CalorieMenuBoard({
             </p>
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-3 pr-3">
-            {showSettings
-              ? SETTINGS.map((item) => (
-                  <button key={item.key} type="button" className={itemClass} onClick={() => openTab(item.tab)}>
-                    {face(item.Icon, item.label)}
-                  </button>
-                ))
-              : (board === "dog" ? MENU : PERSON_MENU).map((item) => {
+            {(board === "dog" ? MENU : PERSON_MENU).map((item) => {
               const body = face(item.Icon, item.label);
               if ("to" in item && item.to === "/dogfriend") {
                 return (

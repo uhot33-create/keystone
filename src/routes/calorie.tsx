@@ -2,7 +2,7 @@
  * 「わんカロリー」画面（URL /calorie）です。下のタブで今日・プラン・フード・プロフィールを切り替えます。
  * 中身は today-panel / plan-panel / foods-panel / profile-panel に任せています。
  * 最初の読み込みは今日（日本時間）と、前回選んだ犬（localStorage の calorie-dog-id）です。
- * タブの文言は一番下の NavBtn（今日／プラン／フード／プロフィール）です。
+ * タブの文言は一番下の NavBtn（プラン／フード／プロフィール）。プロフィールだけ「今日」を出さない。
  * 見出し「わんカロリー」を変えると画面タイトルだけ変わります。データの取得は api.ts の getCalorieState。
  * 未ログインのときは Protected が止め、loader は session が無いと null を返して画面側で取り直します。
  */
@@ -142,7 +142,7 @@ function CalorieApp() {
                 onChange={onChange}
                 onOpenFoods={() => setTab("foods")}
                 onHeading={onHeading}
-                onTab={setTab}
+                onOpenProfile={() => setTab("profile")}
               />
             ) : tab === "plan" ? (
               <PlanPanel state={state} onChange={onChange} />
@@ -156,10 +156,14 @@ function CalorieApp() {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface">
-        <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
-          <NavBtn active={tab === "today"} label="今日" onClick={() => setTab("today")}>
-            <Utensils className="size-5" strokeWidth={1.75} />
-          </NavBtn>
+        <div
+          className={`mx-auto grid max-w-3xl px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1 ${tab === "profile" ? "grid-cols-3" : "grid-cols-4"}`}
+        >
+          {tab === "profile" ? null : (
+            <NavBtn active={tab === "today"} label="今日" onClick={() => setTab("today")}>
+              <Utensils className="size-5" strokeWidth={1.75} />
+            </NavBtn>
+          )}
           <NavBtn active={tab === "plan"} label="プラン" onClick={() => setTab("plan")}>
             <CalendarDays className="size-5" strokeWidth={1.75} />
           </NavBtn>

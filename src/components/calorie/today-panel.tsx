@@ -25,7 +25,7 @@ import {
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
-import { CalorieMenuBoard, takeCalorieOpenView, type CalorieMenuTab } from "@/components/calorie/menu-board";
+import { CalorieMenuBoard, takeCalorieOpenView } from "@/components/calorie/menu-board";
 import { rememberDogId } from "@/components/calorie/dog-switcher";
 import { MenuDayNotes } from "@/components/calorie/menu-day-notes";
 import { DateBar } from "@/components/calorie/date-bar";
@@ -101,13 +101,13 @@ export function TodayPanel({
   onChange,
   onOpenFoods,
   onHeading,
-  onTab,
+  onOpenProfile,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
   onOpenFoods: () => void;
   onHeading?: (title: string) => void;
-  onTab?: (tab: CalorieMenuTab) => void;
+  onOpenProfile?: () => void;
 }) {
   const [kind, setKind] = useState<FoodKind>("food");
   const [foodId, setFoodId] = useState<number | null>(null);
@@ -410,7 +410,7 @@ export function TodayPanel({
             dogId={state.dog.id}
             onSelectDog={(id) => void selectMenuDog(id)}
             onView={setView}
-            onTab={onTab}
+            onOpenProfile={onOpenProfile}
           />
           <DateBar
             date={state.date}
