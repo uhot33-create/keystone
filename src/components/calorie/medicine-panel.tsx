@@ -5,6 +5,7 @@
  * 機能追加日は app_settings.medicine_added_on。その日以前は「—」、以降は「済」か「未」。
  */
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { deleteDogMedicine, giveDogMedicine, saveDogMedicine, undoDogMedicine } from "@/lib/calorie/api";
 import type { CalorieState, DogMedicine } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ export function MedicinePanel({
   }
 
   return (
+    <>
     <section className="rounded-lg border border-border bg-surface p-3 shadow-card">
       <div className="flex items-baseline justify-between gap-2">
         <p className="font-display text-base font-semibold text-fg">おくすり</p>
@@ -133,111 +135,122 @@ export function MedicinePanel({
           ))}
         </ul>
       )}
-
-      <button
-        type="button"
-        className="mt-2 text-xs font-medium text-primary"
-        onClick={() => {
-          setOpen((value) => !value);
-          resetForm();
-        }}
-      >
-        {open ? "閉じる" : "管理"}
-      </button>
-      {open ? (
-        <div className="mt-2 space-y-2">
-          <Input
-            value={name}
-            maxLength={30}
-            placeholder="薬の名前"
-            aria-label="薬の名前"
-            onChange={(event) => setName(event.target.value)}
-          />
-          <Input
-            type="time"
-            value={dueTime}
-            aria-label="予定時刻"
-            onChange={(event) => setDueTime(event.target.value)}
-          />
-          <Input
-            value={note}
-            maxLength={40}
-            placeholder="用量など（任意）"
-            aria-label="用量"
-            onChange={(event) => setNote(event.target.value)}
-          />
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              className="flex-1"
-              disabled={pending || !name.trim() || !dueTime}
-              onClick={() =>
-                void onRun(async () => {
-                  const next = await saveDogMedicine({
-                    data: {
-                      date: state.date,
-                      dogId: state.dog.id,
-                      id: editing ?? undefined,
-                      name: name.trim(),
-                      dueTime,
-                      note: note.trim(),
-                    },
-                  });
-                  resetForm();
-                  return next;
-                })
-              }
-            >
-              {editing ? "更新" : "登録"}
-            </Button>
-            {editing ? (
-              <Button type="button" variant="outline" size="sm" disabled={pending} onClick={resetForm}>
-                取消
-              </Button>
-            ) : null}
-          </div>
-          {medicines.length > 0 ? (
-            <ul className="divide-y divide-border">
-              {medicines.map((item) => (
-                <li key={item.id} className="flex items-center gap-2 py-1">
-                  <p className="min-w-0 flex-1 truncate text-xs text-fg">
-                    {item.dueTime ? `${item.dueTime} ` : ""}
-                    {item.name}
-                    {item.note ? ` ${item.note}` : ""}
-                  </p>
-                  <button
+    </section>
+    {typeof document === "undefined"
+      ? null
+      : createPortal(
+          <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
+            {open ? (
+              <div className="mx-auto max-h-[50vh] max-w-3xl space-y-2 overflow-y-auto px-5 pt-3">
+                <Input
+                  value={name}
+                  maxLength={30}
+                  placeholder="薬の名前"
+                  aria-label="薬の名前"
+                  onChange={(event) => setName(event.target.value)}
+                />
+                <Input
+                  type="time"
+                  value={dueTime}
+                  aria-label="予定時刻"
+                  onChange={(event) => setDueTime(event.target.value)}
+                />
+                <Input
+                  value={note}
+                  maxLength={40}
+                  placeholder="用量など（任意）"
+                  aria-label="用量"
+                  onChange={(event) => setNote(event.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
                     type="button"
-                    className="shrink-0 text-xs font-medium text-primary"
-                    disabled={pending}
-                    onClick={() => {
-                      setEditing(item.id);
-                      setName(item.name);
-                      setDueTime(item.dueTime ?? "");
-                      setNote(item.note);
-                    }}
-                  >
-                    編集
-                  </button>
-                  <button
-                    type="button"
-                    className="shrink-0 text-xs text-muted"
-                    disabled={pending}
+                    size="sm"
+                    className="flex-1"
+                    disabled={pending || !name.trim() || !dueTime}
                     onClick={() =>
-                      void onRun(
-                        () => deleteDogMedicine({ data: { date: state.date, dogId: state.dog.id, id: item.id } }),
-                        "削除中…",
-                      )
+                      void onRun(async () => {
+                        const next = await saveDogMedicine({
+                          data: {
+                            date: state.date,
+                            dogId: state.dog.id,
+                            id: editing ?? undefined,
+                            name: name.trim(),
+                            dueTime,
+                            note: note.trim(),
+                          },
+                        });
+                        resetForm();
+                        return next;
+                      })
                     }
                   >
-                    削除
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
+                    {editing ? "更新" : "登録"}
+                  </Button>
+                  {editing ? (
+                    <Button type="button" variant="outline" size="sm" disabled={pending} onClick={resetForm}>
+                      取消
+                    </Button>
+                  ) : null}
+                </div>
+                {medicines.length > 0 ? (
+                  <ul className="divide-y divide-border">
+                    {medicines.map((item) => (
+                      <li key={item.id} className="flex items-center gap-2 py-1">
+                        <p className="min-w-0 flex-1 truncate text-xs text-fg">
+                          {item.dueTime ? `${item.dueTime} ` : ""}
+                          {item.name}
+                          {item.note ? ` ${item.note}` : ""}
+                        </p>
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs font-medium text-primary"
+                          disabled={pending}
+                          onClick={() => {
+                            setEditing(item.id);
+                            setName(item.name);
+                            setDueTime(item.dueTime ?? "");
+                            setNote(item.note);
+                          }}
+                        >
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs text-muted"
+                          disabled={pending}
+                          onClick={() =>
+                            void onRun(
+                              () => deleteDogMedicine({ data: { date: state.date, dogId: state.dog.id, id: item.id } }),
+                              "削除中…",
+                            )
+                          }
+                        >
+                          削除
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="mx-auto max-w-3xl px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <Button
+                type="button"
+                variant={open ? "outline" : "default"}
+                className="w-full"
+                onClick={() => {
+                  setOpen((value) => !value);
+                  resetForm();
+                }}
+              >
+                {open ? "閉じる" : "管理"}
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )}
+    <div className="h-20" aria-hidden />
+    </>
   );
 }
