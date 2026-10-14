@@ -1,37 +1,37 @@
 /**
- * アプリ内リンクや「検索」ボタンを押したとき、読み込み中の覆いを出す。
- * 描画が終わると消える。20秒たっても残っていたら強制的に消す。
- * 文言は BusyOverlay に渡す label。色は styles.css。
+ * アプリ内リンクや「検索」ボタンを押したとき、移動が長引いたら読み込み中を出す。
+ * すぐ描画できる移動では出さない。20秒たっても残っていたら消す。
  */
 import { useRouter } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useRef, useState } from "react";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 
-/** ページ移動のあいだだけ BusyOverlay を出す。 */
+/** ページ移動が 200ms を超えたときだけ BusyOverlay を出す。 */
 export function NavBusy() {
   const router = useRouter();
   const [show, setShow] = useState(false);
+  const timer = useRef<number | null>(null);
+
+  function clearTimer() {
+    if (timer.current == null) return;
+    window.clearTimeout(timer.current);
+    timer.current = null;
+  }
 
   useEffect(() => {
-    return router.subscribe("onRendered", () => setShow(false));
+    return router.subscribe("onRendered", () => {
+      clearTimer();
+      setShow(false);
+    });
   }, [router]);
 
   useEffect(() => {
     if (!show) return;
-    const timer = window.setTimeout(() => setShow(false), 20000);
-    return () => window.clearTimeout(timer);
+    const id = window.setTimeout(() => setShow(false), 20000);
+    return () => window.clearTimeout(id);
   }, [show]);
 
   useEffect(() => {
-    function reveal() {
-      try {
-        flushSync(() => setShow(true));
-      } catch {
-        setShow(true);
-      }
-    }
-
     function onClick(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -43,16 +43,19 @@ export function NavBusy() {
       const move = link instanceof HTMLAnchorElement && isAppNavigation(link);
       if (!search && !move) return;
       const before = location.href;
-      reveal();
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          if (location.href === before && !router.state.isLoading) setShow(false);
-        });
-      });
+      clearTimer();
+      timer.current = window.setTimeout(() => {
+        timer.current = null;
+        if (location.href === before && !router.state.isLoading) return;
+        setShow(true);
+      }, 200);
     }
 
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick);
+      clearTimer();
+    };
   }, [router]);
 
   return <BusyOverlay show={show} label="読み込み中…" />;

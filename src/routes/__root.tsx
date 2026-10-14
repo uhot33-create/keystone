@@ -5,7 +5,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { NavBusy } from "@/components/nav-busy";
@@ -13,6 +13,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-meta";
 import { getUserSettings } from "@/lib/desk/settings";
 import type { DeskVisibility } from "@/lib/desk/visibility";
+import { holdRouteContext, peekRouteContext } from "@/lib/route-context";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import appCss from "../styles.css?url";
 
@@ -25,14 +26,20 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 /** ルート経路。セッションと机の設定を読み、head のメタ情報を置く。 */
 export const Route = createRootRoute({
   beforeLoad: async () => {
+    if (typeof window !== "undefined") {
+      const cached = peekRouteContext();
+      if (cached) return cached;
+    }
     try {
       const sessionUser = await fetchSessionUser();
-      if (!sessionUser) return { sessionUser, desk: null as DeskVisibility | null };
-      try {
-        return { sessionUser, desk: await getUserSettings() };
-      } catch {
-        return { sessionUser, desk: null as DeskVisibility | null };
-      }
+      const ctx = {
+        sessionUser,
+        desk: sessionUser
+          ? await getUserSettings().catch(() => null as DeskVisibility | null)
+          : (null as DeskVisibility | null),
+      };
+      if (typeof window !== "undefined") holdRouteContext(ctx);
+      return ctx;
     } catch {
       return { sessionUser: null, desk: null as DeskVisibility | null };
     }
@@ -65,6 +72,11 @@ export const Route = createRootRoute({
 });
 
 function RootDocument() {
+  const { sessionUser, desk } = Route.useRouteContext();
+  useLayoutEffect(() => {
+    holdRouteContext({ sessionUser, desk });
+  }, [sessionUser, desk]);
+
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const block = (event: Event) => event.preventDefault();

@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getDesk, refreshDogFact, refreshDogNews, refreshQuote, refreshStory } from "@/lib/desk/api";
+import { holdDesk, peekDesk } from "@/lib/desk/held";
 import { Button } from "@/components/ui/button";
 import {
   BLOOD_OPTIONS,
@@ -93,7 +94,7 @@ export function DeskPanel() {
   const initial = useMemo(readStored, []);
   const [kind, setKind] = useState<FortuneKind>(initial.kind);
   const [key, setKey] = useState(initial.key);
-  const [desk, setDesk] = useState<DeskState | null>(null);
+  const [desk, setDesk] = useState<DeskState | null>(() => peekDesk());
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | "dogNews" | null>(null);
 
@@ -113,7 +114,12 @@ export function DeskPanel() {
       },
     })
       .then((next) => {
-        if (!cancelled) setDesk((current) => applyDesk(current, next, visible));
+        if (cancelled) return;
+        setDesk((current) => {
+          const merged = applyDesk(current ?? peekDesk(), next, visible);
+          if (merged) holdDesk(merged);
+          return merged;
+        });
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "取得できませんでした");
@@ -129,16 +135,36 @@ export function DeskPanel() {
     try {
       if (part === "quote") {
         const quote = await refreshQuote();
-        setDesk((current) => (current ? { ...current, quote } : current));
+        setDesk((current) => {
+          if (!current) return current;
+          const next = { ...current, quote };
+          holdDesk(next);
+          return next;
+        });
       } else if (part === "story") {
         const story = await refreshStory();
-        setDesk((current) => (current ? { ...current, story } : current));
+        setDesk((current) => {
+          if (!current) return current;
+          const next = { ...current, story };
+          holdDesk(next);
+          return next;
+        });
       } else if (part === "dogNews") {
         const dogNews = await refreshDogNews();
-        setDesk((current) => (current ? { ...current, dogNews } : current));
+        setDesk((current) => {
+          if (!current) return current;
+          const next = { ...current, dogNews };
+          holdDesk(next);
+          return next;
+        });
       } else {
         const dogFact = await refreshDogFact();
-        setDesk((current) => (current ? { ...current, dogFact } : current));
+        setDesk((current) => {
+          if (!current) return current;
+          const next = { ...current, dogFact };
+          holdDesk(next);
+          return next;
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新できませんでした");

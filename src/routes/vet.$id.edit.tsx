@@ -11,6 +11,7 @@ import { PageHeading } from "@/components/page-heading";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getVetVisit } from "@/lib/vet/api";
+import { peekVetVisits } from "@/lib/vet/held";
 import type { VetVisit } from "@/lib/vet/types";
 
 /** このURLの画面定義。中身は VetEdit。 */
@@ -18,10 +19,11 @@ export const Route = createFileRoute("/vet/$id/edit")({ component: VetEdit });
 
 function VetEdit() {
   const { id } = Route.useParams();
-  const [visit, setVisit] = useState<VetVisit | null>(null);
+  const [visit, setVisit] = useState<VetVisit | null>(() => peekVetVisits()?.find((item) => item.id === id) ?? null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (peekVetVisits()?.some((item) => item.id === id)) return;
     let cancelled = false;
     getVetVisit({ data: { id } })
       .then((row) => {

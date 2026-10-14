@@ -12,8 +12,8 @@ import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteWalkLog, getWalkLog, type WalkLogDetail } from "@/lib/walk-log/api";
-import { dropWalkLogs } from "@/lib/walk-log/held";
+import { deleteWalkLog, getWalkLog, type WalkLogDetail, type WalkLogList } from "@/lib/walk-log/api";
+import { dropWalkLogs, peekWalkLogs } from "@/lib/walk-log/held";
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
 
 /** 詳細ルート。id は URL。前後は getWalkLog の prevId / nextId。 */
@@ -24,20 +24,24 @@ export const Route = createFileRoute("/dogwalklogs/$id")({
 function WalkLogDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
-  const [log, setLog] = useState<WalkLogDetail | null>(null);
+  const [log, setLog] = useState<WalkLogDetail | null>(() => detailFromList(peekWalkLogs(), id));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
+    const cached = detailFromList(peekWalkLogs(), id);
+    if (cached) setLog(cached);
+    else {
+      setLog(null);
+      setError(null);
+    }
     let cancelled = false;
-    setLog(null);
-    setError(null);
     getWalkLog({ data: { id } })
       .then((next) => {
         if (!cancelled) setLog(next);
       })
       .catch((err: unknown) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
+        if (!cancelled && !cached) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
       });
     return () => {
       cancelled = true;
@@ -88,6 +92,15 @@ function WalkLogDetail() {
       )}
     </div>
   );
+}
+
+function detailFromList(list: WalkLogList | null, id: string): WalkLogDetail | null {
+  if (!list) return null;
+  const flat = [...list.years.flatMap((year) => year.months.flatMap((month) => month.logs)), ...list.undated];
+  const index = flat.findIndex((item) => item.id === id);
+  const log = flat[index];
+  if (!log) return null;
+  return { ...log, prevId: flat[index - 1]?.id ?? null, nextId: flat[index + 1]?.id ?? null };
 }
 
 function LogNav({ prevId, nextId }: { prevId?: string | null; nextId?: string | null }) {

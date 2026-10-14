@@ -19,6 +19,7 @@ import {
   type CupItem,
   type CupStock,
 } from "@/lib/cup/api";
+import { holdCup, peekCup } from "@/lib/cup/held";
 import { fileFromImageSrc, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
 import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/page-heading";
@@ -61,23 +62,27 @@ async function uploadImage(file: File): Promise<{ url: string; pathname: string 
 /** 在庫・登録・品名の切替と、保存後の再読込。 */
 export function CupApp() {
   const [tab, setTab] = useState<Tab>("stock");
-  const [items, setItems] = useState<CupItem[] | null>(null);
-  const [stocks, setStocks] = useState<CupStock[] | null>(null);
+  const cached = peekCup();
+  const [items, setItems] = useState<CupItem[] | null>(cached?.items ?? null);
+  const [stocks, setStocks] = useState<CupStock[] | null>(cached?.stocks ?? null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const today = todayJst();
 
   async function reload() {
     const next = await getCupState();
+    holdCup(next);
     setItems(next.items);
     setStocks(next.stocks);
   }
 
   useEffect(() => {
+    if (peekCup()) return;
     let cancelled = false;
     getCupState()
       .then((next) => {
         if (cancelled) return;
+        holdCup(next);
         setItems(next.items);
         setStocks(next.stocks);
       })

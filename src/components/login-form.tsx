@@ -9,6 +9,7 @@ import { z } from "zod";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { toJapaneseAuthError } from "@/lib/auth-errors";
 import { APP_NAME, APP_TAGLINE } from "@/lib/app-meta";
+import { dropRouteContext } from "@/lib/route-context";
 import { BrandMark } from "@/components/brand-mark";
 import { PaperWash } from "@/components/theme-motif";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ export function LoginScreen() {
         });
         if (signInError) throw signInError;
       }
+      dropRouteContext();
       await router.invalidate();
       await router.navigate({ to: "/" });
     } catch (err) {
