@@ -66,8 +66,8 @@ export function TrendChart({
   onShift: (direction: -1 | 1) => void;
 }) {
   const width = 320;
-  const height = 184;
-  const pad = { top: 16, right: 36, bottom: 36, left: 36 };
+  const height = 196;
+  const pad = { top: 22, right: 40, bottom: 36, left: 40 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -98,7 +98,8 @@ export function TrendChart({
     return pad.top + innerH - ((value - weightMin) / (weightMax - weightMin || 1)) * innerH;
   }
   function yWalk(value: number) {
-    return pad.top + innerH - (value / (maxWalk || 1)) * innerH;
+    const room = 12;
+    return pad.top + room + (innerH - room) - (value / (maxWalk || 1)) * (innerH - room);
   }
   function walkLabel(km: number) {
     if (!(km > 0)) return "";
@@ -141,18 +142,18 @@ export function TrendChart({
   return (
     <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between gap-2">
-        <p className="shrink-0 whitespace-nowrap font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="min-w-0 truncate whitespace-nowrap text-right text-xs text-muted">
-            {shown ? `${formatKcal(shown.kcal)} kcal` : "—"}
-            {shown?.weightKg != null ? ` / ${shown.weightKg.toFixed(2)} kg` : ""}
-            {shown && (shown.walkKm ?? 0) > 0 ? ` / ${walkLabel(shown.walkKm)} km` : ""}
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
+          <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs leading-snug text-muted">
+            <span>{shown ? `${formatKcal(shown.kcal)} kcal` : "—"}</span>
+            {shown?.weightKg != null ? <span>{shown.weightKg.toFixed(2)} kg</span> : null}
+            {shown && (shown.walkKm ?? 0) > 0 ? <span>{walkLabel(shown.walkKm)} km</span> : null}
           </p>
-          <Button type="button" variant="ghost" size="sm" onClick={onToday} disabled={isToday}>
+        </div>
+          <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={onToday} disabled={isToday}>
             今日
           </Button>
         </div>
-      </div>
       <div className="mt-3 grid grid-cols-4 rounded-md bg-surface-2 p-1">
         {TREND_GRAINS.map((item) => (
           <button
@@ -191,7 +192,7 @@ export function TrendChart({
           startX.current = null;
         }}
       >
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
+      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
         {days.map((day, index) => {
           const km = day.walkKm ?? 0;
           if (!(km > 0)) return null;
@@ -207,7 +208,7 @@ export function TrendChart({
                 fill="#6b5344"
                 fillOpacity={day.date === shown?.date ? 0.8 : 0.35}
               />
-              <text x={x(index)} y={Math.max(top - 4, pad.top + 8)} textAnchor="middle" fill="#6b5344" fontSize="8">
+              <text x={x(index)} y={Math.max(top - 3, 11)} textAnchor="middle" fill="#6b5344" fontSize="8">
                 {walkLabel(km)}
               </text>
             </g>
@@ -224,9 +225,9 @@ export function TrendChart({
         ) : null}
         {guideIndex >= 0 ? (
           <text
-            x={Math.min(x(guideIndex) + 2, width - pad.right)}
-            y={Math.max(yKcal(guideValue) - 4, pad.top + 8)}
-            textAnchor="end"
+            x={x(guideIndex) < pad.left + 36 ? x(guideIndex) + 4 : Math.min(x(guideIndex) - 2, width - 8)}
+            y={Math.min(Math.max(yKcal(guideValue) - 4, 12), baseline - 8)}
+            textAnchor={x(guideIndex) < pad.left + 36 ? "start" : "end"}
             fill="var(--color-accent)"
             fontSize="9"
           >
@@ -277,10 +278,10 @@ export function TrendChart({
             ) : null}
           </g>
         ))}
-        <text x={4} y={pad.top + 4} fill="var(--color-subtle)" fontSize="9">
+        <text x={2} y={11} fill="var(--color-subtle)" fontSize="9">
           {maxKcal}
         </text>
-        <text x={width - 4} y={pad.top + 4} textAnchor="end" fill="#c23b32" fontSize="9">
+        <text x={width - 2} y={11} textAnchor="end" fill="#c23b32" fontSize="9">
           {weightMax.toFixed(2)}
         </text>
         <text x={4} y={pad.top + innerH} fill="var(--color-subtle)" fontSize="9">
