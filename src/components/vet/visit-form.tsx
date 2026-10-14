@@ -7,6 +7,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { deleteVetVisit, saveVetVisit } from "@/lib/vet/api";
+import { dropVetVisits } from "@/lib/vet/held";
 import { NEXT_VISIT_STATUSES, NEXT_VISIT_STATUS_LABEL, VISIT_KINDS, type NextVisitStatus, type VetVisit, type VisitKind, type VisitStatus } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,7 @@ export function VisitForm({
           status: nextStatus,
         },
       });
+      dropVetVisits();
       await navigate({ to: "/vet" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
@@ -97,6 +99,7 @@ export function VisitForm({
     setError(null);
     try {
       await deleteVetVisit({ data: { id: visit.id } });
+      dropVetVisits();
       await navigate({ to: "/vet" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除できませんでした");

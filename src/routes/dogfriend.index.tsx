@@ -9,10 +9,12 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MemoCard } from "@/components/walk/memo-card";
 import { MemoToolbar } from "@/components/walk/memo-toolbar";
+import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState, getWalkThumbs, touchWalkMemoMet } from "@/lib/walk/api";
+import { holdWalkList, peekWalkList } from "@/lib/walk/held";
 import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
 import { applyWalkThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
@@ -30,12 +32,13 @@ export const Route = createFileRoute("/dogfriend/")({
 function WalkIndex() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const [memos, setMemos] = useState<WalkMemo[] | null>(null);
-  const [breeds, setBreeds] = useState<DogBreed[]>([]);
+  const cached = peekWalkList();
+  const [memos, setMemos] = useState<WalkMemo[] | null>(cached?.memos ?? null);
+  const [breeds, setBreeds] = useState<DogBreed[]>(cached?.breeds ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [showTop, setShowTop] = useState(false);
-  const thumbsFetchStarted = useRef(false);
+  const thumbsFetchStarted = useRef(cached?.thumbs ?? false);
 
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 240);
@@ -45,10 +48,12 @@ function WalkIndex() {
   }, []);
 
   useEffect(() => {
+    if (peekWalkList()) return;
     let cancelled = false;
     getWalkState()
       .then((state) => {
         if (cancelled) return;
+        holdWalkList({ memos: state.memos, breeds: state.breeds, thumbs: false });
         setMemos(state.memos);
         setBreeds(state.breeds);
       })
@@ -67,7 +72,13 @@ function WalkIndex() {
     thumbsFetchStarted.current = true;
     getWalkThumbs()
       .then((thumbs) => {
-        setMemos((list) => (list ? applyWalkThumbs(list, thumbs) : list));
+        setMemos((list) => {
+          if (!list) return list;
+          const next = applyWalkThumbs(list, thumbs);
+          const current = peekWalkList();
+          holdWalkList({ memos: next, breeds: current?.breeds ?? [], thumbs: true });
+          return next;
+        });
       })
       .catch(() => {
         /* 文字は出したまま */
@@ -80,10 +91,14 @@ function WalkIndex() {
     setPendingId(id);
     setError(null);
     try {
-      const next = await touchWalkMemoMet({ data: { id } });
-      setMemos((list) =>
-        list ? list.map((memo) => (memo.id === next.id ? { ...memo, lastMetOn: next.lastMetOn } : memo)) : list,
-      );
+      const saved = await touchWalkMemoMet({ data: { id } });
+      setMemos((list) => {
+        if (!list) return list;
+        const next = list.map((memo) => (memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn } : memo));
+        const current = peekWalkList();
+        if (current) holdWalkList({ ...current, memos: next });
+        return next;
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新できませんでした");
     } finally {
@@ -92,17 +107,13 @@ function WalkIndex() {
   }
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
+    <div className="stagger-in flex flex-1 flex-col gap-4">
       <BusyOverlay show={memos === null} label="読み込み中…" />
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-fg sm:text-4xl">おさんぽメモ</h1>
-          <p className="mt-3 max-w-prose text-sm text-muted">出会った子のカードを、静かに残します。</p>
-        </div>
+      <PageHeading title="おさんぽメモ">
         <Button asChild>
           <Link to="/dogfriend/new">追加</Link>
         </Button>
-      </div>
+      </PageHeading>
 
       <MemoToolbar
         search={search}

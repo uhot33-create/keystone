@@ -8,9 +8,11 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatJaDate } from "@/lib/calorie/formula";
 import { listVetVisits } from "@/lib/vet/api";
+import { holdVetVisits, peekVetVisits } from "@/lib/vet/held";
 import { NEXT_VISIT_STATUS_LABEL, type VetVisit } from "@/lib/vet/types";
 import { todayJst } from "@/lib/walk/age";
 import { Button } from "@/components/ui/button";
+import { PageHeading } from "@/components/page-heading";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DoctorMemoCard } from "@/components/vet/doctor-memo";
@@ -22,7 +24,7 @@ const PAGE_SIZE = 10;
 export const Route = createFileRoute("/vet/")({ component: VetIndex });
 
 function VetIndex() {
-  const [visits, setVisits] = useState<VetVisit[] | null>(null);
+  const [visits, setVisits] = useState<VetVisit[] | null>(() => peekVetVisits());
   const [error, setError] = useState<string | null>(null);
   const [shown, setShown] = useState(PAGE_SIZE);
   const [openYears, setOpenYears] = useState<string[]>(() => [todayJst().slice(0, 4)]);
@@ -31,10 +33,13 @@ function VetIndex() {
   const today = todayJst();
 
   useEffect(() => {
+    if (peekVetVisits()) return;
     let cancelled = false;
     listVetVisits()
       .then((rows) => {
-        if (!cancelled) setVisits(rows);
+        if (cancelled) return;
+        holdVetVisits(rows);
+        setVisits(rows);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
@@ -89,25 +94,20 @@ function VetIndex() {
   }, [hasMore, shown]);
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-5">
+    <div className="stagger-in flex flex-1 flex-col gap-4">
       <BusyOverlay show={visits === null} label="読み込み中…" />
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl font-semibold text-fg">通院履歴</h1>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button asChild variant="outline">
-            <Link to="/vet/new" search={{ as: "planned" }}>
-              予定
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link to="/vet/new" search={{ as: "done" }}>
-              記録
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeading title="通院履歴">
+        <Button asChild variant="outline">
+          <Link to="/vet/new" search={{ as: "planned" }}>
+            予定
+          </Link>
+        </Button>
+        <Button asChild>
+          <Link to="/vet/new" search={{ as: "done" }}>
+            記録
+          </Link>
+        </Button>
+      </PageHeading>
 
       {error ? (
         <p className="text-sm text-danger" role="alert">

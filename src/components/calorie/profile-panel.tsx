@@ -28,9 +28,13 @@ function kgText(value: number): string {
 export function ProfilePanel({
   state,
   onChange,
+  onOpenPlan,
+  onOpenFoods,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
+  onOpenPlan?: () => void;
+  onOpenFoods?: () => void;
 }) {
   const dog = state.dog;
   const [name, setName] = useState(dog.name);
@@ -78,10 +82,18 @@ export function ProfilePanel({
   return (
     <form className="flex flex-col gap-5" onSubmit={onSave}>
       <BusyOverlay show={pending} label="保存中…" />
+      {onOpenPlan && onOpenFoods ? (
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={onOpenPlan}>
+            プラン
+          </Button>
+          <Button type="button" variant="outline" className="flex-1" onClick={onOpenFoods}>
+            フード
+          </Button>
+        </div>
+      ) : null}
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
-        <p className="font-display text-lg font-semibold text-fg">プロフィール</p>
-        <p className="mt-1 text-sm text-muted">愛犬の名前と体重を残します。</p>
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="dog-name">名前</Label>
             <Input id="dog-name" value={name} maxLength={20} onChange={(event) => setName(event.target.value)} />

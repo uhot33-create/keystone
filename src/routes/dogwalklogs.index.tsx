@@ -9,8 +9,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Label } from "@/components/ui/label";
+import { PageHeading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkLogs, saveWalkLog, type WalkLog, type WalkLogList, type WalkMonthSummary } from "@/lib/walk-log/api";
+import { holdWalkLogs, peekWalkLogs } from "@/lib/walk-log/held";
 import { formatDuration, formatKm } from "@/lib/walk-log/format";
 import { parseGpxFile } from "@/lib/walk-log/gpx";
 
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/dogwalklogs/")({
 });
 
 function WalkLogsPage() {
-  const [logs, setLogs] = useState<WalkLogList | null>(null);
+  const [logs, setLogs] = useState<WalkLogList | null>(() => peekWalkLogs());
   const [openYears, setOpenYears] = useState<number[]>(() => [jstYear()]);
   const [openMonths, setOpenMonths] = useState<string[]>(() => [jstYearMonth()]);
   const [error, setError] = useState<string | null>(null);
@@ -35,10 +37,13 @@ function WalkLogsPage() {
   }, []);
 
   useEffect(() => {
+    if (peekWalkLogs()) return;
     let cancelled = false;
     getWalkLogs()
       .then((next) => {
-        if (!cancelled) setLogs(next);
+        if (cancelled) return;
+        holdWalkLogs(next);
+        setLogs(next);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
@@ -55,7 +60,9 @@ function WalkLogsPage() {
     setError(null);
     try {
       const parsed = await parseGpxFile(file);
-      setLogs(await saveWalkLog({ data: parsed }));
+      const saved = await saveWalkLog({ data: parsed });
+      holdWalkLogs(saved);
+      setLogs(saved);
     } catch (err) {
       setError(err instanceof Error ? err.message : "取り込みできませんでした");
     } finally {
@@ -64,14 +71,9 @@ function WalkLogsPage() {
   }
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
+    <div className="stagger-in flex flex-1 flex-col gap-4">
       <BusyOverlay show={pending || logs === null} label={pending ? "処理中…" : "読み込み中…"} />
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">おさんぽログ</h1>
-        <p className="mt-3 max-w-prose text-sm text-muted">
-          GPS アプリから書き出した GPX を入れて、距離と軌跡を残します。
-        </p>
-      </div>
+      <PageHeading title="おさんぽログ" />
 
       <div className="rounded-xl border border-border bg-surface p-5 shadow-card">
         <Label className="inline-flex h-11 cursor-pointer items-center rounded-md border border-border bg-primary px-4 text-sm font-medium text-primary-fg shadow-card">

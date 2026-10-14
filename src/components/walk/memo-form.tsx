@@ -9,6 +9,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
+import { dropWalkList } from "@/lib/walk/held";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, makeListThumb, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
 import type { DogBreed, DogColor, MemoImage, SexValue, WalkMemo } from "@/lib/walk/types";
@@ -283,6 +284,7 @@ export function MemoForm({
       } else {
         await createWalkMemo({ data: payload });
       }
+      dropWalkList();
       await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
@@ -298,6 +300,7 @@ export function MemoForm({
     setError(null);
     try {
       await deleteWalkMemo({ data: { id: memo.id } });
+      dropWalkList();
       await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
     } catch (err) {
       setError(err instanceof Error ? err.message : "削除できませんでした");

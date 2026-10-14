@@ -7,6 +7,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { MemoForm } from "@/components/walk/memo-form";
+import { PageHeading } from "@/components/page-heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkMemo } from "@/lib/walk/api";
 import type { DogBreed, DogColor, WalkMemo } from "@/lib/walk/types";
@@ -41,10 +42,8 @@ function WalkEdit() {
   }, [id]);
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">カードを編集</h1>
-      </div>
+    <div className="stagger-in flex flex-1 flex-col gap-4">
+      <PageHeading title="カードを編集" />
       {error ? (
         <p className="text-sm text-danger" role="alert">
           {error}

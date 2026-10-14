@@ -6,6 +6,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { VisitForm } from "@/components/vet/visit-form";
+import { PageHeading } from "@/components/page-heading";
 import type { VisitStatus } from "@/lib/vet/types";
 
 /** 検索 as を planned か done だけ通す。それ以外は未指定。 */
@@ -20,13 +21,8 @@ function VetNew() {
   const { as } = Route.useSearch();
   const planned = as !== "done";
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-5">
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">{planned ? "予定を追加" : "通院を追加"}</h1>
-        <p className="mt-1 text-sm text-muted">
-          {planned ? "行ったらこの予定を開いて、履歴にできます。" : "日付と目的だけでも残せます。"}
-        </p>
-      </div>
+    <div className="stagger-in flex flex-1 flex-col gap-4">
+      <PageHeading title={planned ? "予定を追加" : "通院を追加"} />
       <VisitForm initialStatus={planned ? "planned" : "done"} />
     </div>
   );

@@ -1,15 +1,11 @@
 /**
- * 「わんカロリー」画面（URL /calorie）です。下のタブで今日・プラン・フード・プロフィールを切り替えます。
- * 中身は today-panel / plan-panel / foods-panel / profile-panel に任せています。
+ * 「わんカロリー」画面（URL /calorie）です。
+ * ごはん・体重・おくすりは日付つきの入力。プランとフードはプロフィールから開きます。
  * 暮らし帳から開くときは、持っているデータと日付をそのまま使う。取り直さない。
  * 直接開いたときだけ getCalorieState を取る。
- * タブの文言は一番下の NavBtn（今日／プラン／フード／プロフィール）。
- * ごはん・体重・おくすりの画面ではこのタブを出さない。
- * 見出し「わんカロリー」を変えると画面タイトルだけ変わります。
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { DogSwitcher, rememberDogId, storedDogId } from "@/components/calorie/dog-switcher";
 import { FoodsPanel } from "@/components/calorie/foods-panel";
 import { PlanPanel } from "@/components/calorie/plan-panel";
@@ -17,6 +13,7 @@ import { ProfilePanel } from "@/components/calorie/profile-panel";
 import { TodayPanel } from "@/components/calorie/today-panel";
 import { clearCalorieOpenView, peekCalorieOpenView, takeCalorieOpenTab } from "@/components/calorie/menu-board";
 import { Protected } from "@/components/protected";
+import { PageHeading } from "@/components/page-heading";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCalorieState } from "@/lib/calorie/api";
@@ -29,7 +26,7 @@ export const Route = createFileRoute("/calorie")({
   component: CaloriePage,
 });
 
-/** 下の4タブ。today が初期表示です。id を増やすときは下の NavBtn とパネルの分岐も足してください。 */
+/** 今日・プラン・フード・プロフィール。下のタブは使わない。 */
 type Tab = "today" | "plan" | "foods" | "profile";
 
 function CaloriePage() {
@@ -45,11 +42,13 @@ function CalorieApp() {
   const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [todayHeading, setTodayHeading] = useState("わんカロリー");
-  const [todayView, setTodayView] = useState<"home" | "add" | "weight" | "meds">(() => peekCalorieOpenView());
+  const [openedView] = useState(() => peekCalorieOpenView());
+  const [todayHeading, setTodayHeading] = useState(() =>
+    openedView === "add" ? "ごはん" : openedView === "weight" ? "体重" : openedView === "meds" ? "おくすり" : "",
+  );
   const onHeading = useCallback((title: string) => setTodayHeading(title), []);
-  const onView = useCallback((next: "home" | "add" | "weight" | "meds") => setTodayView(next), []);
-  const hideNav = tab === "today" && (todayView === "add" || todayView === "weight" || todayView === "meds");
+  const pageTitle = tab === "plan" ? "プラン" : tab === "foods" ? "フード" : tab === "profile" ? "プロフィール" : todayHeading;
+  const quick = tab === "today" && (todayHeading === "ごはん" || todayHeading === "体重" || todayHeading === "おくすり");
 
   useEffect(() => {
     clearCalorieOpenView();
@@ -86,22 +85,22 @@ function CalorieApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className={`stagger-in flex flex-1 flex-col gap-6 ${hideNav ? "pb-6" : "pb-24"}`}>
-        <div className="flex flex-col gap-3">
-          <div>
-            <div className="flex items-start justify-between gap-3">
-              {tab === "today" && (todayHeading === "体重" || todayHeading === "ごはん") ? (
-                <h1 className="font-display text-3xl font-semibold text-fg">{todayHeading}</h1>
-              ) : null}
-            </div>
-            <p className={`text-sm text-muted ${tab === "today" && (todayHeading === "体重" || todayHeading === "ごはん") ? "mt-1" : ""}`}>
-              {state?.dog.name || "うちの子"}
-            </p>
+      <div className="stagger-in flex flex-1 flex-col gap-4">
+        {pageTitle ? (
+          <PageHeading title={pageTitle}>
+            {tab === "plan" || tab === "foods" ? (
+              <button type="button" className="text-sm font-medium text-primary" onClick={() => setTab("profile")}>
+                プロフィール
+              </button>
+            ) : null}
+          </PageHeading>
+        ) : null}
+        {quick ? null : (
+          <div className="flex flex-col gap-3">
+            {pageTitle ? null : <p className="text-sm text-muted">{state?.dog.name || "うちの子"}</p>}
+            {state ? <DogSwitcher state={state} onChange={onChange} onBusy={setBusy} onError={setError} /> : null}
           </div>
-          {state ? (
-            <DogSwitcher state={state} onChange={onChange} onBusy={setBusy} onError={setError} />
-          ) : null}
-        </div>
+        )}
 
         {error ? (
           <p className="text-sm text-danger" role="alert">
@@ -125,62 +124,18 @@ function CalorieApp() {
                 onOpenFoods={() => setTab("foods")}
                 onHeading={onHeading}
                 onOpenProfile={() => setTab("profile")}
-                onView={onView}
-                initialView={todayView}
+                initialView={openedView}
               />
             ) : tab === "plan" ? (
               <PlanPanel state={state} onChange={onChange} />
             ) : tab === "foods" ? (
               <FoodsPanel state={state} onChange={onChange} />
             ) : (
-              <ProfilePanel state={state} onChange={onChange} />
+              <ProfilePanel state={state} onChange={onChange} onOpenPlan={() => setTab("plan")} onOpenFoods={() => setTab("foods")} />
             )}
           </>
         )}
       </div>
-
-      {hideNav ? null : (
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface">
-        <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
-          <NavBtn active={tab === "today"} label="今日" onClick={() => setTab("today")}>
-            <Utensils className="size-5" strokeWidth={1.75} />
-          </NavBtn>
-          <NavBtn active={tab === "plan"} label="プラン" onClick={() => setTab("plan")}>
-            <CalendarDays className="size-5" strokeWidth={1.75} />
-          </NavBtn>
-          <NavBtn active={tab === "foods"} label="フード" onClick={() => setTab("foods")}>
-            <Bone className="size-5" strokeWidth={1.75} />
-          </NavBtn>
-          <NavBtn active={tab === "profile"} label="プロフィール" onClick={() => setTab("profile")}>
-            <PawPrint className="size-5" strokeWidth={1.75} />
-          </NavBtn>
-        </div>
-      </nav>
-      )}
     </div>
-  );
-}
-
-/** 下のタブボタンです。label が表示文言、children がアイコン。active のときだけ primary 色になります。 */
-function NavBtn({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex min-h-12 flex-col items-center justify-center gap-0.5 text-[11px] ${active ? "text-primary" : "text-subtle"}`}
-    >
-      {children}
-      {label}
-    </button>
   );
 }

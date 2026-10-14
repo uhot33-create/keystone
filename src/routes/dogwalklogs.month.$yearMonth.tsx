@@ -4,9 +4,11 @@
  * 同じ地図に載せる範囲は 700m（merge.ts の REGION_CELL_M）。説明文もこの画面。
  * 線を切る距離は gpx.ts の TRACK_GAP_M。地図部品は TrackMap。
  */
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
+import { ListBackBar } from "@/components/list-back-bar";
+import { PageHeading } from "@/components/page-heading";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkMonth, type WalkMonthTrack } from "@/lib/walk-log/api";
@@ -41,14 +43,10 @@ function WalkMonthPage() {
   const label = monthLabel(yearMonth);
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
+    <div className="stagger-in flex flex-1 flex-col gap-4 pb-24">
       <BusyOverlay show={!month && !error} label="読み込み中…" />
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">{label}</h1>
-      </div>
-      <Link to="/dogwalklogs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-        ログ一覧へ
-      </Link>
+      <PageHeading title={label} />
+      <ListBackBar to="/dogwalklogs" />
       {error ? (
         <p className="text-sm text-danger" role="alert">
           {error}

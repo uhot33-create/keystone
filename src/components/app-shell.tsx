@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-8 sm:py-12">
+      <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-5 py-4">
         {children}
       </main>
     </PaperWash>

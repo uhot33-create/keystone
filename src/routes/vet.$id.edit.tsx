@@ -7,6 +7,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { VisitForm } from "@/components/vet/visit-form";
+import { PageHeading } from "@/components/page-heading";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getVetVisit } from "@/lib/vet/api";
@@ -35,13 +36,9 @@ function VetEdit() {
   }, [id]);
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-5">
+    <div className="stagger-in flex flex-1 flex-col gap-4">
       <BusyOverlay show={!visit && !error} label="読み込み中…" />
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">
-          {visit?.status === "planned" ? "予定を編集" : "通院を編集"}
-        </h1>
-      </div>
+      <PageHeading title={visit?.status === "planned" ? "予定を編集" : "通院を編集"} />
       {error ? (
         <p className="text-sm text-danger" role="alert">
           {error}

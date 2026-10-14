@@ -21,6 +21,7 @@ import {
 } from "@/lib/cup/api";
 import { fileFromImageSrc, imageFileFromClipboard, prepareImageFile } from "@/lib/walk/image";
 import { Button } from "@/components/ui/button";
+import { PageHeading } from "@/components/page-heading";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,7 +106,7 @@ export function CupApp() {
     <div className="stagger-in flex flex-1 flex-col gap-4">
       <BusyOverlay show={items === null || busy} label={items === null ? "読み込み中…" : "保存中…"} />
       <div>
-        <h1 className="font-display text-2xl font-semibold text-fg">カップ麺</h1>
+        <PageHeading title="カップ麺" />
         <p className="mt-1 text-xs text-muted">期限が近いものから並びます。30日以内は強調します。</p>
       </div>
       <div className="grid grid-cols-3 rounded-md bg-surface-2 p-1">

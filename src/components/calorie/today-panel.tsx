@@ -149,7 +149,7 @@ export function TodayPanel({
   }, [view]);
 
   useEffect(() => {
-    onHeading?.(view === "weight" ? "体重" : view === "add" ? "ごはん" : "わんカロリー");
+    onHeading?.(view === "weight" ? "体重" : view === "add" ? "ごはん" : view === "meds" ? "おくすり" : "");
     onView?.(view);
   }, [view, onHeading, onView]);
 

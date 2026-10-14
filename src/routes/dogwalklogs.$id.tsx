@@ -7,10 +7,13 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TrackMap } from "@/components/walk/track-map";
+import { ListBackBar } from "@/components/list-back-bar";
+import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { deleteWalkLog, getWalkLog, type WalkLogDetail } from "@/lib/walk-log/api";
+import { dropWalkLogs } from "@/lib/walk-log/held";
 import { formatDuration, formatKm, formatLogWhen } from "@/lib/walk-log/format";
 
 /** 詳細ルート。id は URL。前後は getWalkLog の prevId / nextId。 */
@@ -46,6 +49,7 @@ function WalkLogDetail() {
     setPending(true);
     try {
       await deleteWalkLog({ data: { id: log.id } });
+      dropWalkLogs();
       const fallback = log.nextId || log.prevId;
       await navigate(fallback ? { to: "/dogwalklogs/$id", params: { id: fallback } } : { to: "/dogwalklogs" });
     } catch (err) {
@@ -55,14 +59,10 @@ function WalkLogDetail() {
   }
 
   return (
-    <div className="stagger-in flex flex-1 flex-col gap-6">
+    <div className="stagger-in flex flex-1 flex-col gap-4 pb-24">
       <BusyOverlay show={pending || !log} label={pending ? "処理中…" : "読み込み中…"} />
-      <div>
-        <h1 className="font-display text-3xl font-semibold text-fg">{log?.name ?? "おさんぽログ"}</h1>
-      </div>
-      <Link to="/dogwalklogs" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-        ログ一覧へ
-      </Link>
+      <PageHeading title={log?.name ?? "おさんぽログ"} />
+      <ListBackBar to="/dogwalklogs" />
       <LogNav prevId={log?.prevId} nextId={log?.nextId} />
       {error ? (
         <p className="text-sm text-danger" role="alert">
