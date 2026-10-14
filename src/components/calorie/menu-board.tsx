@@ -13,13 +13,25 @@ const OPEN_TAB_KEY = "calorie-open-tab";
 
 export type CalorieMenuView = "weight" | "add" | "meds";
 
-/** 暮らし帳から開いたあと、今日画面が一度だけ読む。読んだら消す。 */
-export function takeCalorieOpenView(): "home" | CalorieMenuView {
+/** 暮らし帳から開く画面。読むだけ。 */
+export function peekCalorieOpenView(): "home" | CalorieMenuView {
   if (typeof sessionStorage === "undefined") return "home";
   const value = sessionStorage.getItem(OPEN_VIEW_KEY);
-  sessionStorage.removeItem(OPEN_VIEW_KEY);
   if (value === "weight" || value === "add" || value === "meds") return value;
   return "home";
+}
+
+/** 開いたあとに消す。 */
+export function clearCalorieOpenView() {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.removeItem(OPEN_VIEW_KEY);
+}
+
+/** 暮らし帳から開いたあと、今日画面が一度だけ読む。読んだら消す。 */
+export function takeCalorieOpenView(): "home" | CalorieMenuView {
+  const value = peekCalorieOpenView();
+  clearCalorieOpenView();
+  return value;
 }
 
 /** 歯車から開いたプロフィール。一度だけ読む。 */

@@ -1,11 +1,11 @@
 /**
  * 「わんカロリー」画面（URL /calorie）です。下のタブで今日・プラン・フード・プロフィールを切り替えます。
  * 中身は today-panel / plan-panel / foods-panel / profile-panel に任せています。
- * 最初の読み込みは今日（日本時間）と、前回選んだ犬（localStorage の calorie-dog-id）です。
+ * 暮らし帳から開くときは、持っているデータと日付をそのまま使う。取り直さない。
+ * 直接開いたときだけ getCalorieState を取る。
  * タブの文言は一番下の NavBtn（今日／プラン／フード／プロフィール）。
  * ごはん・体重・おくすりの画面ではこのタブを出さない。
- * 見出し「わんカロリー」を変えると画面タイトルだけ変わります。データの取得は api.ts の getCalorieState。
- * 未ログインのときは Protected が止め、loader は session が無いと null を返して画面側で取り直します。
+ * 見出し「わんカロリー」を変えると画面タイトルだけ変わります。
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { Bone, CalendarDays, PawPrint, Utensils } from "lucide-react";
@@ -15,23 +15,17 @@ import { FoodsPanel } from "@/components/calorie/foods-panel";
 import { PlanPanel } from "@/components/calorie/plan-panel";
 import { ProfilePanel } from "@/components/calorie/profile-panel";
 import { TodayPanel } from "@/components/calorie/today-panel";
-import { takeCalorieOpenTab } from "@/components/calorie/menu-board";
+import { clearCalorieOpenView, peekCalorieOpenView, takeCalorieOpenTab } from "@/components/calorie/menu-board";
 import { Protected } from "@/components/protected";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCalorieState } from "@/lib/calorie/api";
+import { holdCalorieState, peekCalorieState } from "@/lib/calorie/held";
 import { todayJst } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 
-/**
- * このURLの入口です。ログイン済みなら、今日の日付と前回の犬で getCalorieState を先に取ります。
- * 未ログインのときは null。画面側の useEffect がもう一度取りにいきます。
- */
+/** このURLの入口です。データは画面側で、暮らし帳から渡されたものを優先します。 */
 export const Route = createFileRoute("/calorie")({
-  loader: async ({ context }) => {
-    if (!context.sessionUser) return null;
-    return getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } });
-  },
   component: CaloriePage,
 });
 
@@ -47,62 +41,46 @@ function CaloriePage() {
 }
 
 function CalorieApp() {
-  const loaded = Route.useLoaderData();
   const [tab, setTab] = useState<Tab>("today");
-  const [state, setState] = useState<CalorieState | null>(loaded);
+  const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [todayHeading, setTodayHeading] = useState("わんカロリー");
-  const [todayView, setTodayView] = useState<"home" | "add" | "weight" | "meds">("home");
+  const [todayView, setTodayView] = useState<"home" | "add" | "weight" | "meds">(() => peekCalorieOpenView());
   const onHeading = useCallback((title: string) => setTodayHeading(title), []);
   const onView = useCallback((next: "home" | "add" | "weight" | "meds") => setTodayView(next), []);
   const hideNav = tab === "today" && (todayView === "add" || todayView === "weight" || todayView === "meds");
 
   useEffect(() => {
+    clearCalorieOpenView();
     const next = takeCalorieOpenTab();
     if (next) setTab(next);
   }, []);
 
   useEffect(() => {
+    if (peekCalorieState()) {
+      rememberDogId(peekCalorieState()!.dog.id);
+      return;
+    }
     let cancelled = false;
-    if (!loaded) {
-      getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
-        .then((next) => {
-          if (cancelled) return;
-          rememberDogId(next.dog.id);
-          setState(next);
-        })
-        .catch((err: unknown) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    const wanted = storedDogId();
-    if (wanted && wanted !== loaded.dog.id && loaded.dogs.some((dog) => dog.id === wanted)) {
-      getCalorieState({ data: { date: todayJst(), dogId: wanted } })
-        .then((next) => {
-          if (cancelled) return;
-          rememberDogId(next.dog.id);
-          setState(next);
-        })
-        .catch((err: unknown) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    rememberDogId(loaded.dog.id);
-    setState(loaded);
+    getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
+      .then((next) => {
+        if (cancelled) return;
+        rememberDogId(next.dog.id);
+        holdCalorieState(next);
+        setState(next);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "読み込みに失敗しました");
+      });
     return () => {
       cancelled = true;
     };
-  }, [loaded]);
+  }, []);
 
   function onChange(next: CalorieState) {
     rememberDogId(next.dog.id);
+    holdCalorieState(next);
     setState(next);
   }
 
@@ -148,6 +126,7 @@ function CalorieApp() {
                 onHeading={onHeading}
                 onOpenProfile={() => setTab("profile")}
                 onView={onView}
+                initialView={todayView}
               />
             ) : tab === "plan" ? (
               <PlanPanel state={state} onChange={onChange} />

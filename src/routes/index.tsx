@@ -13,6 +13,7 @@ import { HomeCalorieDate } from "@/components/calorie/home-date";
 import { rememberDogId, storedDogId } from "@/components/calorie/dog-switcher";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { getCalorieState } from "@/lib/calorie/api";
+import { holdCalorieState, peekCalorieState } from "@/lib/calorie/held";
 import { dailyEnergy, todayJst, truncKcal } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
@@ -46,7 +47,7 @@ function MenuScreen() {
 }
 
 function CardMenu() {
-  const [state, setState] = useState<CalorieState | null>(null);
+  const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
   const [busy, setBusy] = useState(false);
   const dog = state
     ? calorieSaburoStage(
@@ -56,10 +57,13 @@ function CardMenu() {
     : { src: "/calorie/saburo/01-standard.jpg", label: "今の体型" };
 
   useEffect(() => {
+    if (peekCalorieState()) return;
     let cancelled = false;
     getCalorieState({ data: { date: todayJst(), dogId: storedDogId() } })
       .then((next) => {
-        if (!cancelled) setState(next);
+        if (cancelled) return;
+        holdCalorieState(next);
+        setState(next);
       })
       .catch(() => {
         /* 取れなくてもメニューは出す */
@@ -69,12 +73,17 @@ function CardMenu() {
     };
   }, []);
 
+  function publish(next: CalorieState) {
+    holdCalorieState(next);
+    setState(next);
+  }
+
   async function selectDog(dogId: number) {
     if (!state || dogId === state.dog.id) return;
     setBusy(true);
     try {
       rememberDogId(dogId);
-      setState(await getCalorieState({ data: { date: state.date, dogId } }));
+      publish(await getCalorieState({ data: { date: state.date, dogId } }));
     } catch {
       /* 失敗しても今の犬のまま */
     } finally {
@@ -96,7 +105,7 @@ function CardMenu() {
           onSelectDog={(id) => void selectDog(id)}
         />
       </nav>
-      {state ? <HomeCalorieDate state={state} onChange={setState} /> : null}
+      {state ? <HomeCalorieDate state={state} onChange={publish} /> : null}
     </div>
   );
 }

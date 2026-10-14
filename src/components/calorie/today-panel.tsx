@@ -25,7 +25,7 @@ import {
 } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
-import { CalorieMenuBoard, takeCalorieOpenView } from "@/components/calorie/menu-board";
+import { CalorieMenuBoard } from "@/components/calorie/menu-board";
 import { rememberDogId } from "@/components/calorie/dog-switcher";
 import { MenuDayNotes } from "@/components/calorie/menu-day-notes";
 import { DateBar } from "@/components/calorie/date-bar";
@@ -103,6 +103,7 @@ export function TodayPanel({
   onHeading,
   onOpenProfile,
   onView,
+  initialView = "home",
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
@@ -110,6 +111,7 @@ export function TodayPanel({
   onHeading?: (title: string) => void;
   onOpenProfile?: () => void;
   onView?: (view: "home" | "add" | "weight" | "meds") => void;
+  initialView?: "home" | "add" | "weight" | "meds";
 }) {
   const [kind, setKind] = useState<FoodKind>("food");
   const [foodId, setFoodId] = useState<number | null>(null);
@@ -130,7 +132,7 @@ export function TodayPanel({
   const [stapleId, setStapleId] = useState<number | null>(null);
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
-  const [view, setView] = useState<"home" | "add" | "weight" | "meds">("home");
+  const [view, setView] = useState<"home" | "add" | "weight" | "meds">(initialView);
   const skipScroll = useRef(true);
   const dayRequest = useRef(0);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
@@ -145,11 +147,6 @@ export function TodayPanel({
     }
     window.scrollTo(0, 0);
   }, [view]);
-
-  useEffect(() => {
-    const next = takeCalorieOpenView();
-    if (next !== "home") setView(next);
-  }, []);
 
   useEffect(() => {
     onHeading?.(view === "weight" ? "体重" : view === "add" ? "ごはん" : "わんカロリー");
