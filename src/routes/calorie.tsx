@@ -2,7 +2,8 @@
  * 「わんカロリー」画面（URL /calorie）です。下のタブで今日・プラン・フード・プロフィールを切り替えます。
  * 中身は today-panel / plan-panel / foods-panel / profile-panel に任せています。
  * 最初の読み込みは今日（日本時間）と、前回選んだ犬（localStorage の calorie-dog-id）です。
- * タブの文言は一番下の NavBtn（プラン／フード／プロフィール）。プロフィールだけ「今日」を出さない。
+ * タブの文言は一番下の NavBtn（今日／プラン／フード／プロフィール）。
+ * ごはん・体重・おくすりの画面ではこのタブを出さない。
  * 見出し「わんカロリー」を変えると画面タイトルだけ変わります。データの取得は api.ts の getCalorieState。
  * 未ログインのときは Protected が止め、loader は session が無いと null を返して画面側で取り直します。
  */
@@ -52,7 +53,10 @@ function CalorieApp() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [todayHeading, setTodayHeading] = useState("わんカロリー");
+  const [todayView, setTodayView] = useState<"home" | "add" | "weight" | "meds">("home");
   const onHeading = useCallback((title: string) => setTodayHeading(title), []);
+  const onView = useCallback((next: "home" | "add" | "weight" | "meds") => setTodayView(next), []);
+  const hideNav = tab === "today" && (todayView === "add" || todayView === "weight" || todayView === "meds");
 
   useEffect(() => {
     const next = takeCalorieOpenTab();
@@ -104,7 +108,7 @@ function CalorieApp() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="stagger-in flex flex-1 flex-col gap-6 pb-24">
+      <div className={`stagger-in flex flex-1 flex-col gap-6 ${hideNav ? "pb-6" : "pb-24"}`}>
         <div className="flex flex-col gap-3">
           <div>
             <div className="flex items-start justify-between gap-3">
@@ -143,6 +147,7 @@ function CalorieApp() {
                 onOpenFoods={() => setTab("foods")}
                 onHeading={onHeading}
                 onOpenProfile={() => setTab("profile")}
+                onView={onView}
               />
             ) : tab === "plan" ? (
               <PlanPanel state={state} onChange={onChange} />
@@ -155,15 +160,12 @@ function CalorieApp() {
         )}
       </div>
 
+      {hideNav ? null : (
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-surface">
-        <div
-          className={`mx-auto grid max-w-3xl px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1 ${tab === "profile" ? "grid-cols-3" : "grid-cols-4"}`}
-        >
-          {tab === "profile" ? null : (
-            <NavBtn active={tab === "today"} label="今日" onClick={() => setTab("today")}>
-              <Utensils className="size-5" strokeWidth={1.75} />
-            </NavBtn>
-          )}
+        <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
+          <NavBtn active={tab === "today"} label="今日" onClick={() => setTab("today")}>
+            <Utensils className="size-5" strokeWidth={1.75} />
+          </NavBtn>
           <NavBtn active={tab === "plan"} label="プラン" onClick={() => setTab("plan")}>
             <CalendarDays className="size-5" strokeWidth={1.75} />
           </NavBtn>
@@ -175,6 +177,7 @@ function CalorieApp() {
           </NavBtn>
         </div>
       </nav>
+      )}
     </div>
   );
 }
