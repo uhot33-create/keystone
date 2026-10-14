@@ -2,7 +2,7 @@
  * トップページ。未ログインはログイン画面、ログイン後はカードメニュー。
  * 犬と人のメニューは components/calorie/menu-board.tsx。色は styles.css。
  */
-import { createFileRoute, useRouteContext } from "@tanstack/react-router";
+import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +17,7 @@ import { holdCalorieState, peekCalorieState } from "@/lib/calorie/held";
 import { dailyEnergy, todayJst, truncKcal } from "@/lib/calorie/formula";
 import { calorieSaburoStage } from "@/lib/calorie/saburo";
 import { dogMenuSrc, personMenuSrc } from "@/lib/calorie/portraits";
+import { warmMenus } from "@/lib/warm-menus";
 import type { CalorieState } from "@/lib/calorie/types";
 
 /** / 。セッションがあればメニュー、無ければログイン。 */
@@ -47,6 +48,7 @@ function MenuScreen() {
 }
 
 function CardMenu() {
+  const router = useRouter();
   const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
   const [busy, setBusy] = useState(false);
   const dog = state
@@ -55,6 +57,10 @@ function CardMenu() {
         dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage),
       )
     : { src: "/calorie/saburo/01-standard.jpg", label: "今の体型" };
+
+  useEffect(() => {
+    warmMenus(router);
+  }, [router]);
 
   useEffect(() => {
     if (peekCalorieState()) return;

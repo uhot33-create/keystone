@@ -13,5 +13,7 @@ export function getRouter() {
     defaultErrorComponent: AppErrorComponent,
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
+    defaultPreload: "viewport",
+    defaultPreloadDelay: 0,
   });
 }
