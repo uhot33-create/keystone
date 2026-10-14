@@ -142,18 +142,16 @@ export function TrendChart({
   return (
     <div className="rounded-xl border border-border bg-surface p-4 shadow-card">
       <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
-          <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs leading-snug text-muted">
-            <span>{shown ? `${formatKcal(shown.kcal)} kcal` : "—"}</span>
-            {shown?.weightKg != null ? <span>{shown.weightKg.toFixed(2)} kg</span> : null}
-            {shown && (shown.walkKm ?? 0) > 0 ? <span>{walkLabel(shown.walkKm)} km</span> : null}
-          </p>
-        </div>
-          <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={onToday} disabled={isToday}>
-            今日
-          </Button>
-        </div>
+        <p className="font-display text-lg font-semibold text-fg">{grainTitle(grain)}</p>
+        <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={onToday} disabled={isToday}>
+          今日
+        </Button>
+      </div>
+      <p className="mt-0.5 flex flex-nowrap gap-x-3 whitespace-nowrap text-xs text-muted">
+        <span>{shown ? `${formatKcal(shown.kcal)} kcal` : "—"}</span>
+        {shown?.weightKg != null ? <span>{shown.weightKg.toFixed(2)} kg</span> : null}
+        {shown && (shown.walkKm ?? 0) > 0 ? <span>{walkLabel(shown.walkKm)} km</span> : null}
+      </p>
       <div className="mt-3 grid grid-cols-4 rounded-md bg-surface-2 p-1">
         {TREND_GRAINS.map((item) => (
           <button
