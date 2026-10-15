@@ -40,6 +40,26 @@ export type CalorieStaple = {
   qty: number;
 };
 
+/** まとめて入力の定番。カロリー計算に必要なフード情報も持つ。 */
+export type HouseholdStaple = {
+  id: number;
+  foodId: number;
+  name: string;
+  qty: number;
+  unit: string;
+  kcal: number;
+  amount: number;
+  kind: FoodKind;
+};
+
+/** ある日の、犬1頭分の体重と定番。まとめて入力画面が使う。 */
+export type HouseholdDogDay = {
+  id: number;
+  name: string;
+  weightKg: number | null;
+  staples: HouseholdStaple[];
+};
+
 /** その日の投薬。dueTime は毎日の予定時刻（HH:MM）。済か未かは投与記録、機能追加前かは app_settings.medicine_added_on と比べる。 */
 export type DogMedicine = {
   id: number;

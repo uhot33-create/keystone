@@ -14,7 +14,7 @@ import { getSql } from "@/lib/db";
 import { assertCalorieEditable, dailyEnergy, isLifeStageId, todayJst, truncKcal } from "./formula";
 import { DEFAULT_DOG_PORTRAIT, DEFAULT_PERSON_PORTRAIT, isDogPortrait, isPersonPortrait } from "./portraits";
 import { attachGuides, attachWalks, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
-import type { CalorieLog, CalorieState, DayTrend, DogMedicine, DogProfile, FoodKind, LogKind, TrendGrain } from "./types";
+import type { CalorieLog, CalorieState, DayTrend, DogMedicine, DogProfile, FoodKind, HouseholdDogDay, LogKind, TrendGrain } from "./types";
 
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -1096,4 +1096,131 @@ export const saveWeightLog = createServerFn({ method: "POST" })
     `;
     await refreshDogStats(sql, context.userId, dog.id, data.date);
     return loadState(context.userId, data.date, dog.id);
+  });
+
+type HouseholdRow = {
+  id: number;
+  name: string;
+  weight_kg: unknown;
+  staples: unknown;
+};
+
+function mapHouseholdDogs(rows: HouseholdRow[]): HouseholdDogDay[] {
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    weightKg: row.weight_kg == null ? null : num(row.weight_kg, 2),
+    staples: asRows<{
+      id: number;
+      food_id: number;
+      name: string;
+      qty: unknown;
+      unit: string;
+      kcal: unknown;
+      amount: unknown;
+      kind: string;
+    }>(row.staples).map((item) => ({
+      id: item.id,
+      foodId: item.food_id,
+      name: item.name,
+      qty: num(item.qty),
+      unit: item.unit,
+      kcal: num(item.kcal),
+      amount: num(item.amount),
+      kind: asKind(item.kind),
+    })),
+  }));
+}
+
+/** その日の全頭の体重と定番。まとめて入力が使う。グラフは取らない。 */
+async function loadHouseholdDay(userId: string, date: string): Promise<HouseholdDogDay[]> {
+  const sql = await getSql();
+  const rows = await sql<HouseholdRow>`
+    select
+      d.id,
+      d.name,
+      (
+        select w.weight_kg
+        from dog_weight_logs w
+        where w.user_id = ${userId} and w.dog_id = d.id and w.log_date = ${date}
+        limit 1
+      ) as weight_kg,
+      coalesce((
+        select json_agg(json_build_object(
+          'id', s.id,
+          'food_id', f.id,
+          'name', f.name,
+          'qty', s.qty,
+          'unit', f.unit,
+          'kcal', f.kcal,
+          'amount', f.amount,
+          'kind', f.kind
+        ) order by s.sort_order, s.id)
+        from calorie_staples s
+        join dog_foods f on f.id = s.food_id and f.user_id = s.user_id
+        where s.user_id = ${userId} and s.dog_id = d.id
+      ), '[]'::json) as staples
+    from dogs d
+    where d.user_id = ${userId}
+    order by d.id
+  `;
+  return mapHouseholdDogs(rows);
+}
+
+export const getHouseholdDay = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(z.object({ date: dateInput.shape.date }), input))
+  .handler(async ({ context, data }) => loadHouseholdDay(context.userId, isoDate(data.date)));
+
+const saveHouseholdWeightsInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
+  weights: z
+    .array(
+      z.object({
+        dogId: z.number().int().positive(),
+        weightKg: z.number().positive("体重を入力してください").max(120),
+      }),
+    )
+    .min(1, "保存する体重がありません")
+    .max(10),
+});
+
+/** 複数の犬の体重を、その日の20時として一度に保存する。空欄の犬は送らない。 */
+export const saveHouseholdWeights = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(saveHouseholdWeightsInput, input))
+  .handler(async ({ context, data }) => {
+    assertCalorieEditable(data.date);
+    const sql = await getSql();
+    const measuredAt = measuredAt20(data.date);
+    for (const item of data.weights) {
+      const dog = await requireDog(context.userId, item.dogId);
+      const weightKg = num(item.weightKg, 2);
+      await sql`
+        insert into dog_weight_logs (user_id, dog_id, log_date, weight_kg, measured_at, updated_at)
+        values (
+          ${context.userId},
+          ${dog.id},
+          ${data.date},
+          ${weightKg},
+          ${measuredAt}::timestamptz,
+          now()
+        )
+        on conflict (dog_id, log_date) do update set
+          weight_kg = excluded.weight_kg,
+          measured_at = excluded.measured_at,
+          updated_at = now()
+      `;
+      await sql`
+        update dogs
+        set current_weight_kg = ${weightKg}, updated_at = now()
+        where id = ${dog.id} and user_id = ${context.userId}
+          and not exists (
+            select 1 from dog_weight_logs
+            where dog_id = ${dog.id} and log_date > ${data.date}
+          )
+      `;
+      await refreshDogStats(sql, context.userId, dog.id, data.date);
+    }
+    return loadHouseholdDay(context.userId, data.date);
   });

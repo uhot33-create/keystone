@@ -2,7 +2,7 @@
  * トップページ。未ログインはログイン画面、ログイン後はカードメニュー。
  * 犬と人のメニューは components/calorie/menu-board.tsx。色は styles.css。
  */
-import { createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
+import { Link, createFileRoute, useRouteContext, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { AppShell } from "@/components/app-shell";
@@ -111,6 +111,15 @@ function CardMenu() {
           onSelectDog={(id) => void selectDog(id)}
         />
       </nav>
+      {state && state.dogs.length >= 2 ? (
+        <Link
+          to="/calorie-batch"
+          search={{ date: state.date }}
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          体重とごはんをまとめて
+        </Link>
+      ) : null}
       {state ? <HomeCalorieDate state={state} onChange={publish} /> : null}
     </div>
   );

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalorieRouteImport } from './routes/calorie'
+import { Route as CalorieBatchRouteImport } from './routes/calorie-batch'
 import { Route as CupRouteImport } from './routes/cup'
 import { Route as DogfriendRouteImport } from './routes/dogfriend'
 import { Route as DogwalklogsRouteImport } from './routes/dogwalklogs'
@@ -43,6 +44,11 @@ const IndexRoute = IndexRouteImport.update({
 const CalorieRoute = CalorieRouteImport.update({
   id: '/calorie',
   path: '/calorie',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalorieBatchRoute = CalorieBatchRouteImport.update({
+  id: '/calorie-batch',
+  path: '/calorie-batch',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CupRoute = CupRouteImport.update({
@@ -165,6 +171,7 @@ const VetIdEditRoute = VetIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/calorie-batch': typeof CalorieBatchRoute
   '/cup': typeof CupRoute
   '/dogfriend': typeof DogfriendRouteWithChildren
   '/dogwalklogs': typeof DogwalklogsRouteWithChildren
@@ -192,6 +199,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/calorie-batch': typeof CalorieBatchRoute
   '/cup': typeof CupRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calorie': typeof CalorieRoute
+  '/calorie-batch': typeof CalorieBatchRoute
   '/cup': typeof CupRoute
   '/dogfriend': typeof DogfriendRouteWithChildren
   '/dogwalklogs': typeof DogwalklogsRouteWithChildren
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calorie'
+    | '/calorie-batch'
     | '/cup'
     | '/dogfriend'
     | '/dogwalklogs'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calorie'
+    | '/calorie-batch'
     | '/cup'
     | '/forgot-password'
     | '/login'
@@ -297,6 +308,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calorie'
+    | '/calorie-batch'
     | '/cup'
     | '/dogfriend'
     | '/dogwalklogs'
@@ -325,6 +337,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalorieRoute: typeof CalorieRoute
+  CalorieBatchRoute: typeof CalorieBatchRoute
   CupRoute: typeof CupRoute
   DogfriendRoute: typeof DogfriendRouteWithChildren
   DogwalklogsRoute: typeof DogwalklogsRouteWithChildren
@@ -355,6 +368,13 @@ declare module '@tanstack/react-router' {
       path: '/calorie'
       fullPath: '/calorie'
       preLoaderRoute: typeof CalorieRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calorie-batch': {
+      id: '/calorie-batch'
+      path: '/calorie-batch'
+      fullPath: '/calorie-batch'
+      preLoaderRoute: typeof CalorieBatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cup': {
@@ -570,6 +590,7 @@ const VetRouteWithChildren = VetRoute._addFileChildren(VetRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalorieRoute: CalorieRoute,
+  CalorieBatchRoute: CalorieBatchRoute,
   CupRoute: CupRoute,
   DogfriendRoute: DogfriendRouteWithChildren,
   DogwalklogsRoute: DogwalklogsRouteWithChildren,
@@ -588,12 +609,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

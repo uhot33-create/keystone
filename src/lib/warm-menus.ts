@@ -23,6 +23,7 @@ export function warmMenus(router: AnyRouter) {
   if (started || typeof window === "undefined") return;
   started = true;
   void router.preloadRoute({ to: "/calorie" }).catch(() => undefined);
+  void router.preloadRoute({ to: "/calorie-batch" }).catch(() => undefined);
   void router.preloadRoute({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH }).catch(() => undefined);
   void router.preloadRoute({ to: "/dogwalklogs" }).catch(() => undefined);
   void router.preloadRoute({ to: "/vet" }).catch(() => undefined);
