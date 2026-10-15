@@ -83,6 +83,11 @@ export function CountPanel({
             <p className={`mt-0.5 font-display text-lg font-semibold ${empty ? "text-danger" : "text-fg"}`}>
               {empty ? "残りはありません" : `あと ${state.remaining} 本`}
             </p>
+            {state.badges.streak > 0 ? (
+              <p className={`mt-1 text-sm font-medium ${state.exceeded ? "text-danger" : "text-fg"}`}>
+                {state.exceeded ? "連続は0時に切れます" : `連続 ${state.badges.streak} 日`}
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-muted">前回吸った日時</p>
             <p className="mt-0.5 text-sm text-fg">
               {state.lastSmokedAt ? formatJaDateTime(state.lastSmokedAt) : "まだ減算していません"}

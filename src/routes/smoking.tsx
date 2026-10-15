@@ -6,15 +6,17 @@
  * 見出し下の一文はリセットが日本時間0時であることの説明。
  */
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CountPanel } from "@/components/smoking/count-panel";
 import { MasterPanel } from "@/components/smoking/master-panel";
 import { BadgePanel } from "@/components/smoking/badge-panel";
 import { PageHeading } from "@/components/page-heading";
 import { Protected } from "@/components/protected";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSmokingBadges, getSmokingState } from "@/lib/smoking/api";
+import { markCheersSeen, pendingCheers, type Cheer } from "@/lib/smoking/celebrate";
 import { holdSmoking, peekSmoking, smokingBadgesLoaded } from "@/lib/smoking/held";
 import type { SmokingState } from "@/lib/smoking/types";
 
@@ -33,6 +35,9 @@ function SmokingApp() {
   const [tab, setTab] = useState<"count" | "master" | "badge">("count");
   const [state, setState] = useState<SmokingState | null>(() => peekSmoking());
   const [error, setError] = useState<string | null>(null);
+  const [cheers, setCheers] = useState<Cheer[]>([]);
+  const [cheerIndex, setCheerIndex] = useState(0);
+  const askedBadges = useRef(false);
 
   useEffect(() => {
     if (peekSmoking()) return;
@@ -54,7 +59,8 @@ function SmokingApp() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "badge" || smokingBadgesLoaded()) return;
+    if (!state || smokingBadgesLoaded() || askedBadges.current) return;
+    askedBadges.current = true;
     let cancelled = false;
     getSmokingBadges()
       .then((badges) => {
@@ -73,15 +79,68 @@ function SmokingApp() {
     return () => {
       cancelled = true;
     };
-  }, [tab]);
+  }, [state]);
+
+  const badgeStamp =
+    state && smokingBadgesLoaded()
+      ? [
+          state.badges.lastEvaluatedOn,
+          state.badges.lifetimeNice,
+          state.badges.streak,
+          state.badges.wonderfulCount,
+          state.badges.veryNiceCount,
+          state.badges.quietWeekCount,
+          state.badges.weekEarned,
+          state.badges.monthEarned,
+          state.badges.hundredEarned,
+          state.badges.startEarned,
+        ].join(":")
+      : "";
+
+  useEffect(() => {
+    const current = peekSmoking();
+    if (!current || !badgeStamp) return;
+    const next = pendingCheers(current.badges);
+    if (next.length === 0) {
+      markCheersSeen(current.badges);
+      return;
+    }
+    setCheerIndex(0);
+    setCheers(next);
+  }, [badgeStamp]);
 
   function applyState(next: SmokingState) {
     setState((prev) => {
+      const periodChanged = Boolean(prev && next.periodStartedAt !== prev.periodStartedAt);
       const merged = prev ? { ...next, badges: prev.badges } : next;
       holdSmoking(merged);
+      if (periodChanged) {
+        void getSmokingBadges()
+          .then((badges) => {
+            setState((current) => {
+              if (!current) return current;
+              const withBadges = { ...current, badges };
+              holdSmoking(withBadges, true);
+              return withBadges;
+            });
+          })
+          .catch(() => undefined);
+      }
       return merged;
     });
   }
+
+  function closeCheer() {
+    if (!state) return;
+    if (cheerIndex + 1 < cheers.length) {
+      setCheerIndex((index) => index + 1);
+      return;
+    }
+    markCheersSeen(state.badges);
+    setCheers([]);
+  }
+
+  const cheer = cheers[cheerIndex];
 
   return (
     <div className="stagger-in flex flex-1 flex-col gap-3">
@@ -119,6 +178,24 @@ function SmokingApp() {
       ) : (
         <BadgePanel state={state} />
       )}
+      {cheer ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-fg/45 p-6" role="dialog" aria-label="達成">
+          <div className="w-full max-w-xs rounded-xl border border-border bg-surface px-6 py-7 text-center shadow-card">
+            <p className="text-xs font-medium tracking-widest text-subtle">達成</p>
+            <div className="mx-auto mt-4 grid size-36 place-items-center rounded-full border-4 border-danger rotate-[-2deg] bg-surface">
+              <div className="grid size-28 place-items-center rounded-full border border-danger">
+                <span className="font-display text-xl font-semibold tracking-[0.2em] text-danger" style={{ writingMode: "vertical-rl" }}>
+                  {cheer.title}
+                </span>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-fg">{cheer.line}</p>
+            <Button type="button" className="mt-6 w-full" onClick={closeCheer}>
+              {cheerIndex + 1 < cheers.length ? "次へ" : "受け取る"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
