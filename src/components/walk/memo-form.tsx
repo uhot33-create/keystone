@@ -1,6 +1,7 @@
 /**
  * お散歩カードの新規・編集フォーム。
  * 画面は /dogfriend/new と /dogfriend/$id/edit。保存は createWalkMemo / updateWalkMemo。
+ * 編集で最後に会った日を変えたとき、同じ飼い主でその日付と違う犬だけをはい／いいえで聞く。
  * 画像は最大 MAX_MEMO_IMAGES 枚。縮小は prepareImageFile、サムネは makeListThumb。
  * 一覧に出す写真は「一覧に表示」のラジオ（coverIndex）。
  * 生年月日を入れると年齢を自動計算。文字数の上限は各欄の maxLength と api.ts。
@@ -8,9 +9,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { createWalkMemo, deleteWalkMemo, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
+import { createWalkMemo, deleteWalkMemo, getWalkState, touchWalkMemoMet, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { dropWalkList } from "@/lib/walk/held";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
+import { householdOthers } from "@/lib/walk/filter";
 import { fileFromImageSrc, fileToBase64, IMAGE_HINT, imageContentType, imageFileFromClipboard, makeListThumb, prepareImageFile, walkMemoImageSrc } from "@/lib/walk/image";
 import type { DogBreed, DogColor, MemoImage, SexValue, WalkMemo } from "@/lib/walk/types";
 import { DEFAULT_WALK_SEARCH, MAX_MEMO_IMAGES, SEX_OPTIONS } from "@/lib/walk/types";
@@ -107,6 +109,9 @@ export function MemoForm({
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [pending, setPending] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [follow, setFollow] = useState<WalkMemo[]>([]);
+  const [followDate, setFollowDate] = useState<string | null>(null);
+  const [followBusy, setFollowBusy] = useState(false);
   const today = todayJst();
 
   function patch(next: Partial<Draft>) {
@@ -285,12 +290,58 @@ export function MemoForm({
         await createWalkMemo({ data: payload });
       }
       dropWalkList();
+      const entered = draft.lastMetOn;
+      if (memo && entered && entered !== (memo.lastMetOn ?? "")) {
+        try {
+          const state = await getWalkState();
+          const others = householdOthers(
+            state.memos,
+            { ...memo, ownerName: payload.ownerName, lastMetOn: entered },
+            entered,
+          );
+          if (others.length > 0) {
+            setFollow(others);
+            setFollowDate(entered);
+            return;
+          }
+        } catch {
+          /* 確認できないときは、保存済みのこのカードだけで一覧へ戻る */
+        }
+      }
       await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
     } catch (err) {
       setError(err instanceof Error ? err.message : "保存できませんでした");
     } finally {
       setPending("idle");
     }
+  }
+
+  async function answerFollow(yes: boolean) {
+    const dog = follow[0];
+    const day = followDate;
+    if (!dog || !day || followBusy) return;
+    const rest = follow.slice(1);
+    if (!yes) {
+      setFollow(rest);
+      if (rest.length === 0) await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
+      return;
+    }
+    setFollowBusy(true);
+    setError(null);
+    try {
+      await touchWalkMemoMet({ data: { id: dog.id, on: day } });
+      setFollow(rest);
+      if (rest.length === 0) await navigate({ to: "/dogfriend", search: DEFAULT_WALK_SEARCH });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新できませんでした");
+    } finally {
+      setFollowBusy(false);
+    }
+  }
+
+  function formatFollowDate(value: string): string {
+    const [year, month, day] = value.split("-");
+    return `${year}/${Number(month)}/${Number(day)}`;
   }
 
   async function onDelete() {
@@ -570,6 +621,29 @@ export function MemoForm({
                     キャンセル
                   </Link>
                 </Button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {follow[0] && followDate && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[60] grid place-items-center bg-fg/45 p-6" role="dialog" aria-label="ほかの犬">
+              <div className="w-full max-w-xs rounded-xl border border-border bg-surface px-5 py-6 shadow-card">
+                <p className="text-sm leading-relaxed text-fg">
+                  {follow[0].name} の最後に会った日も {formatFollowDate(followDate)} にしますか？
+                </p>
+                {follow[0].ownerName ? <p className="mt-2 text-xs text-muted">飼い主 {follow[0].ownerName}</p> : null}
+                {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <Button type="button" variant="outline" disabled={followBusy} onClick={() => void answerFollow(false)}>
+                    いいえ
+                  </Button>
+                  <Button type="button" disabled={followBusy} onClick={() => void answerFollow(true)}>
+                    はい
+                  </Button>
+                </div>
               </div>
             </div>,
             document.body,

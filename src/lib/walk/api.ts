@@ -693,19 +693,29 @@ export const deleteWalkMemo = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** 「今日会った」を日本時間の今日にする。虹渡りのカードは更新しない。 */
+/** 「今日会った」か、編集で指定した日を最後に会った日にする。虹渡りのカードは更新しない。 */
 export const touchWalkMemoMet = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
+  .validator((input: unknown) =>
+    parse(
+      z.object({
+        id: z.string().min(1),
+        on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません").optional(),
+      }),
+      input,
+    ),
+  )
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const today = todayJst();
+    const day = data.on ?? today;
+    if (isFutureDate(day, today)) throw new Error("未来の日付は入れられません");
     const updated = await sql<{ id: string; last_met_on: unknown }>`
       update memos
-      set last_met_on = ${today}, updated_at = now()
+      set last_met_on = ${day}, updated_at = now()
       where id = ${data.id} and user_id = ${context.userId} and rainbow_bridge = false
       returning id, last_met_on
     `;
     if (!updated[0]) throw new Error("カードが見つかりません");
-    return { id: updated[0].id, lastMetOn: asDate(updated[0].last_met_on) ?? today };
+    return { id: updated[0].id, lastMetOn: asDate(updated[0].last_met_on) ?? day };
   });
