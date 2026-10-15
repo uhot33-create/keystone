@@ -60,6 +60,12 @@ export type HouseholdDogDay = {
   staples: HouseholdStaple[];
 };
 
+/** 毎日ではない手入れ。lastDoneOn は最後にやった日。未実施の案内は出さない。 */
+export type DogCare = {
+  id: number;
+  name: string;
+  lastDoneOn: string | null;
+};
 /** その日の投薬。dueTime は毎日の予定時刻（HH:MM）。済か未かは投与記録、機能追加前かは app_settings.medicine_added_on と比べる。 */
 export type DogMedicine = {
   id: number;
@@ -125,6 +131,8 @@ export type CalorieState = {
   foods: DogFood[];
   staples: CalorieStaple[];
   medicines: DogMedicine[];
+  /** ブラッシングなど。最後にやった日だけ。 */
+  cares: DogCare[];
   /** app_settings.medicine_added_on。この日以前は投与状態を「—」にする。 */
   medicineAddedOn: string | null;
   logs: CalorieLog[];

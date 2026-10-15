@@ -1,12 +1,12 @@
 /**
  * わんカロリーのおくすり画面。
  * 薬ごとに毎日の予定時刻を登録し、「投与した」でその日は済みになる。
- * ホームの案内は、予定時刻を過ぎて未投与のものだけ。1日1回まで。
+ * その下の手入れは毎日ではない。ブラッシングや歯磨きなど、最後にやった日だけ残す。未完了の案内は出さない。
  * 機能追加日は app_settings.medicine_added_on。その日以前は「—」、以降は「済」か「未」。
  */
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { deleteDogMedicine, giveDogMedicine, saveDogMedicine, undoDogMedicine } from "@/lib/calorie/api";
+import { deleteDogCare, deleteDogMedicine, giveDogMedicine, markDogCare, saveDogCare, saveDogMedicine, undoDogCare, undoDogMedicine } from "@/lib/calorie/api";
 import type { CalorieState, DogMedicine } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,14 @@ function jstNow(now: Date): { date: string; clock: string } {
 /** 機能追加日以前なら true。日付は app_settings の値と比較する。 */
 export function beforeMedicineFeature(date: string, addedOn: string | null): boolean {
   return Boolean(addedOn && date <= addedOn);
+}
+
+const CARE_SUGGESTIONS = ["ブラッシング", "歯磨き"];
+
+function formatDone(value: string | null): string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "まだ";
+  const [year, month, day] = value.split("-");
+  return `${year}/${Number(month)}/${Number(day)}`;
 }
 
 /** 予定時刻を過ぎて、その日まだ投与していない薬。機能追加前・時刻なし・未来日は含めない。 */
@@ -61,7 +69,12 @@ export function MedicinePanel({
   const [name, setName] = useState("");
   const [dueTime, setDueTime] = useState("");
   const [note, setNote] = useState("");
+  const [careName, setCareName] = useState("");
+  const [careEditing, setCareEditing] = useState<number | null>(null);
   const medicines = state.medicines ?? [];
+  const cares = state.cares ?? [];
+  const today = jstNow(new Date()).date;
+  const future = state.date > today;
   const beforeFeature = beforeMedicineFeature(state.date, state.medicineAddedOn);
   const waiting = medicines.filter((item) => !item.givenAt).length;
 
@@ -70,6 +83,21 @@ export function MedicinePanel({
     setName("");
     setDueTime("");
     setNote("");
+    setCareEditing(null);
+    setCareName("");
+  }
+
+  function saveCare(label: string, id?: number) {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    void onRun(async () => {
+      const next = await saveDogCare({
+        data: { date: state.date, dogId: state.dog.id, id, name: trimmed },
+      });
+      setCareEditing(null);
+      setCareName("");
+      return next;
+    });
   }
 
   return (
@@ -135,6 +163,71 @@ export function MedicinePanel({
           ))}
         </ul>
       )}
+    </section>
+    <section className="mt-3 rounded-lg border border-border bg-surface p-3 shadow-card">
+      <p className="font-display text-base font-semibold text-fg">手入れ</p>
+      <p className="mt-1 text-xs text-muted">毎日でなくても、最後にやった日を残せます。</p>
+      {cares.length === 0 ? null : (
+        <ul className="mt-2 divide-y divide-border">
+          {cares.map((item) => {
+            const onThisDay = item.lastDoneOn === state.date;
+            const later = Boolean(item.lastDoneOn && item.lastDoneOn > state.date);
+            return (
+              <li key={item.id} className="flex items-center gap-2 py-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-fg">{item.name}</p>
+                  <p className="text-[11px] text-muted">最後 {formatDone(item.lastDoneOn)}</p>
+                </div>
+                {onThisDay ? (
+                  <>
+                    <span className="shrink-0 text-xs font-medium text-fg">この日</span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs font-medium text-primary"
+                      disabled={pending}
+                      onClick={() =>
+                        void onRun(
+                          () => undoDogCare({ data: { date: state.date, dogId: state.dog.id, id: item.id } }),
+                          "取消中…",
+                        )
+                      }
+                    >
+                      取消
+                    </button>
+                  </>
+                ) : later ? null : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={pending || future}
+                    onClick={() =>
+                      void onRun(
+                        () => markDogCare({ data: { date: state.date, dogId: state.dog.id, id: item.id } }),
+                        "記録中…",
+                      )
+                    }
+                  >
+                    やった
+                  </Button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {CARE_SUGGESTIONS.filter((label) => !cares.some((item) => item.name === label)).map((label) => (
+          <button
+            key={label}
+            type="button"
+            className="rounded-full border border-border px-3 py-1 text-xs text-fg"
+            disabled={pending}
+            onClick={() => saveCare(label)}
+          >
+            {label}を追加
+          </button>
+        ))}
+      </div>
     </section>
     {typeof document === "undefined"
       ? null
@@ -222,6 +315,75 @@ export function MedicinePanel({
                           onClick={() =>
                             void onRun(
                               () => deleteDogMedicine({ data: { date: state.date, dogId: state.dog.id, id: item.id } }),
+                              "削除中…",
+                            )
+                          }
+                        >
+                          削除
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <p className="pt-2 text-xs font-medium text-subtle">手入れ</p>
+                <Input
+                  value={careName}
+                  maxLength={30}
+                  placeholder="名前（爪切りなど）"
+                  aria-label="手入れの名前"
+                  onChange={(event) => setCareName(event.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="flex-1"
+                    disabled={pending || !careName.trim()}
+                    onClick={() => saveCare(careName, careEditing ?? undefined)}
+                  >
+                    {careEditing ? "更新" : "登録"}
+                  </Button>
+                  {careEditing ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => {
+                        setCareEditing(null);
+                        setCareName("");
+                      }}
+                    >
+                      取消
+                    </Button>
+                  ) : null}
+                </div>
+                {cares.length > 0 ? (
+                  <ul className="divide-y divide-border">
+                    {cares.map((item) => (
+                      <li key={item.id} className="flex items-center gap-2 py-1">
+                        <p className="min-w-0 flex-1 truncate text-xs text-fg">
+                          {item.name}
+                          <span className="ml-1 text-muted">最後 {formatDone(item.lastDoneOn)}</span>
+                        </p>
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs font-medium text-primary"
+                          disabled={pending}
+                          onClick={() => {
+                            setCareEditing(item.id);
+                            setCareName(item.name);
+                          }}
+                        >
+                          編集
+                        </button>
+                        <button
+                          type="button"
+                          className="shrink-0 text-xs text-muted"
+                          disabled={pending}
+                          onClick={() =>
+                            void onRun(
+                              () => deleteDogCare({ data: { date: state.date, dogId: state.dog.id, id: item.id } }),
                               "削除中…",
                             )
                           }
