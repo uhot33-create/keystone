@@ -3,6 +3,7 @@
  * 検索・並び・犬種は URL の search。絞り込みは filterMemos。
  * 初期の並びは名前昇順（validateSearch）。選択肢は types.ts の SORT_OPTIONS。
  * サムネは一覧のあと getWalkThumbs。肉球は touchWalkMemoMet。
+ * 同じ飼い主のほかの犬は、一頭ずつはい／いいえで今日にする。
  * 追加ボタンは /dogfriend/new。1 枚の見た目は MemoCard。
  */
 import { Link, createFileRoute } from "@tanstack/react-router";
@@ -15,7 +16,7 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkState, getWalkThumbs, touchWalkMemoMet } from "@/lib/walk/api";
 import { holdWalkList, peekWalkList } from "@/lib/walk/held";
-import { filterMemos, householdMates, isSortKey } from "@/lib/walk/filter";
+import { filterMemos, householdMates, householdOthers, isSortKey } from "@/lib/walk/filter";
 import { applyWalkThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
@@ -37,6 +38,7 @@ function WalkIndex() {
   const [breeds, setBreeds] = useState<DogBreed[]>(cached?.breeds ?? []);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [follow, setFollow] = useState<WalkMemo[]>([]);
   const [showTop, setShowTop] = useState(false);
   const thumbsFetchStarted = useRef(cached?.thumbs ?? false);
 
@@ -88,17 +90,49 @@ function WalkIndex() {
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
 
   async function onMetToday(id: string) {
+    const list = memos;
     setPendingId(id);
     setError(null);
     try {
       const saved = await touchWalkMemoMet({ data: { id } });
-      setMemos((list) => {
-        if (!list) return list;
-        const next = list.map((memo) => (memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn } : memo));
-        const current = peekWalkList();
-        if (current) holdWalkList({ ...current, memos: next });
+      setMemos((current) => {
+        if (!current) return current;
+        const next = current.map((memo) => (memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn } : memo));
+        const held = peekWalkList();
+        if (held) holdWalkList({ ...held, memos: next });
         return next;
       });
+      const source = list?.find((memo) => memo.id === id);
+      if (source && saved.lastMetOn) {
+        const others = householdOthers(list ?? [], source, saved.lastMetOn);
+        if (others.length > 0) setFollow(others);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "更新できませんでした");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function answerFollow(yes: boolean) {
+    const dog = follow[0];
+    if (!dog || pendingId) return;
+    if (!yes) {
+      setFollow((queue) => queue.slice(1));
+      return;
+    }
+    setPendingId(dog.id);
+    setError(null);
+    try {
+      const saved = await touchWalkMemoMet({ data: { id: dog.id } });
+      setMemos((current) => {
+        if (!current) return current;
+        const next = current.map((memo) => (memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn } : memo));
+        const held = peekWalkList();
+        if (held) holdWalkList({ ...held, memos: next });
+        return next;
+      });
+      setFollow((queue) => queue.slice(1));
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新できませんでした");
     } finally {
@@ -167,6 +201,24 @@ function WalkIndex() {
         >
           TOP
         </button>
+      ) : null}
+      {follow[0] ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-fg/45 p-6" role="dialog" aria-label="ほかの犬">
+          <div className="w-full max-w-xs rounded-xl border border-border bg-surface px-5 py-6 shadow-card">
+            <p className="text-sm leading-relaxed text-fg">
+              {follow[0].name} の最後に会った日も今日にしますか？
+            </p>
+            {follow[0].ownerName ? <p className="mt-2 text-xs text-muted">飼い主 {follow[0].ownerName}</p> : null}
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <Button type="button" variant="outline" disabled={pendingId !== null} onClick={() => void answerFollow(false)}>
+                いいえ
+              </Button>
+              <Button type="button" disabled={pendingId !== null} onClick={() => void answerFollow(true)}>
+                はい
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );

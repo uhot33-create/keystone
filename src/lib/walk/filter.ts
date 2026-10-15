@@ -101,3 +101,18 @@ export function householdMates(memos: WalkMemo[], memo: WalkMemo): string[] {
     .filter((row) => row.id !== memo.id && row.ownerName?.trim() === owner)
     .map((row) => row.name);
 }
+
+/** 同じ飼い主で、まだ metOn になっていない生きている犬。今日会ったの確認に使う。 */
+export function householdOthers(memos: WalkMemo[], memo: WalkMemo, metOn: string): WalkMemo[] {
+  const owner = memo.ownerName?.trim();
+  if (!owner) return [];
+  return memos
+    .filter(
+      (row) =>
+        row.id !== memo.id &&
+        row.ownerName?.trim() === owner &&
+        !row.rainbowBridge &&
+        row.lastMetOn !== metOn,
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, "ja"));
+}
