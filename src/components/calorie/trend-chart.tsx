@@ -7,6 +7,7 @@
  * ボタンの「日／週／月／年」は types.ts の TREND_GRAINS。見出しは grainTitle です。
  */
 import { useRef, useState, type PointerEvent } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formatKcal } from "@/lib/calorie/formula";
 import { TREND_GRAINS, type DayTrend, type TrendGrain } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
@@ -183,14 +184,19 @@ export function TrendChart({
         </span>
       </div>
       <div
-        className="touch-pan-y"
+        className="relative touch-pan-y"
+        aria-label="左右にスワイプして期間を変える"
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={() => {
           startX.current = null;
         }}
       >
-      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
+      <div className="mt-1 flex items-center justify-between text-muted" aria-hidden>
+        <ChevronLeft className={`size-4 ${canOlder ? "" : "opacity-30"}`} strokeWidth={1.75} />
+        <ChevronRight className={`size-4 ${canNewer ? "" : "opacity-30"}`} strokeWidth={1.75} />
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
         {days.map((day, index) => {
           const km = day.walkKm ?? 0;
           if (!(km > 0)) return null;

@@ -4,7 +4,7 @@
  * 暮らし帳のカードメニューと、わんカロリーの今日画面で使う。
  */
 import { useRef } from "react";
-import { ChartLine } from "lucide-react";
+import { ChartLine, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatJaDayWeek, todayJst } from "@/lib/calorie/formula";
 import { Button } from "@/components/ui/button";
 
@@ -30,6 +30,7 @@ export function DateBar({
     <div>
       <div
         className="flex touch-pan-y items-center gap-1"
+        aria-label="左右にスワイプして日付を変える"
         onPointerDown={(event) => {
           startX.current = event.clientX;
         }}
@@ -39,6 +40,14 @@ export function DateBar({
           onShift(dx < 0 ? 1 : -1);
         }}
       >
+        <button
+          type="button"
+          className="grid size-7 shrink-0 place-items-center text-muted"
+          aria-label="前日"
+          onClick={() => onShift(-1)}
+        >
+          <ChevronLeft className="size-4" strokeWidth={1.75} />
+        </button>
         <div className="flex min-w-0 flex-1 items-center justify-center gap-0.5">
           <p className="truncate font-display text-base font-semibold text-fg">{formatJaDayWeek(date)}</p>
           <Button
@@ -64,6 +73,14 @@ export function DateBar({
             </Button>
           )}
         </div>
+        <button
+          type="button"
+          className="grid size-7 shrink-0 place-items-center text-muted"
+          aria-label="翌日"
+          onClick={() => onShift(1)}
+        >
+          <ChevronRight className="size-4" strokeWidth={1.75} />
+        </button>
       </div>
       {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
     </div>
