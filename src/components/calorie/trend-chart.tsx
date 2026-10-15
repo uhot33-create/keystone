@@ -3,7 +3,9 @@
  * 線は期間のカロリー合計、点線は目安（guideKcal）、赤点は期末の体重、茶色の棒は散歩です。
  * 色は primary / accent / #c23b32（体重）/ #6b5344（散歩）です。
  * 触りやすいところ: 幅320・高さ184、kcalの刻み（日は100、それ以外500）、
- * 散歩の上限刻み（日1km・年20km・それ以外5km）、左右スワイプの判定48px。
+ * 散歩の上限刻み（日1km・年20km・それ以外5km）。
+ * 右の文言「左右にスライドで期間を移動」の行を左右に滑らすと期間が移る。判定は48px。
+ * グラフ本体は滑らせても動かない。日付の文字をタップすると onSelect。
  * ボタンの「日／週／月／年」は types.ts の TREND_GRAINS。見出しは grainTitle です。
  */
 import { useRef, useState, type PointerEvent } from "react";
@@ -40,7 +42,7 @@ function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined):
 /**
  * 渡された days を1枚のグラフに描きます。横軸の日付をタップすると onSelect（その期間の最終日）です。
  * 点やおさんぽの棒は押しません。押した日付の数値は見出しの右に出します。
- * 右スワイプで過去、左スワイプで未来。canOlder / canNewer が false の方向には動きません。
+ * 期間の移動は下の「左右にスライド」の行だけ。canOlder / canNewer が false の方向には動きません。
  * kcal の刻みは日が100・それ以外500、散歩は日1km・年20km・それ以外5km。ここの数字が縦軸の粗さです。
  */
 export function TrendChart({
@@ -183,20 +185,7 @@ export function TrendChart({
           おさんぽの距離
         </span>
       </div>
-      <div
-        className="relative touch-pan-y"
-        aria-label="左右にスワイプして期間を変える"
-        onPointerDown={onPointerDown}
-        onPointerUp={onPointerUp}
-        onPointerCancel={() => {
-          startX.current = null;
-        }}
-      >
-      <div className="mt-1 flex items-center justify-between text-muted" aria-hidden>
-        <ChevronLeft className={`size-4 ${canOlder ? "" : "opacity-30"}`} strokeWidth={1.75} />
-        <ChevronRight className={`size-4 ${canNewer ? "" : "opacity-30"}`} strokeWidth={1.75} />
-      </div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
+      <svg viewBox={`0 0 ${width} ${height}`} className="mt-2 w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
         {days.map((day, index) => {
           const km = day.walkKm ?? 0;
           if (!(km > 0)) return null;
@@ -295,10 +284,20 @@ export function TrendChart({
           kg
         </text>
       </svg>
+      <div
+        className="mt-1 flex touch-pan-y items-center gap-1 text-muted"
+        aria-label="左右にスライドで期間を移動"
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => {
+          startX.current = null;
+        }}
+      >
+        <ChevronLeft className={`size-4 shrink-0 ${canOlder ? "" : "opacity-30"}`} strokeWidth={1.75} />
+        <p className="min-w-0 flex-1 text-center text-xs text-subtle">左右にスライドで期間を移動</p>
+        <ChevronRight className={`size-4 shrink-0 ${canNewer ? "" : "opacity-30"}`} strokeWidth={1.75} />
       </div>
-      <p className="mt-1 text-center text-xs text-subtle">
-        左右にスライドで期間を移動。日付をタップすると、その値を上に出してその日へ移ります。
-      </p>
+      <p className="mt-1 text-center text-xs text-subtle">日付をタップすると、その値を上に出してその日へ移ります。</p>
     </div>
   );
 }
