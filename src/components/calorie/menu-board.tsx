@@ -45,7 +45,7 @@ export function takeCalorieOpenTab(): "profile" | null {
 const MENU = [
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
-  { key: "meds", label: "おくすり", Icon: Pill, view: "meds" as const },
+  { key: "meds", label: "お世話", Icon: Pill, view: "meds" as const },
   { key: "memo", label: "おさんぽメモ", Icon: Footprints, to: "/dogfriend" as const },
   { key: "logs", label: "おさんぽログ", Icon: Map, to: "/dogwalklogs" as const },
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },

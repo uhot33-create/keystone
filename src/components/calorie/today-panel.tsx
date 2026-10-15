@@ -150,7 +150,7 @@ export function TodayPanel({
   }, [view]);
 
   useEffect(() => {
-    onHeading?.(view === "weight" ? "体重" : view === "add" ? "ごはん" : view === "meds" ? "おくすり" : "");
+    onHeading?.(view === "weight" ? "体重" : view === "add" ? "ごはん" : view === "meds" ? "お世話" : "");
     onView?.(view);
   }, [view, onHeading, onView]);
 
@@ -438,7 +438,7 @@ export function TodayPanel({
       {view === "weight" ? (
       <form className="rounded-lg border border-border bg-surface px-3 py-2 shadow-card" onSubmit={onSaveWeight}>
         <p className="text-sm font-medium text-fg">体重（20時計測）</p>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-1 flex items-center gap-2">
           <Input
             type="number"
             inputMode="decimal"
@@ -456,11 +456,6 @@ export function TodayPanel({
             {state.todayWeightKg != null ? "修正" : "記録"}
           </Button>
         </div>
-        {state.todayWeightKg != null ? (
-          <p className="mt-2 text-xs text-subtle">この日 {state.todayWeightKg.toFixed(2)} kg（20時計測）</p>
-        ) : (
-          <p className="mt-2 text-xs text-subtle">まだ記録がありません</p>
-        )}
       </form>
       ) : null}
 

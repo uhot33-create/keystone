@@ -44,11 +44,11 @@ function CalorieApp() {
   const [busy, setBusy] = useState<string | null>(null);
   const [openedView] = useState(() => peekCalorieOpenView());
   const [todayHeading, setTodayHeading] = useState(() =>
-    openedView === "add" ? "ごはん" : openedView === "weight" ? "体重" : openedView === "meds" ? "おくすり" : "",
+    openedView === "add" ? "ごはん" : openedView === "weight" ? "体重" : openedView === "meds" ? "お世話" : "",
   );
   const onHeading = useCallback((title: string) => setTodayHeading(title), []);
   const pageTitle = tab === "plan" ? "プラン" : tab === "foods" ? "フード" : tab === "profile" ? "プロフィール" : todayHeading;
-  const quick = tab === "today" && (todayHeading === "ごはん" || todayHeading === "体重" || todayHeading === "おくすり");
+  const quick = tab === "today" && (todayHeading === "ごはん" || todayHeading === "体重" || todayHeading === "お世話");
 
   useEffect(() => {
     clearCalorieOpenView();
