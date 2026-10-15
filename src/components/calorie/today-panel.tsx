@@ -133,6 +133,7 @@ export function TodayPanel({
   const [stapleFoodId, setStapleFoodId] = useState("");
   const [stapleQty, setStapleQty] = useState("");
   const [view, setView] = useState<"home" | "add" | "weight" | "meds">(initialView);
+  const [board, setBoard] = useState<"dog" | "person">("dog");
   const skipScroll = useRef(true);
   const dayRequest = useRef(0);
   const stapleDrag = useRef<{ startIndex: number; startY: number; rowHeight: number; origin: number[] } | null>(null);
@@ -251,6 +252,8 @@ export function TodayPanel({
   useEffect(() => {
     setChartOpen(false);
   }, [state.dog.id]);
+
+  if (board === "person" && chartOpen) setChartOpen(false);
 
   async function openChart() {
     const loaded = state.trends?.day.length || state.trends?.week.length || state.trends?.month.length || state.trends?.year.length;
@@ -413,11 +416,13 @@ export function TodayPanel({
             onSelectDog={(id) => void selectMenuDog(id)}
             onView={setView}
             onOpenProfile={onOpenProfile}
+            onBoard={setBoard}
           />
           <DateBar
             date={state.date}
             chartOpen={chartOpen}
             locked={locked}
+            showChart={board === "dog"}
             onShift={(days) => void selectDate(shiftIsoDate(state.date, days))}
             onToday={() => {
               setChartEnd(todayJst());
@@ -425,7 +430,7 @@ export function TodayPanel({
             }}
             onChart={() => void openChart()}
           />
-          <MenuDayNotes state={state} onOpenMeds={() => setView("meds")} />
+          {board === "dog" ? <MenuDayNotes state={state} onOpenMeds={() => setView("meds")} /> : null}
         </>
       ) : (
         <>
@@ -872,7 +877,7 @@ export function TodayPanel({
         </section>
       ) : null}
 
-      {chartOpen ? (
+      {chartOpen && board === "dog" ? (
       <TrendChart
         grain={grain}
         days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}

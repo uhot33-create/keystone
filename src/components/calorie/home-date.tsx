@@ -49,9 +49,12 @@ function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, to
 export function HomeCalorieDate({
   state,
   onChange,
+  dogDay = true,
 }: {
   state: CalorieState;
   onChange: (next: CalorieState) => void;
+  /** 人のメニューのときは、今日の記録とグラフを出さない。 */
+  dogDay?: boolean;
 }) {
   const [chartOpen, setChartOpen] = useState(false);
   const [chartDogId, setChartDogId] = useState(state.dog.id);
@@ -68,6 +71,7 @@ export function HomeCalorieDate({
     setChartOpen(false);
     setChartEnd(todayJst());
   }
+  if (!dogDay && chartOpen) setChartOpen(false);
 
   async function selectDate(date: string) {
     if (date === state.date) return;
@@ -159,7 +163,9 @@ export function HomeCalorieDate({
           void selectDate(todayJst());
         }}
         onChart={() => void openChart()}
+        showChart={dogDay}
       />
+      {dogDay ? (
       <MenuDayNotes
         state={state}
         pending={notesPending}
@@ -172,7 +178,8 @@ export function HomeCalorieDate({
           void navigate({ to: "/calorie" });
         }}
       />
-      {chartOpen ? (
+      ) : null}
+      {dogDay && chartOpen ? (
         <TrendChart
           grain={grain}
           days={windowedTrend(state.trends?.[grain] ?? state.trend ?? [], grain, chartEnd)}

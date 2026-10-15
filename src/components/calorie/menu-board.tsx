@@ -81,6 +81,7 @@ export function CalorieMenuBoard({
   onSelectDog,
   onView,
   onOpenProfile,
+  onBoard,
 }: {
   dogSrc: string;
   dogName: string;
@@ -91,24 +92,30 @@ export function CalorieMenuBoard({
   onSelectDog?: (id: number) => void;
   onView?: (view: CalorieMenuView) => void;
   onOpenProfile?: () => void;
+  onBoard?: (board: "dog" | "person") => void;
 }) {
   const navigate = useNavigate();
   const [board, setBoard] = useState<"dog" | "person">("dog");
   const dogIndex = dogs.findIndex((dog) => dog.id === dogId);
   const nextDog = dogIndex >= 0 ? dogs[dogIndex + 1] : undefined;
 
+  function showBoard(next: "dog" | "person") {
+    setBoard(next);
+    onBoard?.(next);
+  }
+
   function onPortrait() {
     if (board === "person") {
       const first = dogs[0];
       if (first && first.id !== dogId) onSelectDog?.(first.id);
-      setBoard("dog");
+      showBoard("dog");
       return;
     }
     if (nextDog) {
       onSelectDog?.(nextDog.id);
       return;
     }
-    setBoard("person");
+    showBoard("person");
   }
 
   function openProfile() {
@@ -148,7 +155,7 @@ export function CalorieMenuBoard({
                 type="button"
                 className="absolute left-1 top-1 z-10 h-7 rounded-full bg-surface/90 px-2 text-[11px] font-medium text-fg shadow-card"
                 aria-label="人のメニューへ"
-                onClick={() => setBoard("person")}
+                onClick={() => showBoard("person")}
               >
                 人
               </button>

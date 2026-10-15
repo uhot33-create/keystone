@@ -50,6 +50,7 @@ function MenuScreen() {
 function CardMenu() {
   const router = useRouter();
   const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
+  const [board, setBoard] = useState<"dog" | "person">("dog");
   const [busy, setBusy] = useState(false);
   const dog = state
     ? calorieSaburoStage(
@@ -109,9 +110,10 @@ function CardMenu() {
           dogs={state?.dogs}
           dogId={state?.dog.id}
           onSelectDog={(id) => void selectDog(id)}
+          onBoard={setBoard}
         />
       </nav>
-      {state && state.dogs.length >= 2 ? (
+      {state && board === "dog" && state.dogs.length >= 2 ? (
         <Link
           to="/calorie-batch"
           search={{ date: state.date }}
@@ -120,7 +122,7 @@ function CardMenu() {
           体重とごはんをまとめて
         </Link>
       ) : null}
-      {state ? <HomeCalorieDate state={state} onChange={publish} /> : null}
+      {state ? <HomeCalorieDate state={state} onChange={publish} dogDay={board === "dog"} /> : null}
     </div>
   );
 }

@@ -15,6 +15,7 @@ export function DateBar({
   onShift,
   onToday,
   onChart,
+  showChart = true,
 }: {
   date: string;
   chartOpen: boolean;
@@ -22,6 +23,7 @@ export function DateBar({
   onShift: (days: -1 | 1) => void;
   onToday: () => void;
   onChart: () => void;
+  showChart?: boolean;
 }) {
   const startX = useRef(0);
   return (
@@ -49,7 +51,7 @@ export function DateBar({
           >
             今日
           </Button>
-          {chartOpen ? null : (
+          {chartOpen || !showChart ? null : (
             <Button
               type="button"
               variant="ghost"
