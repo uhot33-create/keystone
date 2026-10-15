@@ -1,6 +1,7 @@
 /**
  * 暮らし帳のカードメニューの下に出す日付行とグラフ。
  * スワイプで前日・翌日。「今日」で今日へ。グラフアイコンで推移を開く。
+ * 犬を替えるとグラフは閉じる。もう一度ボタンを押したとき、その犬のグラフを取る。
  */
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -53,6 +54,7 @@ export function HomeCalorieDate({
   onChange: (next: CalorieState) => void;
 }) {
   const [chartOpen, setChartOpen] = useState(false);
+  const [chartDogId, setChartDogId] = useState(state.dog.id);
   const [grain, setGrain] = useState<TrendGrain>("day");
   const [chartEnd, setChartEnd] = useState(todayJst);
   const [notesPending, setNotesPending] = useState(false);
@@ -60,6 +62,12 @@ export function HomeCalorieDate({
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const dayRequest = useRef(0);
+
+  if (chartDogId !== state.dog.id) {
+    setChartDogId(state.dog.id);
+    setChartOpen(false);
+    setChartEnd(todayJst());
+  }
 
   async function selectDate(date: string) {
     if (date === state.date) return;
