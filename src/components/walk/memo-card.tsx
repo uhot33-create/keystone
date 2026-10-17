@@ -3,6 +3,7 @@
  * 画面は /dogfriend。名前タップで編集、肉球で「今日会った」、写真で拡大。
  * 年齢表示は age.ts の displayAge。画像の有無と URL は image.ts。
  * 同じ飼い主の他犬は mates（filter.ts の householdMates）を「ほか」に出す。
+ * 一つ前の最後に会った日があれば、その日へ戻すボタンを出す。
  * 虹渡りアイコンと、今日済みの肉球の見た目もここ。
  */
 import { Link } from "@tanstack/react-router";
@@ -37,11 +38,13 @@ export function MemoCard({
   mates,
   pending,
   onMetToday,
+  onRestoreMet,
 }: {
   memo: WalkMemo;
   mates: string[];
   pending?: boolean;
   onMetToday?: (id: string) => void;
+  onRestoreMet?: (id: string) => void;
 }) {
   const age = displayAge(memo);
   const hasPhoto = walkMemoHasPhoto(memo);
@@ -98,7 +101,25 @@ export function MemoCard({
               犬種 {memo.breedName || "—"}　年齢 {age || "—"}
               {memo.colorName ? `　色 ${memo.colorName}` : ""}
             </p>
-            <p className="mt-0.5 text-xs text-muted">最後に会った日 {formatMet(memo.lastMetOn)}</p>
+          </Link>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
+            <span>最後に会った日 {formatMet(memo.lastMetOn)}</span>
+            {memo.prevLastMetOn && onRestoreMet ? (
+              <button
+                type="button"
+                className="font-medium text-primary disabled:opacity-50"
+                disabled={pending}
+                onClick={() => onRestoreMet(memo.id)}
+              >
+                {formatMet(memo.prevLastMetOn)}に戻す
+              </button>
+            ) : null}
+          </p>
+          <Link
+            to="/dogfriend/$id/edit"
+            params={{ id: memo.id }}
+            className="outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+          >
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-muted">{memo.note?.trim() || "—"}</p>
           </Link>
         </div>

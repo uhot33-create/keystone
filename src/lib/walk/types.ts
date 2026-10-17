@@ -66,6 +66,8 @@ export type WalkMemo = {
   ageYears: number | null;
   note: string | null;
   lastMetOn: string | null;
+  /** 直前の最後に会った日。次に日付を変えるまで残す。 */
+  prevLastMetOn: string | null;
   rainbowBridge: boolean;
   rainbowBridgeOn: string | null;
   images: MemoImage[];

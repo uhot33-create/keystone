@@ -9,7 +9,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ClipboardEvent, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { createWalkMemo, deleteWalkMemo, getWalkState, touchWalkMemoMet, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
+import { createWalkMemo, deleteWalkMemo, getWalkState, restoreWalkMemoMet, touchWalkMemoMet, updateWalkMemo, uploadWalkImage } from "@/lib/walk/api";
 import { dropWalkList } from "@/lib/walk/held";
 import { ageFromBirthday, todayJst } from "@/lib/walk/age";
 import { householdOthers } from "@/lib/walk/filter";
@@ -112,6 +112,7 @@ export function MemoForm({
   const [follow, setFollow] = useState<WalkMemo[]>([]);
   const [followDate, setFollowDate] = useState<string | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
+  const [prevMet, setPrevMet] = useState<string | null>(memo?.prevLastMetOn ?? null);
   const today = todayJst();
 
   function patch(next: Partial<Draft>) {
@@ -344,6 +345,24 @@ export function MemoForm({
     return `${year}/${Number(month)}/${Number(day)}`;
   }
 
+  async function onRestoreMet() {
+    if (!memo || !prevMet || pending !== "idle") return;
+    const label = formatFollowDate(prevMet);
+    if (!window.confirm(`最後に会った日を ${label} に戻しますか？`)) return;
+    setPending("saving");
+    setError(null);
+    try {
+      const saved = await restoreWalkMemoMet({ data: { id: memo.id } });
+      patch({ lastMetOn: saved.lastMetOn ?? "" });
+      setPrevMet(saved.prevLastMetOn);
+      dropWalkList();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "戻せませんでした");
+    } finally {
+      setPending("idle");
+    }
+  }
+
   async function onDelete() {
     if (!memo) return;
     if (!window.confirm(`${memo.name} のカードを削除しますか？`)) return;
@@ -475,6 +494,16 @@ export function MemoForm({
           value={draft.lastMetOn}
           onChange={(event) => patch({ lastMetOn: event.target.value })}
         />
+        {prevMet ? (
+          <button
+            type="button"
+            className="text-xs font-medium text-primary disabled:opacity-50"
+            disabled={pending !== "idle"}
+            onClick={() => void onRestoreMet()}
+          >
+            {formatFollowDate(prevMet)}に戻す
+          </button>
+        ) : null}
       </div>
 
       <div className="space-y-1.5">

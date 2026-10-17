@@ -64,6 +64,7 @@ type MemoRow = {
   age_years: unknown;
   note: string | null;
   last_met_on: unknown;
+  prev_last_met_on: unknown;
   rainbow_bridge: unknown;
   rainbow_bridge_on: unknown;
   images: unknown;
@@ -144,6 +145,7 @@ function mapMemo(row: MemoRow, includeThumbData = true): WalkMemo {
     ageYears: intOrNull(row.age_years),
     note: row.note,
     lastMetOn: asDate(row.last_met_on),
+    prevLastMetOn: asDate(row.prev_last_met_on),
     rainbowBridge: Boolean(row.rainbow_bridge),
     rainbowBridgeOn: asDate(row.rainbow_bridge_on),
     images,
@@ -262,6 +264,7 @@ async function listMemos(userId: string, includeThumbData = true): Promise<WalkM
           m.age_years,
           m.note,
           m.last_met_on,
+          m.prev_last_met_on,
           m.rainbow_bridge,
           m.rainbow_bridge_on,
           m.images,
@@ -291,6 +294,7 @@ async function listMemos(userId: string, includeThumbData = true): Promise<WalkM
           m.age_years,
           m.note,
           m.last_met_on,
+          m.prev_last_met_on,
           m.rainbow_bridge,
           m.rainbow_bridge_on,
           coalesce((
@@ -328,6 +332,7 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
       m.age_years,
       m.note,
       m.last_met_on,
+      m.prev_last_met_on,
       m.rainbow_bridge,
       m.rainbow_bridge_on,
       m.images,
@@ -588,6 +593,10 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
         birthday = ${next.birthday},
         age_years = ${next.ageYears},
         note = ${next.note || null},
+        prev_last_met_on = case
+          when last_met_on is distinct from ${next.lastMetOn}::date then last_met_on
+          else prev_last_met_on
+        end,
         last_met_on = ${next.lastMetOn},
         rainbow_bridge = ${next.rainbowBridge},
         rainbow_bridge_on = ${next.rainbowBridgeOn},
@@ -693,7 +702,7 @@ export const deleteWalkMemo = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** 「今日会った」か、編集で指定した日を最後に会った日にする。虹渡りのカードは更新しない。 */
+/** 「今日会った」か、編集で指定した日を最後に会った日にする。変わったときだけ一つ前を残す。虹渡りのカードは更新しない。 */
 export const touchWalkMemoMet = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -710,12 +719,47 @@ export const touchWalkMemoMet = createServerFn({ method: "POST" })
     const today = todayJst();
     const day = data.on ?? today;
     if (isFutureDate(day, today)) throw new Error("未来の日付は入れられません");
-    const updated = await sql<{ id: string; last_met_on: unknown }>`
+    const updated = await sql<{ id: string; last_met_on: unknown; prev_last_met_on: unknown }>`
       update memos
-      set last_met_on = ${day}, updated_at = now()
+      set
+        prev_last_met_on = case
+          when last_met_on is distinct from ${day}::date then last_met_on
+          else prev_last_met_on
+        end,
+        last_met_on = ${day},
+        updated_at = now()
       where id = ${data.id} and user_id = ${context.userId} and rainbow_bridge = false
-      returning id, last_met_on
+      returning id, last_met_on, prev_last_met_on
     `;
     if (!updated[0]) throw new Error("カードが見つかりません");
-    return { id: updated[0].id, lastMetOn: asDate(updated[0].last_met_on) ?? day };
+    return {
+      id: updated[0].id,
+      lastMetOn: asDate(updated[0].last_met_on) ?? day,
+      prevLastMetOn: asDate(updated[0].prev_last_met_on),
+    };
+  });
+
+/** 最後に会った日を一つ前に戻す。戻した日が次の一つ前になる。 */
+export const restoreWalkMemoMet = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const updated = await sql<{ id: string; last_met_on: unknown; prev_last_met_on: unknown }>`
+      update memos
+      set
+        last_met_on = prev_last_met_on,
+        prev_last_met_on = last_met_on,
+        updated_at = now()
+      where id = ${data.id}
+        and user_id = ${context.userId}
+        and prev_last_met_on is not null
+      returning id, last_met_on, prev_last_met_on
+    `;
+    if (!updated[0]) throw new Error("戻せる日付がありません");
+    return {
+      id: updated[0].id,
+      lastMetOn: asDate(updated[0].last_met_on),
+      prevLastMetOn: asDate(updated[0].prev_last_met_on),
+    };
   });

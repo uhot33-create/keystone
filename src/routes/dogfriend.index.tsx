@@ -14,7 +14,7 @@ import { PageHeading } from "@/components/page-heading";
 import { Button } from "@/components/ui/button";
 import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWalkState, getWalkThumbs, touchWalkMemoMet } from "@/lib/walk/api";
+import { getWalkState, getWalkThumbs, restoreWalkMemoMet, touchWalkMemoMet } from "@/lib/walk/api";
 import { holdWalkList, peekWalkList } from "@/lib/walk/held";
 import { filterMemos, householdMates, householdOthers, isSortKey } from "@/lib/walk/filter";
 import { applyWalkThumbs } from "@/lib/walk/thumbs";
@@ -97,7 +97,9 @@ function WalkIndex() {
       const saved = await touchWalkMemoMet({ data: { id } });
       setMemos((current) => {
         if (!current) return current;
-        const next = current.map((memo) => (memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn } : memo));
+        const next = current.map((memo) =>
+          memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn, prevLastMetOn: saved.prevLastMetOn } : memo,
+        );
         const held = peekWalkList();
         if (held) holdWalkList({ ...held, memos: next });
         return next;
@@ -127,7 +129,9 @@ function WalkIndex() {
       const saved = await touchWalkMemoMet({ data: { id: dog.id } });
       setMemos((current) => {
         if (!current) return current;
-        const next = current.map((memo) => (memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn } : memo));
+        const next = current.map((memo) =>
+          memo.id === saved.id ? { ...memo, lastMetOn: saved.lastMetOn, prevLastMetOn: saved.prevLastMetOn } : memo,
+        );
         const held = peekWalkList();
         if (held) holdWalkList({ ...held, memos: next });
         return next;
@@ -135,6 +139,32 @@ function WalkIndex() {
       setFollow((queue) => queue.slice(1));
     } catch (err) {
       setError(err instanceof Error ? err.message : "更新できませんでした");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function onRestoreMet(id: string) {
+    const memo = memos?.find((item) => item.id === id);
+    if (!memo?.prevLastMetOn) return;
+    const [year, month, day] = memo.prevLastMetOn.split("-");
+    const label = `${year}/${Number(month)}/${Number(day)}`;
+    if (!window.confirm(`${memo.name} の最後に会った日を ${label} に戻しますか？`)) return;
+    setPendingId(id);
+    setError(null);
+    try {
+      const saved = await restoreWalkMemoMet({ data: { id } });
+      setMemos((current) => {
+        if (!current) return current;
+        const next = current.map((item) =>
+          item.id === saved.id ? { ...item, lastMetOn: saved.lastMetOn, prevLastMetOn: saved.prevLastMetOn } : item,
+        );
+        const held = peekWalkList();
+        if (held) holdWalkList({ ...held, memos: next });
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "戻せませんでした");
     } finally {
       setPendingId(null);
     }
@@ -189,6 +219,7 @@ function WalkIndex() {
               mates={memos ? householdMates(memos, memo) : []}
               pending={pendingId === memo.id}
               onMetToday={onMetToday}
+              onRestoreMet={onRestoreMet}
             />
           ))}
         </div>
