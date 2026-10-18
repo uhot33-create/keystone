@@ -29,6 +29,7 @@ export function warmMenus(router: AnyRouter) {
   void router.preloadRoute({ to: "/vet" }).catch(() => undefined);
   void router.preloadRoute({ to: "/smoking" }).catch(() => undefined);
   void router.preloadRoute({ to: "/cup" }).catch(() => undefined);
+  void router.preloadRoute({ to: "/checks" }).catch(() => undefined);
   void warmData();
 }
 

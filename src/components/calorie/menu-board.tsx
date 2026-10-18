@@ -5,7 +5,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Cigarette, Footprints, Map, Pill, Scale, Settings, Soup, Stethoscope, Utensils } from "lucide-react";
+import { Cigarette, Footprints, ListChecks, Map, Pill, Scale, Settings, Soup, Stethoscope, Utensils } from "lucide-react";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 const OPEN_VIEW_KEY = "calorie-open-view";
@@ -54,6 +54,7 @@ const MENU = [
 const PERSON_MENU = [
   { key: "smoke", label: "喫煙管理", Icon: Cigarette, to: "/smoking" as const },
   { key: "cup", label: "カップ麺", Icon: Soup, to: "/cup" as const },
+  { key: "checks", label: "チェックリスト", Icon: ListChecks, to: "/checks" as const },
 ] as const;
 
 const itemClass =

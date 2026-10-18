@@ -1,14 +1,15 @@
 /**
  * 定期実行（Vercel Cron）の入口です。GET /api/cron/calorie-summary。
  * 認証は CRON_SECRET があるとき Bearer トークン、無いときはヘッダ x-vercel-cron: 1 だけ通します。
- * 処理は3つです。喫煙カウンタのリセット、散歩ログの月次マージ、
- * カロリー集計の全頭再計算（rebuildAllCalorieStats → calorie_period_stats）。
+ * 処理は4つです。喫煙カウンタのリセット、散歩ログの月次マージ、
+ * 全部チェック済みのリスト削除、カロリー集計の全頭再計算。
  * 成否は cron ログ（startCronRun / appendCronLog / finishCronRun）に残します。
  * 期間の区切りや WINDOW、目安の計算を変える場合は summary.ts 側です。ここは呼び出すだけです。
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { rebuildAllCalorieStats } from "@/lib/calorie/summary";
+import { purgeCheckedLists } from "@/lib/checks/api";
 import { appendCronLog, finishCronRun, startCronRun } from "@/lib/cron-log";
 import { resetSmokingIfDue } from "@/lib/smoking/api";
 import { rebuildAllWalkMonths } from "@/lib/walk-log/merge";
@@ -63,17 +64,26 @@ export const Route = createFileRoute("/api/cron/calorie-summary")({
           walks = { error: message };
           await write(`[cron] walk error ${message}`);
         }
+        let checks: { lists: number } | { error: string };
+        try {
+          checks = await purgeCheckedLists(sql);
+          await write(`[cron] checks ${JSON.stringify(checks)}`);
+        } catch (err) {
+          const message = errorText(err, "チェックリストの削除に失敗しました");
+          checks = { error: message };
+          await write(`[cron] checks error ${message}`);
+        }
         try {
           const result = await rebuildAllCalorieStats(sql);
           await write(`[cron] calorie ${JSON.stringify(result)}`);
           await write("処理を完了しました。");
           await finishCronRun(sql, runId, true);
-          return Response.json({ ok: true, ...result, smoking, walks });
+          return Response.json({ ok: true, ...result, smoking, walks, checks });
         } catch (err) {
           const message = errorText(err, "集計に失敗しました");
           await write(`[cron] calorie error ${message}`);
           await finishCronRun(sql, runId, false);
-          return Response.json({ error: message, smoking, walks }, { status: 500 });
+          return Response.json({ error: message, smoking, walks, checks }, { status: 500 });
         }
       },
     },
