@@ -1,18 +1,17 @@
 /**
  * 人のチェックリスト画面。
- * リストの作成、雛形からのコピー、項目のチェック。履歴は出さない。
- * 全部チェックしたリストは、日次処理で消える。
+ * リストの作成、雛形からのコピー。チェックと項目の追加・削除は保存まで画面だけ。
+ * 保存時に全部チェック済みなら、リストを消すか確認する。履歴は出さない。
+ * 全部チェックしたまま残したリストは、日次処理で消える。
  */
 import { useEffect, useState, type FormEvent } from "react";
 import {
-  addCheckItem,
   createCheckList,
-  deleteCheckItem,
   deleteCheckList,
   deleteCheckTemplate,
   getCheckState,
+  saveCheckList,
   saveCheckTemplate,
-  toggleCheckItem,
   type CheckList,
   type CheckTemplate,
 } from "@/lib/checks/api";
@@ -26,20 +25,36 @@ import { Textarea } from "@/components/ui/textarea";
 
 type View = "lists" | "templates";
 
+type DraftItem = {
+  key: string;
+  label: string;
+  checked: boolean;
+};
+
 function messageOf(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
 }
 
-function doneCount(list: CheckList) {
-  return list.items.filter((item) => item.checked).length;
+function doneCount(items: { checked: boolean }[]) {
+  return items.filter((item) => item.checked).length;
 }
 
-/** リストと雛形。開いているリストは openId。 */
+function draftFrom(list: CheckList): DraftItem[] {
+  return list.items.map((item) => ({ key: item.id, label: item.label, checked: item.checked }));
+}
+
+function isDirty(list: CheckList, draft: DraftItem[]) {
+  if (list.items.length !== draft.length) return true;
+  return draft.some((item, index) => item.label !== list.items[index]?.label || item.checked !== list.items[index]?.checked);
+}
+
+/** リストと雛形。開いているリストの編集は draft。保存するまでDBは変えない。 */
 export function ChecksApp() {
   const [view, setView] = useState<View>("lists");
   const [templates, setTemplates] = useState<CheckTemplate[] | null>(null);
   const [lists, setLists] = useState<CheckList[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<DraftItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
@@ -52,15 +67,17 @@ export function ChecksApp() {
   function apply(next: { templates: CheckTemplate[]; lists: CheckList[] }) {
     setTemplates(next.templates);
     setLists(next.lists);
+    return next;
   }
 
   async function run(action: () => Promise<{ templates: CheckTemplate[]; lists: CheckList[] }>) {
     setBusy(true);
     setError(null);
     try {
-      apply(await action());
+      return apply(await action());
     } catch (err) {
       setError(messageOf(err, "保存できませんでした"));
+      return null;
     } finally {
       setBusy(false);
     }
@@ -81,33 +98,60 @@ export function ChecksApp() {
   }, []);
 
   const open = lists?.find((list) => list.id === openId) ?? null;
-  const allDone = Boolean(open && open.items.length > 0 && doneCount(open) === open.items.length);
+  const dirty = open ? isDirty(open, draft) : false;
+  const allDone = draft.length > 0 && doneCount(draft) === draft.length;
+
+  function openList(list: CheckList) {
+    setOpenId(list.id);
+    setDraft(draftFrom(list));
+    setItemLabel("");
+    setError(null);
+  }
+
+  function closeList() {
+    if (open && dirty && !window.confirm("保存していない変更を捨てますか？")) return;
+    setOpenId(null);
+    setDraft([]);
+    setItemLabel("");
+  }
 
   async function onCreateList(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    await run(async () => {
-      const next = await createCheckList({
-        data: { name: trimmed, templateId: templateId || null },
-      });
-      setName("");
-      setTemplateId("");
-      if (next.lists[0]) setOpenId(next.lists[0].id);
-      return next;
-    });
+    const next = await run(() => createCheckList({ data: { name: trimmed, templateId: templateId || null } }));
+    if (!next) return;
+    setName("");
+    setTemplateId("");
+    const created = next.lists[0];
+    if (created) openList(created);
   }
 
-  async function onAddItem(event: FormEvent) {
+  function onAddItem(event: FormEvent) {
     event.preventDefault();
-    if (!open) return;
     const label = itemLabel.trim();
     if (!label) return;
-    await run(async () => {
-      const next = await addCheckItem({ data: { listId: open.id, label } });
-      setItemLabel("");
-      return next;
-    });
+    setDraft((current) => [...current, { key: `new-${crypto.randomUUID()}`, label, checked: false }]);
+    setItemLabel("");
+  }
+
+  async function onSaveList() {
+    if (!open) return;
+    if (allDone) {
+      if (!window.confirm(`${open.name} は全部チェック済みです。このリストを削除しますか？`)) return;
+      const next = await run(() => deleteCheckList({ data: { id: open.id } }));
+      if (!next) return;
+      setOpenId(null);
+      setDraft([]);
+      return;
+    }
+    const next = await run(() =>
+      saveCheckList({
+        data: { id: open.id, items: draft.map((item) => ({ label: item.label, checked: item.checked })) },
+      }),
+    );
+    const saved = next?.lists.find((list) => list.id === open.id);
+    if (saved) setDraft(draftFrom(saved));
   }
 
   async function onSaveTemplate(event: FormEvent) {
@@ -116,19 +160,19 @@ export function ChecksApp() {
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean);
-    await run(async () => {
-      const next = await saveCheckTemplate({
+    const next = await run(() =>
+      saveCheckTemplate({
         data: {
           ...(editingTemplate ? { id: editingTemplate } : {}),
           name: templateName.trim(),
           items,
         },
-      });
-      setTemplateName("");
-      setTemplateLines("");
-      setEditingTemplate(null);
-      return next;
-    });
+      }),
+    );
+    if (!next) return;
+    setTemplateName("");
+    setTemplateLines("");
+    setEditingTemplate(null);
   }
 
   return (
@@ -136,7 +180,7 @@ export function ChecksApp() {
       <BusyOverlay show={busy || lists === null} label={lists === null ? "読み込み中…" : "保存中…"} />
       <PageHeading title="チェックリスト">
         {open ? (
-          <button type="button" className="text-sm font-medium text-primary" onClick={() => setOpenId(null)}>
+          <button type="button" className="text-sm font-medium text-primary" onClick={closeList}>
             一覧
           </button>
         ) : (
@@ -160,25 +204,28 @@ export function ChecksApp() {
           <div className="flex items-baseline justify-between gap-2">
             <p className="font-display text-base font-semibold text-fg">{open.name}</p>
             <p className="text-xs text-muted">
-              {doneCount(open)}/{open.items.length}
+              {doneCount(draft)}/{draft.length}
             </p>
           </div>
-          {allDone ? <p className="mt-1 text-xs text-muted">全部済みです。次の0時に消えます。</p> : null}
-          {open.items.length === 0 ? (
+          {allDone ? <p className="mt-1 text-xs text-muted">全部済みです。保存すると削除の確認が出ます。</p> : null}
+          {draft.length === 0 ? (
             <p className="mt-2 text-xs text-muted">項目を足してください。</p>
           ) : (
             <ul className="mt-2 divide-y divide-border">
-              {open.items.map((item) => (
-                <li key={item.id} className="flex items-center gap-2 py-2">
+              {draft.map((item) => (
+                <li key={item.key} className="flex items-center gap-2 py-2">
                   <label className="flex min-w-0 flex-1 items-center gap-2">
                     <input
                       type="checkbox"
                       className="size-4 shrink-0 accent-primary"
                       checked={item.checked}
                       disabled={busy}
-                      onChange={(event) =>
-                        void run(() => toggleCheckItem({ data: { id: item.id, checked: event.target.checked } }))
-                      }
+                      onChange={(event) => {
+                        const checked = event.target.checked;
+                        setDraft((current) =>
+                          current.map((row) => (row.key === item.key ? { ...row, checked } : row)),
+                        );
+                      }}
                     />
                     <span className={`truncate text-sm ${item.checked ? "text-muted line-through" : "text-fg"}`}>
                       {item.label}
@@ -188,7 +235,7 @@ export function ChecksApp() {
                     type="button"
                     className="shrink-0 text-xs text-muted"
                     disabled={busy}
-                    onClick={() => void run(() => deleteCheckItem({ data: { id: item.id } }))}
+                    onClick={() => setDraft((current) => current.filter((row) => row.key !== item.key))}
                   >
                     削除
                   </button>
@@ -196,7 +243,7 @@ export function ChecksApp() {
               ))}
             </ul>
           )}
-          <form className="mt-3 flex gap-2" onSubmit={(event) => void onAddItem(event)}>
+          <form className="mt-3 flex gap-2" onSubmit={onAddItem}>
             <Input
               value={itemLabel}
               maxLength={80}
@@ -204,10 +251,13 @@ export function ChecksApp() {
               aria-label="項目"
               onChange={(event) => setItemLabel(event.target.value)}
             />
-            <Button type="submit" className="shrink-0" disabled={busy || !itemLabel.trim()}>
+            <Button type="submit" variant="outline" className="shrink-0" disabled={!itemLabel.trim()}>
               追加
             </Button>
           </form>
+          <Button type="button" className="mt-3 w-full" disabled={busy || !dirty} onClick={() => void onSaveList()}>
+            保存
+          </Button>
           <button
             type="button"
             className="mt-3 text-xs text-muted"
@@ -215,6 +265,7 @@ export function ChecksApp() {
             onClick={() => {
               if (!window.confirm(`${open.name} を削除しますか？`)) return;
               setOpenId(null);
+              setDraft([]);
               void run(() => deleteCheckList({ data: { id: open.id } }));
             }}
           >
@@ -338,14 +389,14 @@ export function ChecksApp() {
           ) : (
             <ul className="flex flex-col gap-2">
               {(lists ?? []).map((list) => {
-                const done = doneCount(list);
+                const done = doneCount(list.items);
                 const finished = list.items.length > 0 && done === list.items.length;
                 return (
                   <li key={list.id}>
                     <button
                       type="button"
                       className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-3 text-left shadow-card"
-                      onClick={() => setOpenId(list.id)}
+                      onClick={() => openList(list)}
                     >
                       <span className="min-w-0 truncate text-sm font-medium text-fg">{list.name}</span>
                       <span className="shrink-0 text-xs text-muted">

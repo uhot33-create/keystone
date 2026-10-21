@@ -1,6 +1,7 @@
 /**
  * 人のチェックリスト。画面は /checks。
  * 雛形からリストを作るか、名前だけ作って項目を足す。チェックの履歴は残さない。
+ * 開いたリストのチェックと項目は、保存ボタンでまとめて書き込む。
  * 項目が1件以上あり、全部チェック済みのリストは日次処理（purgeCheckedLists）で消す。
  * 雛形が1件もない人には、最初だけ「旅行」を入れる。消したあとは戻さない。
  */
@@ -155,65 +156,39 @@ export const createCheckList = createServerFn({ method: "POST" })
     return loadState(sql, context.userId);
   });
 
-const itemInput = z.object({
-  listId: z.string().uuid(),
-  label: z.string().trim().min(1, "項目を入力してください").max(80, "項目は80文字までです"),
+const saveListInput = z.object({
+  id: z.string().uuid(),
+  items: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1, "項目を入力してください").max(80, "項目は80文字までです"),
+        checked: z.boolean(),
+      }),
+    )
+    .max(100, "項目は100件までです"),
 });
 
-/** リストに項目を1件足す。 */
-export const addCheckItem = createServerFn({ method: "POST" })
+/** 開いているリストの項目を、今の並びとチェックでまとめて入れ直す。 */
+export const saveCheckList = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => parse(itemInput, input))
+  .validator((input: unknown) => parse(saveListInput, input))
   .handler(async ({ context, data }) => {
     const sql = await getSql();
     const owned = await sql<{ id: string }>`
-      select id from check_lists where id = ${data.listId} and user_id = ${context.userId} limit 1
+      select id from check_lists where id = ${data.id} and user_id = ${context.userId} limit 1
     `;
     if (!owned[0]) throw new Error("リストが見つかりません");
-    await sql`
-      insert into check_items (list_id, user_id, label, sort_order)
-      values (
-        ${data.listId},
-        ${context.userId},
-        ${data.label},
-        coalesce((select max(sort_order) + 1 from check_items where list_id = ${data.listId}), 0)
-      )
-    `;
-    return loadState(sql, context.userId);
-  });
-
-const toggleInput = z.object({
-  id: z.string().uuid(),
-  checked: z.boolean(),
-});
-
-/** 項目のチェックを付け外しする。履歴は残さない。 */
-export const toggleCheckItem = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: unknown) => parse(toggleInput, input))
-  .handler(async ({ context, data }) => {
-    const sql = await getSql();
-    const updated = await sql<{ id: string }>`
-      update check_items
-      set checked = ${data.checked}
-      where id = ${data.id} and user_id = ${context.userId}
-      returning id
-    `;
-    if (!updated[0]) throw new Error("項目が見つかりません");
+    await sql`delete from check_items where list_id = ${data.id} and user_id = ${context.userId}`;
+    for (const [index, item] of data.items.entries()) {
+      await sql`
+        insert into check_items (list_id, user_id, label, checked, sort_order)
+        values (${data.id}, ${context.userId}, ${item.label}, ${item.checked}, ${index})
+      `;
+    }
     return loadState(sql, context.userId);
   });
 
 const idInput = z.object({ id: z.string().uuid() });
-
-/** 項目を1件消す。 */
-export const deleteCheckItem = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: unknown) => parse(idInput, input))
-  .handler(async ({ context, data }) => {
-    const sql = await getSql();
-    await sql`delete from check_items where id = ${data.id} and user_id = ${context.userId}`;
-    return loadState(sql, context.userId);
-  });
 
 /** リストを消す。項目も一緒に消える。 */
 export const deleteCheckList = createServerFn({ method: "POST" })
