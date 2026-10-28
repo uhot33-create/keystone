@@ -17,7 +17,11 @@ const OPEN_TAB_KEY = "calorie-open-tab";
 
 export type CalorieMenuView = "weight" | "add" | "meds";
 
-/** 暮らし帳から開く画面。読むだけ。 */
+/**
+ * 暮らし帳から開く画面。読むだけ。キーは calorie-open-view。
+ * 体重・ごはん・おくすりのどれかを一度だけ渡す。日付は held 側の date。
+ * キー名を変えるなら OPEN_VIEW_KEY。消すのは clearCalorieOpenView。
+ */
 export function peekCalorieOpenView(): "home" | CalorieMenuView {
   if (typeof sessionStorage === "undefined") return "home";
   const value = sessionStorage.getItem(OPEN_VIEW_KEY);
@@ -25,20 +29,32 @@ export function peekCalorieOpenView(): "home" | CalorieMenuView {
   return "home";
 }
 
-/** 開いたあとに消す。 */
+/**
+ * 開いたあとに消す。sessionStorage の calorie-open-view を捨てる。
+ * 今日画面が初期 view を一度だけ読むための後始末。日付は触らない。
+ * キーを変えるなら OPEN_VIEW_KEY。読むだけなら peekCalorieOpenView。
+ */
 export function clearCalorieOpenView() {
   if (typeof sessionStorage === "undefined") return;
   sessionStorage.removeItem(OPEN_VIEW_KEY);
 }
 
-/** 暮らし帳から開いたあと、今日画面が一度だけ読む。読んだら消す。 */
+/**
+ * 暮らし帳から開いたあと、今日画面が一度だけ読む。読んだら消す。
+ * view は weight / add / meds。無ければ home。日付の共有は held.ts。
+ * 残し方を変えるなら peek と clear を分けて呼ぶ。
+ */
 export function takeCalorieOpenView(): "home" | CalorieMenuView {
   const value = peekCalorieOpenView();
   clearCalorieOpenView();
   return value;
 }
 
-/** 歯車から開いたプロフィール。一度だけ読む。 */
+/**
+ * 歯車から開いたプロフィール。一度だけ読む。キーは calorie-open-tab。
+ * 値が profile のときだけプロフィールタブ。読んだら消す。日付は動かさない。
+ * キー名を変えるなら OPEN_TAB_KEY。書き込みは openProfile。
+ */
 export function takeCalorieOpenTab(): "profile" | null {
   if (typeof sessionStorage === "undefined") return null;
   const value = sessionStorage.getItem(OPEN_TAB_KEY);

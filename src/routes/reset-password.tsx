@@ -23,7 +23,11 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
 });
 
-/** token が空、または error があれば無効リンク。新しいパスワードは8文字以上。 */
+/**
+ * token が空、または error があれば無効リンク。画面は /reset-password。
+ * 新しいパスワードは8文字以上。再設定リンクの有効期限は1時間で、切れるとここに来ても保存できない。
+ * 期限を変えるときは認証側。案内文の「期限切れ」はこの画面。
+ */
 function ResetPasswordPage() {
   const { token, error: searchError } = Route.useSearch();
   const navigate = useNavigate();

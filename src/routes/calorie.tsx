@@ -21,7 +21,11 @@ import { holdCalorieState, peekCalorieState } from "@/lib/calorie/held";
 import { todayJst } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 
-/** このURLの入口です。データは画面側で、暮らし帳から渡されたものを優先します。 */
+/**
+ * このURLの入口です。データは画面側で、暮らし帳から渡されたものを優先します。
+ * 日付の共有は held.ts の CalorieState.date。メニューの view は sessionStorage。
+ * 取り直す条件を変えるなら CalorieApp の peek。パスは /calorie。
+ */
 export const Route = createFileRoute("/calorie")({
   component: CaloriePage,
 });
@@ -29,7 +33,11 @@ export const Route = createFileRoute("/calorie")({
 /** 今日・プラン・フード・プロフィール。下のタブは使わない。 */
 type Tab = "today" | "plan" | "foods" | "profile";
 
-/** 未ログインは Protected が止める。画面の状態は CalorieApp。 */
+/**
+ * 未ログインは Protected が止める。画面の状態は CalorieApp。
+ * わんカロリー本体。タブは今日・プラン・フード・プロフィール。
+ * ログインの条件を変えるなら Protected。中身は CalorieApp。
+ */
 function CaloriePage() {
   return (
     <Protected>
@@ -38,7 +46,11 @@ function CaloriePage() {
   );
 }
 
-/** 今日・プラン・フード・プロフィール。入力の保存は各パネル、サーバーは lib/calorie/api.ts。 */
+/**
+ * 今日・プラン・フード・プロフィール。入力の保存は各パネル、サーバーは lib/calorie/api.ts。
+ * 暮らし帳が hold した日付と犬があれば取り直さない。無ければ今日（JST）と storedDogId。
+ * 共有をやめるなら peekCalorieState の分岐。2週間ロックは各パネル。
+ */
 function CalorieApp() {
   const [tab, setTab] = useState<Tab>("today");
   const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
@@ -52,14 +64,22 @@ function CalorieApp() {
   const pageTitle = tab === "plan" ? "プラン" : tab === "foods" ? "フード" : tab === "profile" ? "プロフィール" : todayHeading;
   const quick = tab === "today" && (todayHeading === "ごはん" || todayHeading === "体重" || todayHeading === "お世話");
 
-  /** メニューが渡した初期ビューを消し、開くタブがあれば切り替える。日付はここでは動かさない。 */
+  /**
+ * メニューが渡した初期ビューを消し、開くタブがあれば切り替える。日付はここでは動かさない。
+ * calorie-open-view はクリア、calorie-open-tab が profile ならプロフィール。
+ * キーは menu-board の OPEN_VIEW_KEY と OPEN_TAB_KEY。
+ */
   useEffect(() => {
     clearCalorieOpenView();
     const next = takeCalorieOpenTab();
     if (next) setTab(next);
   }, []);
 
-  /** 暮らし帳のキャッシュがあればそれを使う。無ければ今日（JST）と保存済みの犬で取り、日付ごと hold する。 */
+  /**
+ * 暮らし帳のキャッシュがあればそれを使う。無ければ今日（JST）と保存済みの犬で取り、日付ごと hold する。
+ * 日付の共有は held。犬の記憶は localStorage の calorie-dog-id。
+ * 取り直すなら peek の return を外す。取得は getCalorieState。
+ */
   useEffect(() => {
     if (peekCalorieState()) {
       rememberDogId(peekCalorieState()!.dog.id);
@@ -81,7 +101,11 @@ function CalorieApp() {
     };
   }, []);
 
-  /** パネルが返した状態をキャッシュへ戻す。見ている日は next.date のまま。 */
+  /**
+ * パネルが返した状態をキャッシュへ戻す。見ている日は next.date のまま。
+ * 暮らし帳へ戻ったときも同じ日・同じ犬になる。メニューとは held で共有する。
+ * 犬の記憶は rememberDogId。グラフの再取得は各パネル。
+ */
   function onChange(next: CalorieState) {
     rememberDogId(next.dog.id);
     holdCalorieState(next);

@@ -1,7 +1,8 @@
 /**
  * 人のチェックリスト画面。
  * リストの作成、雛形からのコピー。チェックと項目の追加・削除は保存まで画面だけ。
- * 保存時に全部チェック済みなら、リストを消すか確認する。履歴は出さない。
+ * 保存時に全部チェック済みなら、リストを消すか確認する。いいえなら保存も削除もしない。
+ * 保存していない変更を一覧へ戻すときは、捨てるか確認する。履歴は出さない。
  * 全部チェックしたまま残したリストは、日次処理で消える。
  */
 import { useEffect, useState, type FormEvent } from "react";
@@ -31,29 +32,56 @@ type DraftItem = {
   checked: boolean;
 };
 
+/**
+ * 失敗を画面の一文にする。
+ * Error ならその message、それ以外は呼び出し側の fallback。
+ * 確認ダイアログの文はここではない（closeList と onSaveList、削除ボタン）。
+ */
 function messageOf(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
 }
 
+/**
+ * チェック済みの件数。
+ * 詳細は draft、一覧カードは保存済みの items。
+ * 「全部済み」は件数が1以上かつこの数と長さが同じ。空リストは全部済みにしない。
+ */
 function doneCount(items: { checked: boolean }[]) {
   return items.filter((item) => item.checked).length;
 }
 
+/**
+ * 保存済みリストを、画面の編集用 draft に写す。
+ * key は項目 id。新規行の key は onAddItem が付ける。
+ * チェック変更は setDraft だけで、保存まで DB は動かない。
+ */
 function draftFrom(list: CheckList): DraftItem[] {
   return list.items.map((item) => ({ key: item.id, label: item.label, checked: item.checked }));
 }
 
+/**
+ * 保存済みリストと draft が違うか。
+ * 件数、項目の文、チェックのどれかが違えば未保存。
+ * 保存ボタンを押せる条件を変えるときはここ。
+ */
 function isDirty(list: CheckList, draft: DraftItem[]) {
   if (list.items.length !== draft.length) return true;
   return draft.some((item, index) => item.label !== list.items[index]?.label || item.checked !== list.items[index]?.checked);
 }
 
-/** リストと雛形。開いているリストの編集は draft。保存するまでDBは変えない。 */
+/**
+ * リストと雛形の画面。開いているリストの編集は draft。保存するまで DB は変えない。
+ * view が lists なら一覧、templates なら雛形。openId があると詳細。
+ * 全部済みで消すかは onSaveList。閉じる確認は closeList。
+ */
 export function ChecksApp() {
   const [view, setView] = useState<View>("lists");
+  // null はまだ読んでいない（読み込み中）。空配列は0件。
   const [templates, setTemplates] = useState<CheckTemplate[] | null>(null);
   const [lists, setLists] = useState<CheckList[] | null>(null);
+  // 詳細で開いているリストの id。null は一覧か雛形。保存済みの中身は lists。
   const [openId, setOpenId] = useState<string | null>(null);
+  // 未保存の項目。チェック・追加・削除はここだけ。保存ボタンで DB に書く。
   const [draft, setDraft] = useState<DraftItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -62,14 +90,24 @@ export function ChecksApp() {
   const [itemLabel, setItemLabel] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [templateLines, setTemplateLines] = useState("");
+  // 修正中の雛形 id。null は新規登録。入力欄は templateName と templateLines。
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
 
+  /**
+   * サーバーが返した雛形とリストを画面に載せる。
+   * 各保存 API は全部入りで返すので、一覧の更新はここだけ。
+   */
   function apply(next: { templates: CheckTemplate[]; lists: CheckList[] }) {
     setTemplates(next.templates);
     setLists(next.lists);
     return next;
   }
 
+  /**
+   * 保存系をまとめて走らせる。失敗したら error だけで、一覧は変えない。
+   * 成功した戻りを apply する。busy のあいだはボタンを止める。
+   * 「保存できませんでした」を変えるときはここの fallback。
+   */
   async function run(action: () => Promise<{ templates: CheckTemplate[]; lists: CheckList[] }>) {
     setBusy(true);
     setError(null);
@@ -83,6 +121,7 @@ export function ChecksApp() {
     }
   }
 
+  // 初回だけ雛形とリストを読む。アンマウント後の setState は cancelled で捨てる。
   useEffect(() => {
     let cancelled = false;
     getCheckState()
@@ -97,10 +136,15 @@ export function ChecksApp() {
     };
   }, []);
 
+  // open は保存済み。dirty は draft との差。allDone は項目が1件以上ですべてチェック。
   const open = lists?.find((list) => list.id === openId) ?? null;
   const dirty = open ? isDirty(open, draft) : false;
   const allDone = draft.length > 0 && doneCount(draft) === draft.length;
 
+  /**
+   * 一覧からリストを開く。draft は保存済み項目の写し。
+   * 別リストの未保存があっても、ここでは確認しない。戻る確認は closeList。
+   */
   function openList(list: CheckList) {
     setOpenId(list.id);
     setDraft(draftFrom(list));
@@ -108,13 +152,24 @@ export function ChecksApp() {
     setError(null);
   }
 
+  /**
+   * 詳細を閉じて一覧へ戻る。
+   * 未保存（dirty）なら捨てるか確認する。いいえなら画面のまま。
+   * 確認文を変えるときはこの confirm。
+   */
   function closeList() {
+    // いいえなら閉じない。draft も DB もそのまま。
     if (open && dirty && !window.confirm("保存していない変更を捨てますか？")) return;
     setOpenId(null);
     setDraft([]);
     setItemLabel("");
   }
 
+  /**
+   * 新しいリストを作る。名前は必須。雛形は空なら無し。
+   * 項目のコピーとチェックオフは API の createCheckList。
+   * 成功したら戻り lists の先頭（新しい順）を開く。
+   */
   async function onCreateList(event: FormEvent) {
     event.preventDefault();
     const trimmed = name.trim();
@@ -127,6 +182,10 @@ export function ChecksApp() {
     if (created) openList(created);
   }
 
+  /**
+   * 開いているリストに項目を足す。画面の draft だけ。保存まで DB は変わらない。
+   * 追加した行のチェックはオフ。文字数の上限は入力の maxLength（80）。
+   */
   function onAddItem(event: FormEvent) {
     event.preventDefault();
     const label = itemLabel.trim();
@@ -135,8 +194,15 @@ export function ChecksApp() {
     setItemLabel("");
   }
 
+  /**
+   * 開いているリストを保存する。
+   * 全部チェック済みなら削除の確認だけする。はいなら削除し、項目は保存しない。
+   * いいえなら画面のまま（未保存のチェックも残る）。空リストは削除確認にしない。
+   * 確認文はここの confirm。全部済みでないときだけ saveCheckList。
+   */
   async function onSaveList() {
     if (!open) return;
+    // 全部チェック済みは保存しない。はいのときだけリストを消す。いいえは return。
     if (allDone) {
       if (!window.confirm(`${open.name} は全部チェック済みです。このリストを削除しますか？`)) return;
       const next = await run(() => deleteCheckList({ data: { id: open.id } }));
@@ -154,6 +220,11 @@ export function ChecksApp() {
     if (saved) setDraft(draftFrom(saved));
   }
 
+  /**
+   * 雛形を登録するか、項目ごと上書きする。項目は改行で区切り、空行は捨てる。
+   * editingTemplate があればその id で更新。件数の上限は API（40件、各80文字）。
+   * 成功したら入力を空にして新規に戻す。
+   */
   async function onSaveTemplate(event: FormEvent) {
     event.preventDefault();
     const items = templateLines
@@ -187,6 +258,7 @@ export function ChecksApp() {
           <button
             type="button"
             className="text-sm font-medium text-primary"
+            // 一覧と雛形を切り替える。詳細を開いているときはこのボタンは出ない。
             onClick={() => setView((current) => (current === "lists" ? "templates" : "lists"))}
           >
             {view === "lists" ? "雛形" : "リスト"}
@@ -231,6 +303,7 @@ export function ChecksApp() {
                       {item.label}
                     </span>
                   </label>
+                  {/* この項目を draft から外すだけ。保存するまで DB の項目は残る。 */}
                   <button
                     type="button"
                     className="shrink-0 text-xs text-muted"
@@ -263,6 +336,7 @@ export function ChecksApp() {
             className="mt-3 text-xs text-muted"
             disabled={busy}
             onClick={() => {
+              // いいえなら削除しない。開いたまま。はいなら詳細を閉じてから消す。
               if (!window.confirm(`${open.name} を削除しますか？`)) return;
               setOpenId(null);
               setDraft([]);
@@ -305,6 +379,7 @@ export function ChecksApp() {
                   type="button"
                   variant="outline"
                   disabled={busy}
+                  // 編集をやめて新規登録に戻す。DB は変えない。
                   onClick={() => {
                     setEditingTemplate(null);
                     setTemplateName("");
@@ -321,6 +396,7 @@ export function ChecksApp() {
               <li key={template.id} className="rounded-lg border border-border bg-surface px-3 py-2 shadow-card">
                 <div className="flex items-center gap-2">
                   <p className="min-w-0 flex-1 truncate text-sm font-medium text-fg">{template.name}</p>
+                  {/* この雛形を上のフォームへ出す。項目は改行区切り。保存は onSaveTemplate。 */}
                   <button
                     type="button"
                     className="text-xs font-medium text-primary"
@@ -332,12 +408,15 @@ export function ChecksApp() {
                   >
                     編集
                   </button>
+                  {/* 確認ではいなら雛形だけ消す。作済みのリストは残る。いいえは何もしない。 */}
                   <button
                     type="button"
                     className="text-xs text-muted"
                     disabled={busy}
                     onClick={() => {
+                      // いいえなら消さない。
                       if (!window.confirm(`${template.name} の雛形を削除しますか？`)) return;
+                      // いま編集中の雛形なら、入力を空にして新規に戻す。
                       if (editingTemplate === template.id) {
                         setEditingTemplate(null);
                         setTemplateName("");
@@ -390,6 +469,7 @@ export function ChecksApp() {
             <ul className="flex flex-col gap-2">
               {(lists ?? []).map((list) => {
                 const done = doneCount(list.items);
+                // 項目が1件以上かつ全部チェックだけ「全部済み」。空は 0/0 のまま。
                 const finished = list.items.length > 0 && done === list.items.length;
                 return (
                   <li key={list.id}>

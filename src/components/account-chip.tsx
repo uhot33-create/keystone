@@ -21,6 +21,11 @@ export function AccountChip() {
   const rootRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
+  /**
+   * メニューの外を押すか Escape で閉じる。画面右上のアカウント。
+   * 配色ダイアログ（data-theme-dialog）の中は外クリックにしない。
+   * 閉じる条件を変えるときはこの判定。項目のオンオフは setDeskItemVisible。
+   */
   useEffect(() => {
     if (!open) return;
     function onPointer(event: PointerEvent) {

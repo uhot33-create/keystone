@@ -7,12 +7,20 @@ import type { CalorieState } from "@/lib/calorie/types";
 
 let held: CalorieState | null = null;
 
-/** いま持っている CalorieState。無ければ null。日付は state.date。タブを閉じると消える。取り直す条件を変えるときは、各画面の peek 判定。 */
+/**
+ * いま持っている CalorieState。無ければ null。日付は state.date。タブを閉じると消える。
+ * 暮らし帳と /calorie が同じ日を見るためのメモリ。サーバーへは取り直さない。
+ * 取り直す条件を変えるときは、各画面の peek 判定。書くのは holdCalorieState。
+ */
 export function peekCalorieState(): CalorieState | null {
   return held;
 }
 
-/** 日付変更や保存のあと、暮らし帳とわんカロリーが同じ内容を見るように残す。引数は画面が返す一式。ここを飛ばすと次の画面が取り直す。 */
+/**
+ * 日付変更や保存のあと、暮らし帳とわんカロリーが同じ内容を見るように残す。
+ * 引数は画面が返す一式。date もこの中。メニューとの共有はここだけ。
+ * ここを飛ばすと次の画面が getCalorieState で取り直す。
+ */
 export function holdCalorieState(state: CalorieState) {
   held = state;
 }

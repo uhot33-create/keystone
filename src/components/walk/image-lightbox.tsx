@@ -8,7 +8,11 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 
-/** 共有シートに渡す拡張子。png / webp / gif 以外は jpg。 */
+/**
+ * 共有シートに渡す拡張子。png / webp / gif 以外は jpg。
+ * 画面はライトボックスの共有。中身の形式は fetch した blob.type。
+ * 対応を増やすならこの分岐と fileName。
+ */
 function extOf(type: string): string {
   if (type.includes("png")) return "png";
   if (type.includes("webp")) return "webp";
@@ -16,7 +20,11 @@ function extOf(type: string): string {
   return "jpg";
 }
 
-/** 共有ファイル名。alt から使えない文字を除き、空なら「写真」。 */
+/**
+ * 共有ファイル名。alt から使えない文字を除き、空なら「写真」。
+ * 画面はライトボックス。iPhone の共有シートに出す名前。
+ * 禁止文字や長さを変えるなら replace と slice(0, 40)。
+ */
 function fileName(alt: string, type: string): string {
   const base = alt.replace(/[\\/:*?"<>|]/g, "").trim().slice(0, 40) || "写真";
   return `${base}.${extOf(type)}`;
@@ -34,7 +42,11 @@ async function imageFile(src: string, alt: string): Promise<File> {
   return new File([blob], fileName(alt, type), { type });
 }
 
-/** body 直下に出す。src は /api/walk/image か、フォームの blob: プレビュー。 */
+/**
+ * body 直下に出す。src は /api/walk/image か、フォームの blob: プレビュー。
+ * 画面は一覧の拡大と、新規・編集のプレビュー。閉じるのは Escape・背景・閉じるボタン。
+ * 共有の中身は imageFile。先読みは下の effect（iOS はタップ中に待つと共有が失敗する）。
+ */
 export function ImageLightbox({
   src,
   alt,
@@ -44,6 +56,7 @@ export function ImageLightbox({
   alt: string;
   onClose: () => void;
 }) {
+  // 開いたときに先読みした共有用 File。未完了なら共有ボタン押下時に取り直す。
   const ready = useRef<File | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
@@ -62,7 +75,8 @@ export function ImageLightbox({
     };
   }, [onClose]);
 
-  // 開いたら先に File を作っておく。共有シートを押した瞬間に待たせないため。src が変わるとやり直す。
+  // iPhone は共有のタップ中に fetch すると、ユーザー操作の有効期限が切れてシートが開かない。
+  // 開いた時点で File を先読みし ready に置く。src が変わるとやり直す。失敗したらボタン押下時に取り直す。
   useEffect(() => {
     let cancelled = false;
     ready.current = null;

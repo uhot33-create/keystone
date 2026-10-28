@@ -241,7 +241,11 @@ const saveInput = z.object({
   sourceName: z.string().max(120),
 });
 
-/** GPX を 1 件保存する。町名が取れたら名前を町名にする。失敗時は送られた名前。 */
+/**
+ * GPX を 1 件 walk_logs に保存する。画面は /dogwalklogs の取り込み。
+ * 町名が取れたら名前を町名にする。失敗時は送られた名前。
+ * 取り込みでは月地図（walk_month_tracks）を作り直さない。変わった月だけ毎日の集計が更新する。
+ */
 export const saveWalkLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(saveInput, input))
@@ -267,7 +271,11 @@ export const saveWalkLog = createServerFn({ method: "POST" })
     return listLogs(context.userId);
   });
 
-/** 自分のログを 1 件消して、残りの一覧を返す。 */
+/**
+ * 自分の walk_logs を 1 件消して、残りの一覧を返す。画面はログ詳細の削除。
+ * 削除しても月地図（walk_month_tracks）はその場では作り直さない。
+ * 消した月は次の毎日集計（rebuildAllWalkMonths）が件数の差を見て更新する。
+ */
 export const deleteWalkLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))

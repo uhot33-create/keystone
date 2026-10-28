@@ -50,7 +50,11 @@ function WalkLogDetail() {
     };
   }, [id]);
 
-  /** 確認のあと削除し、一覧キャッシュを捨てる。前後があればその詳細、無ければ一覧へ戻る。 */
+  /**
+   * 確認のあと deleteWalkLog し、一覧キャッシュを捨てる。画面は /dogwalklogs/$id。
+   * 前後があればその詳細、無ければ一覧へ戻る。
+   * 削除しても月地図はその場では作り直さない。変わった月は毎日0時の集計待ち。
+   */
   async function onDelete() {
     if (!log || !confirm(`「${log.name}」を削除しますか？`)) return;
     setPending(true);

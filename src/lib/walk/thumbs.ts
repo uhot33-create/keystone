@@ -6,7 +6,10 @@
  */
 import type { WalkMemo } from "./types";
 
-/** getWalkThumbs が返す 1 件。カバー画像のサムネだけ。 */
+/**
+ * getWalkThumbs が返す 1 件。カバー画像のサムネだけ。
+ * 画面は /dogfriend。取得は api.ts。他の枠のサムネはここに無い。
+ */
 export type WalkThumbPayload = {
   id: string;
   thumbData: string | null;
@@ -14,7 +17,11 @@ export type WalkThumbPayload = {
   thumbPublic: boolean;
 };
 
-/** カバー枠の thumbData / thumbUrl を埋める。ほかのスロットは触らない。 */
+/**
+ * カバー枠の thumbData / thumbUrl を埋める。ほかのスロットは触らない。
+ * 画面は /dogfriend。文字を先に出したあと、この関数でサムネを載せる。
+ * 載せる枠を変えるなら cover（memos.cover_index）。サムネの作りは image.ts / api.ts。
+ */
 export function applyWalkThumbs(memos: WalkMemo[], thumbs: WalkThumbPayload[]): WalkMemo[] {
   if (thumbs.length === 0) return memos;
   const byId = new Map(thumbs.map((item) => [item.id, item]));

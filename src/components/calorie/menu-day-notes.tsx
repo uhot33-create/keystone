@@ -10,7 +10,11 @@ import { overdueMedicines } from "@/components/calorie/medicine-panel";
 import { dailyEnergy, formatJaDayWeek, formatKcal, formatQuantity, todayJst, truncKcal } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 
-/** 記録行の種類ラベル。treat 以外はごはん。文言だけここ（保存値 kind は変えない）。 */
+/**
+ * 記録行の種類ラベル。treat 以外はごはん。文言だけここ（保存値 kind は変えない）。
+ * 暮らし帳の日付下と、今日タブの記録一覧で同じ呼び方。
+ * 表示文言を変えるならこの関数。kind の保存は calorie_logs。
+ */
 function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
 }

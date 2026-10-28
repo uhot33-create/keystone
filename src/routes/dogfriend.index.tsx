@@ -20,7 +20,11 @@ import { filterMemos, householdMates, householdOthers, isSortKey } from "@/lib/w
 import { applyWalkThumbs } from "@/lib/walk/thumbs";
 import type { DogBreed, WalkMemo, WalkSearch } from "@/lib/walk/types";
 
-/** 一覧ルート。検索クエリは validateSearch で q / sort / breed に整える。 */
+/**
+ * 一覧ルート。検索クエリは validateSearch で q / sort / breed に整える。
+ * 画面は /dogfriend。並びが不正なら名前昇順。実装は WalkIndex。
+ * 並びの許可リストは filter.ts の isSortKey と types.ts の SORT_OPTIONS。
+ */
 export const Route = createFileRoute("/dogfriend/")({
   validateSearch: (search: Record<string, unknown>): WalkSearch => ({
     q: typeof search.q === "string" ? search.q : "",
@@ -30,7 +34,11 @@ export const Route = createFileRoute("/dogfriend/")({
   component: WalkIndex,
 });
 
-/** 一覧。検索は URL、カードはキャッシュ優先。今日にする処理とサムネはここで取る。 */
+/**
+ * 一覧。検索は URL、カードはキャッシュ優先。今日にする処理とサムネはここで取る。
+ * 画面は /dogfriend。1枚の見た目は MemoCard。追加は /dogfriend/new。
+ * 控えがあるあいだ getWalkState は走らない（保存・削除で drop するまで）。
+ */
 function WalkIndex() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -38,12 +46,18 @@ function WalkIndex() {
   const [memos, setMemos] = useState<WalkMemo[] | null>(cached?.memos ?? null);
   const [breeds, setBreeds] = useState<DogBreed[]>(cached?.breeds ?? []);
   const [error, setError] = useState<string | null>(null);
+  // 肉球か戻す処理中のカード id。そのカードだけ押せなくする。
   const [pendingId, setPendingId] = useState<string | null>(null);
+  // 今日にする確認の残り。同じ飼い主で、まだその日になっていない犬だけ。
   const [follow, setFollow] = useState<WalkMemo[]>([]);
   const [showTop, setShowTop] = useState(false);
+  // サムネ取得を始めたか。控えに thumbs 済みなら最初から true で取り直さない。
   const thumbsFetchStarted = useRef(cached?.thumbs ?? false);
 
-  /** 240px より下へスクロールしたら TOP を出す。データの取得ではない。 */
+  /**
+   * 240px より下へスクロールしたら TOP を出す。データの取得ではない。
+   * 画面は /dogfriend。しきい値を変えるなら 240。
+   */
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 240);
     onScroll();
@@ -51,7 +65,11 @@ function WalkIndex() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  /** キャッシュが無ければカードと犬種を getWalkState で取る。検索条件は URL のまま。 */
+  /**
+   * 控え（held.ts）があれば通信しない。保存・削除で dropWalkList されるまで取り直さない。
+   * 画面は /dogfriend。取るのは getWalkState（サムネ無し）。検索条件は URL のまま。
+   * 肉球や戻す操作は手元の配列と控えを書き換えるだけで、ここでは再取得しない。
+   */
   useEffect(() => {
     if (peekWalkList()) return;
     let cancelled = false;
@@ -72,7 +90,11 @@ function WalkIndex() {
     };
   }, []);
 
-  /** 一覧のあと、一度だけサムネを足す。失敗しても文字のカードは残す。 */
+  /**
+   * 一覧のあと、一度だけサムネを足す。失敗しても文字のカードは残す。
+   * 画面は /dogfriend。取得は getWalkThumbs、合成は applyWalkThumbs。
+   * 控えの thumbs が true なら開始しない（同じタブで戻ったとき二重に取らない）。
+   */
   useEffect(() => {
     if (!memos || thumbsFetchStarted.current) return;
     thumbsFetchStarted.current = true;
@@ -91,10 +113,17 @@ function WalkIndex() {
       });
   }, [memos]);
 
-  /** 検索語・並び・犬種で絞る。規則は filterMemos。URL の search を変えるとここが変わる。 */
+  /**
+   * 検索語・並び・犬種で絞る。規則は filterMemos。URL の search を変えるとここが変わる。
+   * 画面は /dogfriend。件数はツールバーの shown。カードの並びもこの結果。
+   */
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
 
-  /** そのカードを今日にする。同じ飼い主のほかの犬がいれば、一頭ずつ確認を出す。 */
+  /**
+   * そのカードを今日にする。同じ飼い主のほかの犬がいれば、一頭ずつ確認を出す。
+   * 画面は一覧の肉球。更新は touchWalkMemoMet（虹渡りはサーバーが拒否）。
+   * 聞く相手は householdOthers。すでにその日付の犬・虹渡りは聞かない。
+   */
   async function onMetToday(id: string) {
     const list = memos;
     setPendingId(id);
@@ -122,7 +151,11 @@ function WalkIndex() {
     }
   }
 
-  /** 確認ダイアログの返事。いいえは次の犬へ。はいならその犬も今日にする。 */
+  /**
+   * 確認ダイアログの返事。いいえは次の犬へ。はいならその犬も今日にする。
+   * 画面は一覧の「ほかの犬」ダイアログ。はいも touchWalkMemoMet。日付は今日（on を渡さない）。
+   * 編集保存のときは memo-form の answerFollow（指定した日）。ここは今日だけ。
+   */
   async function answerFollow(yes: boolean) {
     const dog = follow[0];
     if (!dog || pendingId) return;
@@ -151,7 +184,11 @@ function WalkIndex() {
     }
   }
 
-  /** 最後に会った日を、ひとつ前の日付へ戻す。確認ダイアログの日付は prevLastMetOn。 */
+  /**
+   * 最後に会った日を、ひとつ前の日付へ戻す。確認ダイアログの日付は prevLastMetOn。
+   * 画面は一覧カードの「○に戻す」。中身は restoreWalkMemoMet（last と prev を入れ替える）。
+   * 履歴は1世代。戻したあとは手元の配列と控えも同じ日付に書き換える。再取得はしない。
+   */
   async function onRestoreMet(id: string) {
     const memo = memos?.find((item) => item.id === id);
     if (!memo?.prevLastMetOn) return;

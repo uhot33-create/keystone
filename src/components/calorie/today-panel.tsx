@@ -62,7 +62,11 @@ function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): 
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
 }
 
-/** グラフを過去に遡れる最古です。今日から約5年（5×366日）。summary の全再計算と同じ幅です。 */
+/**
+ * グラフを過去に遡れる最古です。今日から約5年（5×366日）。summary の全再計算と同じ幅です。
+ * 今日画面のグラフが、これより古い期間へは送らない床。日次の1画面は末尾7日（CHART_WINDOW.day）。
+ * 年数を変えるならこの -5。暮らし帳の historyFloor と summary の full 再計算も同じ式。
+ */
 function historyFloor(today: string): string {
   return shiftIsoDate(today, -5 * 366);
 }
@@ -103,7 +107,11 @@ function chipText(food: DogFood): string {
   return `${food.name} ${trimNum(food.kcal)}`;
 }
 
-/** 記録行の種類。treat 以外はごはん。文言を変えても kind の保存値は変わらない。 */
+/**
+ * 記録行の種類。treat 以外はごはん。文言を変えても kind の保存値は変わらない。
+ * 今日タブの記録一覧。保存先は calorie_logs.kind。
+ * 表示だけ変えるならここ。メニューの kindLabel（menu-day-notes）も同じ分岐。
+ */
 function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
 }
@@ -220,13 +228,21 @@ export function TodayPanel({
     }
   }
 
-  /** 数量に step を足す。0 未満にはしない。刻みの種類は QTY_STEPS。 */
+  /**
+ * 数量に step を足す。0 未満にはしない。刻みの種類は QTY_STEPS。
+ * 今日タブの「カロリーを足す」。kcal の再計算は onQty 経由。
+ * ボタンの数字を変えるなら上の QTY_STEPS。切り捨ては保存時の truncKcal。
+ */
   function bumpQty(step: number) {
     const next = Math.max(0, (Number(qty) || 0) + step);
     onQty(String(next));
   }
 
-  /** ごはん／おやつを切り替える。選んでいたフードと数量と kcal はクリアする。 */
+  /**
+ * ごはん／おやつを切り替える。選んでいたフードと数量と kcal はクリアする。
+ * 今日タブの追加フォーム。登録フードの絞り込みは foods の kind。
+ * 初期の単位（おやつは個、ごはんは g）を変えるなら unit の式。
+ */
   function switchKind(next: FoodKind) {
     setKind(next);
     setFoodId(null);

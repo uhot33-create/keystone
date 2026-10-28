@@ -14,13 +14,21 @@ import { formatKcal } from "@/lib/calorie/formula";
 import { TREND_GRAINS, type DayTrend, type TrendGrain } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 
-/** 軸の最大値を step の倍数に切り上げます。step を変えると、縦軸の上限の丸めが変わります。 */
+/**
+ * 軸の最大値を step の倍数に切り上げます。step を変えると、縦軸の上限の丸めが変わります。
+ * 今日タブの推移グラフ。kcal の線と散歩の棒で別の step を渡す。
+ * 日は kcal 100・散歩 1km、それ以外は呼び出し側。0 以下は step そのもの。
+ */
 function niceMax(value: number, step: number): number {
   if (!(value > 0)) return step;
   return Math.ceil(value / step) * step;
 }
 
-/** グラフの見出しです。「推移（7日）」などを変えると、タイトルの文字だけ変わります。 */
+/**
+ * グラフの見出しです。「推移（7日）」などを変えると、タイトルの文字だけ変わります。
+ * 日次は直近7日（WINDOW.day）。週・月・年は粒度の名前だけ。
+ * 件数の数字を変えるなら summary.ts の WINDOW と CHART_WINDOW。文言だけならここ。
+ */
 function grainTitle(grain: TrendGrain): string {
   if (grain === "week") return "推移（週）";
   if (grain === "month") return "推移（月）";
@@ -28,7 +36,11 @@ function grainTitle(grain: TrendGrain): string {
   return "推移（7日）";
 }
 
-/** 横軸の文字です。月表示は年が変わるところだけ「年/月」、それ以外は期間の label をそのまま出します。 */
+/**
+ * 横軸の文字です。月表示は年が変わるところだけ「年/月」、それ以外は期間の label をそのまま出します。
+ * グラフの日付タップは onSelect（その期間の最終日）。日次ラベルの形は describePeriod。
+ * 月の年表示を常に出すならここの if。週の間引きは showEvery。
+ */
 function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined): string {
   if (grain === "month") {
     const month = String(Number(day.start.slice(5, 7)));
@@ -93,25 +105,45 @@ export function TrendChart({
   // 週だけ横軸ラベルを 1 つおき。末日は描画側で必ず出す。
   const showEvery = grain === "day" ? 1 : grain === "week" ? 2 : 1;
 
-  /** 点の横位置。1点だけのときは中央。点の数を変えても左端と右端は pad の内側。 */
+  /**
+ * 点の横位置。1点だけのときは中央。点の数を変えても左端と右端は pad の内側。
+ * 線（kcal）・赤点（体重）・茶色の棒（散歩）が同じ x を使う。
+ * 余白を変えるなら上の pad。点数は呼び出し側の CHART_WINDOW。
+ */
   function x(index: number) {
     if (days.length <= 1) return pad.left + innerW / 2;
     return pad.left + (index / (days.length - 1)) * innerW;
   }
-  /** 左軸。0 が下、maxKcal が上。刻みを変えるなら上の niceMax の step。 */
+  /**
+ * 左軸。0 が下、maxKcal が上。実線が期間のカロリー合計。
+ * 刻みを変えるなら上の niceMax の step（日は 100、それ以外 500）。
+ * 点線の目安も同じ軸。guideKcal が無い点は線が途切れる。
+ */
   function yKcal(value: number) {
     return pad.top + innerH - (value / maxKcal) * innerH;
   }
-  /** 右軸。weightMin から weightMax まで。体重が無い日は点を打たない。 */
+  /**
+ * 右軸。weightMin から weightMax まで。赤の系列は期末の体重（平均ではない）。
+ * 体重が無い日は点を打たない。日次はその日、週・月・年は期間内の最終計測。
+ * 余白の 2 割と最小幅 0.4kg は上の span。色は #c23b32。
+ */
   function yWeight(value: number) {
     return pad.top + innerH - ((value - weightMin) / (weightMax - weightMin || 1)) * innerH;
   }
-  /** 散歩の棒。上 12px は数値用に空け、kcal の線と完全には重ねない。room を変えると棒の頭が上下する。 */
+  /**
+ * 散歩の棒。上 12px は数値用に空け、kcal の線と完全には重ねない。room を変えると棒の頭が上下する。
+ * 茶色の棒は期間の散歩距離。色は #6b5344。0 は棒もラベルも出さない。
+ * 上限の刻みは niceMax（日 1km、年 20km、それ以外 5km）。km 化は attachWalks。
+ */
   function yWalk(value: number) {
     const room = 12;
     return pad.top + room + (innerH - room) - (value / (maxWalk || 1)) * (innerH - room);
   }
-  /** 10km 未満は小数1桁、以上は四捨五入。0 は空文字で棒もラベルも出さない。 */
+  /**
+ * 10km 未満は小数1桁、以上は四捨五入。0 は空文字で棒もラベルも出さない。
+ * グラフ上の散歩距離の数字だけ。保存単位は walk_logs のメートル。
+ * 桁を変えるならここの toFixed。棒の有無は yWalk の手前。
+ */
   function walkLabel(km: number) {
     if (!(km > 0)) return "";
     return km < 10 ? km.toFixed(1) : String(Math.round(km));
@@ -136,7 +168,11 @@ export function TrendChart({
   const startX = useRef<number | null>(null);
   const swiped = useRef(false);
 
-  /** スライド開始位置。48px 未満は日付タップのままにする。 */
+  /**
+ * スライド開始位置。48px 未満は日付タップのままにする。
+ * 左右の矢印は印だけでボタンではない。期間が動くのはこのスライド。
+ * 閾値を変えるなら onPointerUp の 48 と、日付バー（date-bar）の 48 を揃える。
+ */
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     startX.current = event.clientX;
     swiped.current = false;

@@ -7,9 +7,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChecksApp } from "@/components/checks/checks-app";
 import { Protected } from "@/components/protected";
 
-/** チェックリストルート。 */
+/**
+ * /checks のルート。中身は ChecksPage。
+ * パスを変えるときは createFileRoute とこのファイルの場所。
+ */
 export const Route = createFileRoute("/checks")({ component: ChecksPage });
 
+/**
+ * チェックリストのページ本体。
+ * Protected でログイン必須。中身は ChecksApp。
+ * リストの動きを変えるときは components/checks/checks-app.tsx。
+ */
 function ChecksPage() {
   return (
     <Protected>

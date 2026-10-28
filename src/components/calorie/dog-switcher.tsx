@@ -12,7 +12,11 @@ import type { CalorieState } from "@/lib/calorie/types";
 /** localStorage のキーです。変えると前回選んだ犬を忘れます。 */
 const STORAGE_KEY = "calorie-dog-id";
 
-/** 保存済みの犬 id。サーバー側や未保存のときは undefined（先頭の犬になります）。 */
+/**
+ * 保存済みの犬 id。サーバー側や未保存のときは undefined（先頭の犬になります）。
+ * 今日画面の初期表示が localStorage の calorie-dog-id を読む。
+ * キー名を変えるなら上の STORAGE_KEY。ここを変えても並びは dogs の id 順のまま。
+ */
 export function storedDogId(): number | undefined {
   if (typeof window === "undefined") return undefined;
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -20,7 +24,11 @@ export function storedDogId(): number | undefined {
   return Number.isInteger(id) && id > 0 ? id : undefined;
 }
 
-/** 選んだ犬を覚えます。次に画面を開いた loader が storedDogId で読みます。 */
+/**
+ * 選んだ犬を覚えます。次に画面を開いた loader が storedDogId で読みます。
+ * 暮らし帳と /calorie が同じ犬で開くための localStorage 書き込み。
+ * キーを変えるなら STORAGE_KEY。犬の追加そのものは profile-panel の addDog。
+ */
 export function rememberDogId(id: number) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, String(id));

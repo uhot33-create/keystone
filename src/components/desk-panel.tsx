@@ -105,6 +105,11 @@ export function DeskPanel() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<"quote" | "story" | "dogFact" | "dogNews" | null>(null);
 
+  /**
+   * オンの項目だけ getDesk で取る。オフのウィジェットは false を渡し、サーバーも取りに行かない。
+   * 画面はホームの机。星座などを変えたときも、占いがオンなら取り直す。
+   * 出す項目を変えるときは visibility.ts の DESK_ITEMS と、ここへ渡すフラグを揃える。
+   */
   useEffect(() => {
     if (!visible || !anyVisible) return;
     let cancelled = false;

@@ -143,7 +143,11 @@ export function bucketMonthTracks(rows: TrackRow[]): Bucket[] {
   });
 }
 
-/** 中心を 700m マス（REGION_CELL_M）に落としたキーで束ねる。マスが違う散歩は別の地図。 */
+/**
+ * 中心を 700m マス（REGION_CELL_M）に落としたキーで束ねる。画面は月地図。
+ * マスが違う散歩は別の地図。同じマスでも別々の散歩は1本の線につなげない（ポリラインは別のまま）。
+ * マスの一辺を変えるときは REGION_CELL_M。線の切れ目（100m）は gpx.ts の TRACK_GAP_M で、ここではない。
+ */
 function clusterPieces(pieces: Piece[]): Array<MonthRegion & { box: Box }> {
   const groups = new Map<string, Piece[]>();
   for (const piece of pieces) {
@@ -328,7 +332,11 @@ async function writeBuckets(sql: Sql, keys: MonthKey[], buckets: Bucket[]) {
   }
 }
 
-/** 変わった月だけ読み直し、walk_month_tracks を書き換える。差分が無ければ何もしない。 */
+/**
+ * 変わった月だけ walk_month_tracks を読み直して書き換える。画面は /dogwalklogs/month。
+ * 差分が無い月は消さない。全期間の作り直しではない。
+ * 取り込みや1件削除はこの関数を呼ばない。毎日の集計からだけ呼ぶ。
+ */
 export async function rebuildAllWalkMonths(sql: Sql): Promise<{ months: number; users: number }> {
   const dirty = await dirtyMonths(sql);
   if (dirty.length === 0) return { months: 0, users: 0 };

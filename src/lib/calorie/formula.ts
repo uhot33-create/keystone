@@ -41,12 +41,20 @@ export const TREAT_RATIOS = [
   { value: 0.2, label: "20%" },
 ] as const;
 
-/** LIFE_STAGES にある id かどうか。一覧に無い文字列は不正として弾きます。 */
+/**
+ * LIFE_STAGES にある id かどうか。一覧に無い文字列は不正として弾きます。
+ * プロフィール保存と dogs.life_stage の読み戻し。画面はプランの選択肢。
+ * ステージを足すなら LIFE_STAGES。ここは id の存在チェックだけ。
+ */
 export function isLifeStageId(value: string): value is LifeStageId {
   return LIFE_STAGES.some((stage) => stage.id === value);
 }
 
-/** id から係数を取ります。見つからないときは 1.6（避妊・去勢済みの成犬）です。 */
+/**
+ * id から係数を取ります。見つからないときは 1.6（避妊・去勢済みの成犬）です。
+ * プラン画面の「安静時 × 係数」と dailyEnergy が使う。
+ * 係数を変えるなら LIFE_STAGES の factor。不明 id の既定値を変えるならこの 1.6。
+ */
 export function factorFor(stage: string): number {
   return LIFE_STAGES.find((item) => item.id === stage)?.factor ?? 1.6;
 }
@@ -98,7 +106,11 @@ export function truncKcal(value: number): number {
   return value < 0 ? -Math.trunc(-value * 10) / 10 : Math.trunc(value * 10) / 10;
 }
 
-/** 画面用のkcal文字列です。整数なら小数を出さず、そうでなければ小数1桁。計算はしません。 */
+/**
+ * 画面用のkcal文字列です。整数なら小数を出さず、そうでなければ小数1桁。計算の切り捨ては truncKcal。
+ * 今日画面と暮らし帳の合計・残量。保存値はすでに小数第1位まで。
+ * 表示桁を変えるなら toFixed。切り捨ての桁を変えるなら truncKcal。
+ */
 export function formatKcal(value: number): string {
   const n = truncKcal(value);
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
@@ -114,7 +126,11 @@ export function quantityForBudget(kcalPerServing: number, servingAmount: number,
   return budgetKcal / kcalPerUnit;
 }
 
-/** 数量の表示です。g は整数に四捨五入、それ以外は小数1桁。0以下は「—」。単位の付け方を変えるとプランと今日の表示が変わります。 */
+/**
+ * 数量の表示です。g は整数に四捨五入、それ以外は小数1桁。0以下は「—」。
+ * プランの「何g・何個」と、今日タブの定番チップ。単位の候補は FOOD_UNITS。
+ * g の丸めを変えるなら Math.round。単位の付け方を変えるとプランと今日の表示が変わります。
+ */
 export function formatQuantity(quantity: number, unit: string): string {
   if (!(quantity > 0) || !Number.isFinite(quantity)) return "—";
   if (unit === "g") return `${Math.round(quantity)}g`;
@@ -134,7 +150,11 @@ export function suggestedStage(currentKg: number, idealKg: number): LifeStageId 
   return null;
 }
 
-/** 今日の日付を日本時間の YYYY-MM-DD で返します。タイムゾーンを変えると「今日」とロック判定がずれます。 */
+/**
+ * 今日の日付を日本時間の YYYY-MM-DD で返します。タイムゾーンを変えると「今日」とロック判定がずれます。
+ * 日付バー、グラフの終端、2週間ロックの基準日。暮らし帳との共有日付は held の state.date。
+ * タイムゾーンを変えるなら timeZone。ずらしは shiftIsoDate。
+ */
 export function todayJst(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -144,7 +164,11 @@ export function todayJst(): string {
   }).format(new Date());
 }
 
-/** 日付文字列を days 日ずらします。UTCの日付計算なので、日本時間でも日付が1日ずれにくいです。 */
+/**
+ * 日付文字列を days 日ずらします。UTCの日付計算なので、日本時間でも日付が1日ずれにくいです。
+ * 日付バーの前日・翌日と、グラフの期間送り。右スワイプが過去（負の日数）です。
+ * 日数の符号を変えるなら呼び出し側。ロックの遡りは CALORIE_EDIT_DAYS。
+ */
 export function shiftIsoDate(iso: string, days: number): string {
   const [year, month, day] = iso.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day + days));
@@ -158,25 +182,41 @@ export function shiftIsoDate(iso: string, days: number): string {
  */
 export const CALORIE_EDIT_DAYS = 14;
 
-/** date が「今日 − CALORIE_EDIT_DAYS」以前なら true。今日画面は入力を止め、閲覧だけにします。 */
+/**
+ * date が「今日 − CALORIE_EDIT_DAYS」以前なら true。今日画面は入力を止め、閲覧だけにします。
+ * 2週間ロック。境界の日もロック（<=）。まとめて画面も同じ関数。
+ * 日数を変えるなら CALORIE_EDIT_DAYS。画面の文言は today-panel と household-day。
+ */
 export function isCalorieLocked(date: string, today = todayJst()): boolean {
   return date <= shiftIsoDate(today, -CALORIE_EDIT_DAYS);
 }
 
-/** ロック中ならこの文言で保存を止めます。日数を変えてもメッセージは自動では変わりません。 */
+/**
+ * ロック中ならこの文言で保存を止めます。日数を変えてもメッセージは自動では変わりません。
+ * サーバーの摂取・体重保存が呼ぶ。画面側の閲覧のみとは別口。
+ * 日数は isCalorieLocked、文言を変えるならここの Error。
+ */
 export function assertCalorieEditable(date: string, today = todayJst()) {
   if (isCalorieLocked(date, today)) {
     throw new Error("2週間以上前の記録は変更できません");
   }
 }
 
-/** 「2026年10月10日」の形です。表示だけなので、記録の日付そのものは変わりません。 */
+/**
+ * 「2026年10月10日」の形です。表示だけなので、記録の日付そのものは変わりません。
+ * 画面の見出し用。日付バーは formatJaDayWeek。
+ * 年月日の並びを変えるならここ。曜日は weekdayJa。
+ */
 export function formatJaDate(iso: string): string {
   const [year, month, day] = iso.split("-").map(Number);
   return `${year}年${month}月${day}日`;
 }
 
-/** 今日画面の日付バー用です。「10月10日（土）」の形。曜日の文字は WEEKDAYS です。 */
+/**
+ * 今日画面の日付バー用です。「10月10日（土）」の形。曜日の文字は WEEKDAYS です。
+ * 暮らし帳の日付行とまとめて画面の見出しもこれを出す。
+ * 曜日の並びを崩すなら WEEKDAYS。年を足すなら formatJaDate。
+ */
 export function formatJaDayWeek(iso: string): string {
   const parts = iso.split("-").map(Number);
   const month = parts[1];
@@ -184,12 +224,20 @@ export function formatJaDayWeek(iso: string): string {
   return `${month}月${day}日（${weekdayJa(iso)}）`;
 }
 
-/** 日だけを返します（先頭の0は落とす）。グラフの軸などで使います。 */
+/**
+ * 日だけを返します（先頭の0は落とす）。グラフの軸などで使います。
+ * 期間ラベルの本体は summary.ts の describePeriod。ここは日の数字だけ。
+ * ゼロ埋めに戻すなら slice のまま String しない。
+ */
 export function dayNum(iso: string): string {
   return String(Number(iso.slice(8, 10)));
 }
 
-/** 小数1桁に四捨五入した文字列です。今日画面のフードチップ（kcal/g）の表示に使います。 */
+/**
+ * 小数1桁に四捨五入した文字列です。今日画面のフードチップ（kcal/g）の表示に使います。
+ * 摂取の保存は四捨五入ではなく truncKcal（小数第1位で切り捨て）。
+ * チップの桁を変えるならここ。記録される kcal は kcalForQuantity。
+ */
 export function trimNum(value: number): string {
   if (!Number.isFinite(value)) return "0";
   const rounded = Math.round(value * 10) / 10;
@@ -199,7 +247,11 @@ export function trimNum(value: number): string {
 /** 曜日の1文字。並びは日曜始まり（Date の getUTCDay が 0〜6）です。文字を変えると日付表示の曜日が変わります。 */
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-/** その日付の曜日1文字です。WEEKDAYS の並びを崩すと、違う曜日が出ます。 */
+/**
+ * その日付の曜日1文字です。WEEKDAYS の並びを崩すと、違う曜日が出ます。
+ * 日付バーの「（土）」など。計算は UTC の曜日なので日付はずれにくい。
+ * 文字を変えるなら WEEKDAYS。並びは日曜始まり（getUTCDay が 0）。
+ */
 export function weekdayJa(iso: string): string {
   const [year, month, day] = iso.split("-").map(Number);
   return WEEKDAYS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()] ?? "";

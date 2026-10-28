@@ -15,7 +15,11 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-/** 体重を小数2桁の文字列にします。0以下は空欄（未入力）です。桁を変えると入力欄の見た目が変わります。 */
+/**
+ * 体重を小数2桁の文字列にします。0以下は空欄（未入力）です。
+ * プロフィールの現在体重・理想体重の入力欄。保存先は dogs。
+ * 桁を変えるならここの toFixed。上限 120kg は api.ts の saveDogInput。
+ */
 function kgText(value: number): string {
   if (!(value > 0)) return "";
   return (Math.round(value * 100) / 100).toFixed(2);

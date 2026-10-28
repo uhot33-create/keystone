@@ -257,7 +257,7 @@ export async function resetSmokingIfDue(sql: Sql): Promise<{ users: number }> {
     const dailyLimit = Math.max(1, int(raw.daily_limit) || 10);
     const remainingNow = clampRemaining(int(raw.remaining), dailyLimit);
     const periodIso = toIso(raw.period_started_at) ?? new Date(0).toISOString();
-    // 日本時間の日付が同じなら戻さない。変わった人だけ昨日までを締めて残りを上限にする。
+    // 経過時間ではなく、period_started_at の日本時間の暦日が同じなら戻さない（applyReset）。変わった人だけ昨日までを締めて残りを上限にする。
     const reset = applyReset(dailyLimit, remainingNow, periodIso);
     if (!reset.didReset) continue;
     const userId = String(raw.user_id);

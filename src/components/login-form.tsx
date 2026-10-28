@@ -36,6 +36,11 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  /**
+   * ログインか新規登録を送る。画面はこの LoginScreen。
+   * メール形式と8文字以上は credentialsSchema。新規登録だけ確認欄の一致を見る。
+   * 成功するとルートのキャッシュを捨て、トップ（/）へ移る。
+   */
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -209,6 +214,11 @@ export function AuthSplash() {
   );
 }
 
+/**
+ * ログイン／新規登録タブの見た目。画面は LoginScreen。
+ * 選択中だけ地色を出す。文言は呼び出し側のボタン。
+ * 色を変えるときだけここ。入力ルールは credentialsSchema。
+ */
 function tabClass(active: boolean) {
   return [
     "h-10 rounded-sm text-sm font-medium transition-colors duration-150",

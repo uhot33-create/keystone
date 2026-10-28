@@ -56,6 +56,7 @@ export function applyReset(
   if (!Number.isFinite(start)) {
     return { remaining: dailyLimit, periodStartedAt: todayStart, didReset: true };
   }
+  // 経過時間（吸ってから何時間）では戻さない。period_started_at の日本時間の暦日が今日と同じかを見る。
   if (jstDateKey(start) === jstDateKey(now)) {
     return { remaining, periodStartedAt: todayStart, didReset: false };
   }

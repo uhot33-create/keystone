@@ -9,10 +9,15 @@ import { useEffect, useRef } from "react";
 import { decodePolyline, splitTrack } from "@/lib/walk-log/gpx";
 import "leaflet/dist/leaflet.css";
 
-/** encoded か tracks のポリラインを線にする。点が無ければ地図は作らない。 */
+/**
+ * encoded か tracks のポリラインを線にする。点が無ければ地図は作らない。
+ * 画面はログ詳細（encoded が 1 本）と月の合計（tracks が複数）。表の軌跡は呼び出し側。
+ * 切れる距離は gpx.ts の TRACK_GAP_M と splitTrack。タイルや線色を変えるならこの effect。
+ */
 export function TrackMap({ encoded, tracks }: { encoded?: string | null; tracks?: string[] }) {
   const el = useRef<HTMLDivElement>(null);
   const lines = (tracks ?? (encoded ? [encoded] : [])).filter((line) => line.length > 0);
+  // 軌跡の中身が変わったときだけ地図を作り直す。配列の参照ではなく文字列で比べる。
   const key = lines.join("\n");
 
   useEffect(() => {

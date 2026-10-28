@@ -8,10 +8,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { CupApp } from "@/components/cup/cup-app";
 import { Protected } from "@/components/protected";
 
-/** カップ麺ルート。 */
+/**
+ * /cup のルート。中身は CupPage。
+ * パスを変えるときは createFileRoute とこのファイルの場所。
+ */
 export const Route = createFileRoute("/cup")({ component: CupPage });
 
-/** ログイン後だけ CupApp を出す。品目の読み書きは components/cup/cup-app.tsx。 */
+/**
+ * ログイン後だけ CupApp を出す。品目の読み書きは components/cup/cup-app.tsx。
+ * 30日強調・並び順・削除確認は CupApp。画像の URL は /api/cup/image。
+ */
 function CupPage() {
   return (
     <Protected>

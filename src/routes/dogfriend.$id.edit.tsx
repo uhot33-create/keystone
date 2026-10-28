@@ -12,10 +12,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getWalkMemo } from "@/lib/walk/api";
 import type { DogBreed, DogColor, WalkMemo } from "@/lib/walk/types";
 
-/** 編集ルート。中身のコンポーネントは WalkEdit。 */
+/**
+ * 編集ルート。中身のコンポーネントは WalkEdit。
+ * パスは /dogfriend/$id/edit。id は URL。読み込みは WalkEdit。
+ */
 export const Route = createFileRoute("/dogfriend/$id/edit")({ component: WalkEdit });
 
-/** URL の id で1件を読む。保存と項目の上限は MemoForm。 */
+/**
+ * URL の id で1件を読む。保存と項目の上限は MemoForm。
+ * 画面は /dogfriend/$id/edit。データは getWalkMemo。一覧の控えは使わない。
+ * 見つからないときはエラー文。戻る一覧の再取得は、保存・削除で drop したときだけ。
+ */
 function WalkEdit() {
   const { id } = Route.useParams();
   const [memo, setMemo] = useState<WalkMemo | null>(null);
@@ -24,7 +31,11 @@ function WalkEdit() {
   const [blobConfigured, setBlobConfigured] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** id が変わるたびに getWalkMemo を取り直す。キャッシュは使わない。 */
+  /**
+   * id が変わるたびに getWalkMemo を取り直す。キャッシュは使わない。
+   * 画面は編集。他人のカードは API が「見つかりません」。
+   * アンマウント後は cancelled で state を更新しない。
+   */
   useEffect(() => {
     let cancelled = false;
     getWalkMemo({ data: { id } })

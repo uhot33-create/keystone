@@ -9,26 +9,42 @@ import { ageFromBirthday } from "./age";
 import type { SortKey, WalkMemo } from "./types";
 import { SORT_OPTIONS } from "./types";
 
-/** URL の sort が SORT_OPTIONS にある値か。無いときは一覧側が名前昇順に戻す。 */
+/**
+ * URL の sort が SORT_OPTIONS にある値か。無いときは一覧側が名前昇順に戻す。
+ * 画面は /dogfriend の validateSearch。並びの定義は types.ts。
+ * 新しい並びを足すなら SORT_OPTIONS と filterMemos の switch。
+ */
 export function isSortKey(value: unknown): value is SortKey {
   return SORT_OPTIONS.some((item) => item.value === value);
 }
 
-/** 並び用の年齢。保存値があればそれ、無ければ誕生日から満年齢。誕生日も無ければ末尾に寄せる。 */
+/**
+ * 並び用の年齢。保存値があればそれ、無ければ誕生日から満年齢。誕生日も無ければ末尾に寄せる。
+ * 画面は一覧の年齢順。計算は age.ts の ageFromBirthday。表示の「歳」とは別。
+ * 保存値を無視して常に誕生日から出すなら、ここの優先順を変える。
+ */
 function ageOf(memo: WalkMemo): number | null {
   if (memo.ageYears != null) return memo.ageYears;
   if (memo.birthday) return ageFromBirthday(memo.birthday);
   return null;
 }
 
-/** ひらがなをカタカナに寄せる。検索で「しば」と「シバ」を同じにする。範囲を変えるならこの正規表現。 */
+/**
+ * ひらがなをカタカナに寄せる。検索で「しば」と「シバ」を同じにする。
+ * 画面は /dogfriend の検索。範囲を変えるならこの正規表現（今は U+3041〜U+3096）。
+ * 長音や濁点のゆれまでは揃えない。
+ */
 function foldJa(value: string): string {
   return value.replace(/[\u3041-\u3096]/g, (char) =>
     String.fromCharCode(char.charCodeAt(0) + 0x60),
   );
 }
 
-/** 検索語・犬種・並び順で一覧を返す。検索は名前・飼い主・メモ・犬種名・色名。 */
+/**
+ * 検索語・犬種・並び順で一覧を返す。検索は名前・飼い主・メモ・犬種名・色名。
+ * 画面は /dogfriend。条件は MemoToolbar の WalkSearch。表は触らずメモリ上で絞る。
+ * 検索対象を増やすなら hay。並びを増やすなら switch と types.ts の SORT_OPTIONS。
+ */
 export function filterMemos(
   memos: WalkMemo[],
   query: { q: string; sort: SortKey; breed: string },
@@ -71,7 +87,11 @@ export function filterMemos(
   return rows;
 }
 
-/** 最後に会った日の比較。日付が無いカードは常に後ろ。newestFirst なら新しい日が先。日付は先頭10文字（YYYY-MM-DD）。 */
+/**
+ * 最後に会った日の比較。日付が無いカードは常に後ろ。newestFirst なら新しい日が先。
+ * 画面は一覧の「最後に会った日」順。日付は先頭10文字（YYYY-MM-DD）。
+ * 空のカードを先頭にしたいなら null の return を逆にする。
+ */
 function compareLastMet(a: string | null, b: string | null, newestFirst: boolean): number {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
@@ -82,7 +102,11 @@ function compareLastMet(a: string | null, b: string | null, newestFirst: boolean
   return newestFirst ? -cmp : cmp;
 }
 
-/** 文字列の null は後ろ。今は並びの switch からは使っていない。 */
+/**
+ * 文字列の null は後ろ。今は並びの switch からは使っていない。
+ * 文字列の並びを足すときの共通処理。画面にはまだ出ていない。
+ * 使うなら filterMemos の switch から呼ぶ。
+ */
 function compareNullable(a: string | null, b: string | null): number {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
@@ -90,7 +114,11 @@ function compareNullable(a: string | null, b: string | null): number {
   return a.localeCompare(b);
 }
 
-/** 数値の null は後ろ（年齢が空のカードを下にする）。 */
+/**
+ * 数値の null は後ろ（年齢が空のカードを下にする）。
+ * 画面は一覧の年齢順。年齢の取り方は ageOf。
+ * 空を先頭にするなら null の return を逆にする。
+ */
 function compareNullableNum(a: number | null, b: number | null): number {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
@@ -98,7 +126,11 @@ function compareNullableNum(a: number | null, b: number | null): number {
   return a - b;
 }
 
-/** 同じ飼い主名のほかの犬。カードの「ほか」表示。表記が違うとつながらない。 */
+/**
+ * 同じ飼い主名のほかの犬。カードの「ほか」表示。表記が違うとつながらない。
+ * 画面は /dogfriend の一覧（MemoCard）。飼い主は trim した完全一致。
+ * 確認ダイアログの対象はこちらではなく householdOthers（虹渡りと日付も見る）。
+ */
 export function householdMates(memos: WalkMemo[], memo: WalkMemo): string[] {
   const owner = memo.ownerName?.trim();
   if (!owner) return [];

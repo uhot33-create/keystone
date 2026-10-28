@@ -15,7 +15,11 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { PageHeading } from "@/components/page-heading";
 
-/** 体重欄の初期文字列。未記録や 0 以下は空。ある値は常に小数2桁。桁を変えるなら toFixed。 */
+/**
+ * 体重欄の初期文字列。未記録や 0 以下は空。ある値は常に小数2桁。
+ * まとめて画面の体重入力。保存値そのものは dog_weight_logs。
+ * 桁を変えるなら toFixed。空欄禁止と上限 120kg は onSaveWeights。
+ */
 function weightText(value: number | null): string {
   return value != null && value > 0 ? value.toFixed(2) : "";
 }

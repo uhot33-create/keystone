@@ -14,7 +14,11 @@ import { walkMemoHasPhoto, walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 import { ImageLightbox } from "@/components/walk/image-lightbox";
 
-/** 虹渡りの印。色の並びを変えるなら path の stroke。 */
+/**
+ * 虹渡りの印。カード名の横に出す。色の並びを変えるなら path の stroke。
+ * 画面は /dogfriend の一覧。フラグは memos.rainbow_bridge。
+ * 虹渡り中は肉球を出さない（下の onMetToday の条件）。
+ */
 function RainbowIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4 shrink-0" aria-label="虹渡り" role="img">
@@ -27,14 +31,22 @@ function RainbowIcon() {
   );
 }
 
-/** YYYY-MM-DD を 2024/1/2 にする。空や形式違いのときは「—」。最後に会った日と戻す日の両方。 */
+/**
+ * YYYY-MM-DD を 2024/1/2 にする。空や形式違いのときは「—」。最後に会った日と戻す日の両方。
+ * 画面は /dogfriend のカード。月日の先頭ゼロは外す。
+ * 編集の確認ダイアログは memo-form の formatFollowDate。ゼロ埋めを変えるなら両方。
+ */
 function formatMet(value: string | null): string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "—";
   const [year, month, day] = value.split("-");
   return `${year}/${Number(month)}/${Number(day)}`;
 }
 
-/** 一覧の 1 行。pending 中は肉球を押せない。onMetToday が無いと肉球は出さない。 */
+/**
+ * 一覧の 1 行。pending 中は肉球を押せない。onMetToday が無いと肉球は出さない。
+ * 画面は /dogfriend。名前は編集へ。写真はライトボックス。年齢は age.ts の displayAge。
+ * 肉球の「今日会った」は touchWalkMemoMet。他犬を聞くのは親（一覧）の householdOthers。
+ */
 export function MemoCard({
   memo,
   mates,
@@ -53,6 +65,7 @@ export function MemoCard({
   const imageSrc = walkMemoImageSrc(memo);
   const thumbSrc = walkMemoImageSrc(memo, undefined, "thumb");
   const [open, setOpen] = useState(false);
+  // 日本時間の今日（todayJst）と同じなら記録済み。肉球は押せない。
   const metToday = memo.lastMetOn === todayJst();
 
   return (
@@ -73,6 +86,7 @@ export function MemoCard({
               {memo.name}
             </Link>
             {memo.rainbowBridge ? <RainbowIcon /> : null}
+            {/* 虹渡り中は出さない。今日済みは塗りつぶして押せない。このボタンはこの犬だけ。 */}
             {!memo.rainbowBridge && onMetToday ? (
               <button
                 type="button"
@@ -80,7 +94,8 @@ export function MemoCard({
                 aria-label={metToday ? "今日会った（記録済）" : "今日会った"}
                 disabled={pending || metToday}
                 onClick={() => {
-                  // この犬だけ。同じ飼い主の他犬を聞くのは編集保存（memo-form の householdOthers）。
+                  // このボタンはこの犬だけ。同じ飼い主の他犬は親（一覧の onMetToday）が householdOthers で聞く。
+                  // 編集保存で日付が変わったときも memo-form が聞く。すでにその日付の犬は聞かない。
                   if (!window.confirm(`${memo.name} の最後に会った日を今日にしますか？`)) return;
                   onMetToday(memo.id);
                 }}
@@ -128,6 +143,7 @@ export function MemoCard({
           </Link>
         </div>
         {hasPhoto ? (
+          // サムネが無いあいだは「作成中」。拡大は本画像（walkMemoImageSrc の full）。
           <button
             type="button"
             className="flex w-16 shrink-0 flex-col items-center justify-center self-stretch bg-surface-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/35"

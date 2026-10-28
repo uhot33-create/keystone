@@ -28,11 +28,20 @@ function jstNow(now: Date): { date: string; clock: string } {
     minute: "2-digit",
     hourCycle: "h23",
   }).formatToParts(now);
+  /**
+   * Intl の部品から年・月・日・時・分を取る。無い部品は 00。秒は見ない。
+   * 投与遅れの比較だけ。画面の「—」は medicine_added_on 側。
+   * タイムゾーンを変えるなら上の timeZone。
+   */
   const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? "00";
   return { date: `${pick("year")}-${pick("month")}-${pick("day")}`, clock: `${pick("hour")}:${pick("minute")}` };
 }
 
-/** 機能追加日以前なら true。日付は app_settings の値と比較する。 */
+/**
+ * 機能追加日以前なら true。日付は app_settings.medicine_added_on と比較する。
+ * おくすり画面で、その日以前は済／未を出さず「—」にする判定。
+ * 境界の日を変えるならこの <=。日付の値そのものは medicineAddedOn（api.ts）。
+ */
 export function beforeMedicineFeature(date: string, addedOn: string | null): boolean {
   return Boolean(addedOn && date <= addedOn);
 }
@@ -50,7 +59,11 @@ function formatDone(value: string | null): string {
   return `${year}/${Number(month)}/${Number(day)}`;
 }
 
-/** 予定時刻を過ぎて、その日まだ投与していない薬。機能追加前・時刻なし・未来日は含めない。 */
+/**
+ * 予定時刻を過ぎて、その日まだ投与していない薬。機能追加前・時刻なし・未来日は含めない。
+ * 暮らし帳と今日タブの「おくすりがまだです」がこの一覧を使う。due_time が空の薬は対象外。
+ * medicine_added_on 当日以前は beforeMedicineFeature で落とす。時刻の比較は jstNow。
+ */
 export function overdueMedicines(
   medicines: DogMedicine[],
   date: string,
@@ -96,7 +109,11 @@ export function MedicinePanel({
   // 未投与の件数。機能追加前の見出しは「—」になり、この件数は使わない。
   const waiting = medicines.filter((item) => !item.givenAt).length;
 
-  /** 薬フォームと手入れフォームを、開閉と登録成功のときに空へ戻す。編集 id も捨てる。 */
+  /**
+ * 薬フォームと手入れフォームを、開閉と登録成功のときに空へ戻す。編集 id も捨てる。
+ * おくすり画面の下の管理シート。保存先のテーブルは変えない。
+ * 空にする項目を足すなら、上の useState とこの関数をセットで直す。
+ */
   function resetForm() {
     setEditing(null);
     setName("");

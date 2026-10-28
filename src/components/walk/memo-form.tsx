@@ -24,6 +24,10 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageLightbox } from "@/components/walk/image-lightbox";
 
+/**
+ * フォームの入力値。画面は新規・編集。保存時に api.ts の memoInput へ詰める。
+ * 年齢の自動計算は onBirthday。虹渡り日は rainbowBridge が true のときだけ送る。
+ */
 type Draft = {
   name: string;
   ownerName: string;
@@ -38,6 +42,10 @@ type Draft = {
   rainbowBridgeOn: string;
 };
 
+/**
+ * 画像1枠。file は未送信、url は保存済み。thumb* は一覧サムネ。
+ * 画面は新規・編集。枚数は MAX_MEMO_IMAGES。送信は onSubmit が file だけ uploadWalkImage。
+ */
 type ImageSlot = {
   preview: string | null;
   file: File | null;
@@ -49,12 +57,20 @@ type ImageSlot = {
   thumbData?: string | null;
 };
 
-/** 空の写真枠。最大枚数までこの形で埋める。 */
+/**
+ * 空の写真枠。新規も、足りない枠もこの形。
+ * 画面は新規・編集フォーム。枠の数は types.ts の MAX_MEMO_IMAGES。
+ * 枠を増やすなら MAX_MEMO_IMAGES と、この初期値を埋める while を合わせる。
+ */
 function emptySlot(): ImageSlot {
   return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null, thumbPublic: false, thumbData: null };
 }
 
-/** 保存済み画像を枠に載せる。足りない分は空枠。枚数は MAX_MEMO_IMAGES。プレビュー URL は walkMemoImageSrc。 */
+/**
+ * 保存済み画像を枠に載せる。足りない分は空枠。枚数は MAX_MEMO_IMAGES。
+ * 画面は編集フォーム。古い1枚だけの imageUrl も1枠にする。プレビューは walkMemoImageSrc。
+ * サムネの載せ方を変えるならここと image.ts。保存時に外れた Blob は updateWalkMemo が消す。
+ */
 function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
   const images = memo?.images?.length
     ? memo.images
@@ -75,7 +91,11 @@ function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
   return slots.slice(0, MAX_MEMO_IMAGES);
 }
 
-/** 編集の初期値。新規は空。最後に会った日はそのまま（今日にはしない）。 */
+/**
+ * 編集の初期値。新規は空。最後に会った日はそのまま（今日にはしない）。
+ * 画面は /dogfriend/new と /dogfriend/$id/edit。表は memos。
+ * 年齢を生年月日から入れ直すのは onBirthday。ここは保存済みの値を出すだけ。
+ */
 function fromMemo(memo?: WalkMemo | null): Draft {
   return {
     name: memo?.name ?? "",
@@ -92,7 +112,11 @@ function fromMemo(memo?: WalkMemo | null): Draft {
   };
 }
 
-/** 入力欄。memo があれば編集、無ければ新規。保存後は一覧へ戻る。 */
+/**
+ * 入力欄。memo があれば編集、無ければ新規。保存後は一覧へ戻る。
+ * 画面は /dogfriend/new と /dogfriend/$id/edit。保存は createWalkMemo / updateWalkMemo。
+ * 項目や文字数を変えるならここと api.ts の memoInput。画像枚数は MAX_MEMO_IMAGES。
+ */
 export function MemoForm({
   memo,
   breeds,
@@ -108,22 +132,35 @@ export function MemoForm({
   const editing = Boolean(memo);
   const [draft, setDraft] = useState<Draft>(() => fromMemo(memo));
   const [slots, setSlots] = useState<ImageSlot[]>(() => slotsFromMemo(memo));
+  // 一覧に出す写真の位置。「一覧に表示」ラジオ。保存時は残った枠の並びに詰め直す。
   const [coverIndex, setCoverIndex] = useState(() => memo?.coverIndex ?? 0);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // idle / uploading（画像送信）/ saving（DB）。ボタンとオーバーレイがこれで切り替わる。
   const [pending, setPending] = useState<"idle" | "uploading" | "saving">("idle");
   const [error, setError] = useState<string | null>(null);
+  // 多頭飼い確認の残り。編集で最後に会った日が変わったときだけ入る。
   const [follow, setFollow] = useState<WalkMemo[]>([]);
+  // 確認ダイアログに出す日付。はいのとき touchWalkMemoMet に渡す。
   const [followDate, setFollowDate] = useState<string | null>(null);
   const [followBusy, setFollowBusy] = useState(false);
+  // 一つ前の最後に会った日（memos.prev_last_met_on）。戻すボタンの表示と、restore 後の更新。
   const [prevMet, setPrevMet] = useState<string | null>(memo?.prevLastMetOn ?? null);
   const today = todayJst();
 
-  /** 入力の一部だけ差し替える。 */
+  /**
+   * 入力の一部だけ差し替える。名前・飼い主・メモなど各欄の onChange から呼ぶ。
+   * 画面は新規・編集。生年月日は onBirthday（年齢も一緒に変わる）。
+   * 欄を足すなら Draft と、保存時の payload、api.ts の memoInput も合わせる。
+   */
   function patch(next: Partial<Draft>) {
     setDraft((prev) => ({ ...prev, ...next }));
   }
 
-  /** 生年月日を変えたら満年齢を入れ直す。空にしたときは今の年齢欄は残す。計算は age.ts。 */
+  /**
+   * 生年月日を変えたら満年齢を入れ直す。空にしたときは今の年齢欄は残す。
+   * 画面は新規・編集の生年月日。計算は age.ts の ageFromBirthday（日本時間の今日、誕生日前は1歳引く）。
+   * 規則を変えるなら age.ts。保存時も api.ts の normalize が同じ計算で年齢を上書きする。
+   */
   function onBirthday(value: string) {
     const age = value ? ageFromBirthday(value) : null;
     patch({
@@ -132,7 +169,11 @@ export function MemoForm({
     });
   }
 
-  /** 選んだ1枚を縮小して枠のプレビューにする。前の blob: は解放する。まだサーバーには上げない。 */
+  /**
+   * 選んだ1枚を縮小して枠のプレビューにする。前の blob: は解放する。まだサーバーには上げない。
+   * 画面は新規・編集の画像枠。縮小と HEIC は image.ts の prepareImageFile。
+   * 送信サイズの上限を変えるなら image.ts の MAX_UPLOAD_BYTES。
+   */
   async function applyFile(picked: File, slotIndex: number) {
     if (slotIndex < 0 || slotIndex >= MAX_MEMO_IMAGES) return;
     const prepared = await prepareImageFile(picked);
@@ -155,7 +196,11 @@ export function MemoForm({
     });
   }
 
-  /** ファイル選択。中身の検査と HEIC 変換は prepareImageFile。 */
+  /**
+   * ファイル選択。中身の検査と HEIC 変換は prepareImageFile。
+   * 画面は各画像枠の「選択」。失敗したら error に日本語を出す。
+   * 許可する形式を変えるなら image.ts の isAllowedImage。
+   */
   async function onPick(list: FileList | null, slotIndex: number) {
     const picked = list?.[0];
     if (!picked) return;
@@ -167,7 +212,11 @@ export function MemoForm({
     }
   }
 
-  /** 枠への貼り付け。画像でなければ何もしない（文字のペーストは通す）。 */
+  /**
+   * 枠への貼り付け。画像でなければ何もしない（文字のペーストは通す）。
+   * 画面は空の画像枠（contentEditable）。iPhone の長押しペーストもここ。
+   * 画像の取り方を変えるなら image.ts の imageFileFromClipboard。
+   */
   function onZonePaste(event: ClipboardEvent<HTMLDivElement>, slotIndex: number) {
     const pasted = imageFileFromClipboard(event.clipboardData);
     if (!pasted) return;
@@ -179,7 +228,11 @@ export function MemoForm({
     });
   }
 
-  /** 「貼り付け」ボタン。clipboard.read が使えない iPhone は長押しペーストへ案内する。 */
+  /**
+   * 「貼り付け」ボタン。clipboard.read が使えない iPhone は長押しペーストへ案内する。
+   * 画面は各画像枠。ボタンが使えない端末でも、枠の onZonePaste は残す。
+   * 案内の出し方を変えるならここの setError。枠の長押し側は onZonePaste。
+   */
   async function onPasteSlot(slotIndex: number) {
     setError(null);
     try {
@@ -199,7 +252,11 @@ export function MemoForm({
     }
   }
 
-  /** contentEditable に入った data: / blob: を File に戻して枠へ載せる。 */
+  /**
+   * contentEditable に入った data: / blob: を File に戻して枠へ載せる。
+   * 画面は空の画像枠。iPhone が img を直接挿入したときの受け口。
+   * 変換は image.ts の fileFromImageSrc。通常の http URL は無視する。
+   */
   function onZoneInput(event: FormEvent<HTMLDivElement>, slotIndex: number) {
     const root = event.currentTarget;
     const img = root.querySelector("img");
@@ -216,7 +273,11 @@ export function MemoForm({
       });
   }
 
-  /** 枠を空にする。カバーがその枠なら先頭へ戻す。保存時に外れた Blob は updateWalkMemo が消す。 */
+  /**
+   * 枠を空にする。カバーがその枠なら先頭へ戻す。保存時に外れた Blob は updateWalkMemo が消す。
+   * 画面は画像枠の「クリア」。未送信の blob: はここで解放する。
+   * カバーの戻り先を変えるなら setCoverIndex の条件。
+   */
   function onClearSlot(slotIndex: number) {
     setSlots((prev) => {
       const next = prev.map((slot) => ({ ...slot }));
@@ -228,7 +289,11 @@ export function MemoForm({
     setCoverIndex((prev) => (prev === slotIndex ? 0 : prev > slotIndex ? prev : prev));
   }
 
-  /** 保存。新規は create、編集は update。画像がある枠だけ送り、そのあと多頭飼いを聞く。 */
+  /**
+   * 保存。新規は create、編集は update。画像がある枠だけ送り、そのあと多頭飼いを聞く。
+   * 画面は新規・編集。表は memos。新しいファイルは uploadWalkImage、既存 URL はそのまま。
+   * 文字数・枚数・未来日の拒否は api.ts の memoInput と normalize。
+   */
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setPending("saving");
@@ -303,6 +368,7 @@ export function MemoForm({
       } else {
         await createWalkMemo({ data: payload });
       }
+      // 保存したので一覧の控えを捨てる。次に /dogfriend を開いたときだけ取り直す（held.ts）。
       dropWalkList();
       // 多頭飼いの確認。編集で最後に会った日が変わったときだけ。
       // 同じ飼い主・虹渡りでない・まだその日付でない犬を householdOthers で集め、1頭ずつはい／いいえ。
@@ -360,7 +426,11 @@ export function MemoForm({
     }
   }
 
-  /** 確認ダイアログ用。YYYY-MM-DD を 2024/1/2 にする。 */
+  /**
+   * 確認ダイアログ用。YYYY-MM-DD を 2024/1/2 にする。
+   * 画面は多頭飼いの確認と「一つ前に戻す」。月日の先頭ゼロは外す。
+   * 一覧カードの同じ表示は memo-card の formatMet。文言を揃えるなら両方。
+   */
   function formatFollowDate(value: string): string {
     const [year, month, day] = value.split("-");
     return `${year}/${Number(month)}/${Number(day)}`;
@@ -388,7 +458,11 @@ export function MemoForm({
     }
   }
 
-  /** カード削除。画像 Blob も API が消す。成功したら一覧へ。 */
+  /**
+   * カード削除。画像 Blob も API が消す。成功したら一覧へ。
+   * 画面は編集だけ。表は memos。自分の user_id の行だけ（deleteWalkMemo）。
+   * 削除後は dropWalkList で控えを捨て、次の一覧で取り直す。
+   */
   async function onDelete() {
     if (!memo) return;
     if (!window.confirm(`${memo.name} のカードを削除しますか？`)) return;
@@ -484,6 +558,7 @@ export function MemoForm({
         </div>
       </div>
 
+      {/* 生年月日を変えると満年齢を入れ直す（onBirthday / age.ts）。空にしても年齢欄は残す。 */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="memo-birthday">生年月日</Label>
@@ -612,6 +687,7 @@ export function MemoForm({
                     クリア
                   </Button>
                 ) : null}
+                {/* 一覧に出す1枚。保存時に空枠を詰めたあとの位置が coverIndex（memos.cover_index）。 */}
                 <label className="ml-auto flex min-h-11 items-center gap-2 text-sm text-fg">
                   <input
                     type="radio"
@@ -629,6 +705,7 @@ export function MemoForm({
         </div>
       </div>
 
+      {/* 虹渡りにすると一覧の肉球を出さず、touchWalkMemoMet も更新しない。日付はチェック中だけ保存する。 */}
       <div className="rounded-md bg-surface-2 px-4 py-3">
         <label className="flex min-h-11 items-center gap-2 text-sm text-fg">
           <input

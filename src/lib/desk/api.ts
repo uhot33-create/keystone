@@ -422,7 +422,11 @@ const deskInput = z.object({
   fortune: z.boolean().optional(),
 });
 
-/** 机の中身。data のフラグが true の項目だけ外部取得する。 */
+/**
+ * 机の中身を返す。画面はホームの DeskPanel。
+ * data のフラグが true の項目だけ外部取得する。オフのウィジェットは取りに行かない。
+ * 項目を増やすときは deskInput と、下の Promise.allSettled の分岐を足す。
+ */
 export const getDesk = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {

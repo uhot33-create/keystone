@@ -56,7 +56,11 @@ function WalkLogsPage() {
     };
   }, []);
 
-  /** GPX を parseGpxFile で読んで saveWalkLog する。8MB 超は gpx.ts が落とす。 */
+  /**
+   * GPX を parseGpxFile で読んで saveWalkLog する。画面は /dogwalklogs。
+   * 8MB 超は gpx.ts の MAX_GPX_BYTES が落とす。上限を変えるときはそちら。
+   * 取り込みでは月の軌跡まとめ（walk_month_tracks）は作り直さない。
+   */
   async function onPick(list: FileList | null) {
     const file = list?.[0];
     if (!file) return;

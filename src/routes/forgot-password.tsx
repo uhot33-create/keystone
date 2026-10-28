@@ -34,7 +34,11 @@ function ForgotPasswordPage() {
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
 
-  /** 形式を通し、認証が有効なら requestPasswordReset。リンク先は /reset-password。 */
+  /**
+   * 形式を通し、認証が有効なら requestPasswordReset。画面は /forgot-password。
+   * リンク先は /reset-password。再設定リンクの有効期限は1時間。
+   * 期限の文言は send-reset-mail.ts。この画面では延ばせない。
+   */
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);

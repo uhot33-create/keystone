@@ -229,7 +229,12 @@ export const getVetVisit = createServerFn({ method: "GET" })
     return mapVisit(rows[0]);
   });
 
-/** 予定か履歴を保存する。履歴の「予約済」は次回の日付が必須。予定中は診断・費用を空にする。 */
+/**
+ * 予定か履歴を vet_visits に保存する。画面は /vet/new と /vet/$id/edit。
+ * 履歴の「予約済」は次回の日付が必須。予定中は診断・費用を空にする。
+ * 履歴を保存すると、同じ日・同じ病院を次回来院にしていた他の行の次回を外す。重複する予定は残さない。
+ * 文字数や必須は visitInput。次の予定行を足す条件は upsertPlanned。
+ */
 export const saveVetVisit = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(visitInput, input))
@@ -343,7 +348,11 @@ export const getDoctorMemo = createServerFn({ method: "GET" })
     return { body: rows[0]?.body ?? "" };
   });
 
-/** 先生に伝えるメモを上書き保存。1000文字まで。ユーザーにつき1行。 */
+/**
+ * 先生に伝えるメモを上書き保存する。画面は /vet の DoctorMemoCard。
+ * テーブルは vet_doctor_memo。ユーザーにつき1行で、追記せず body を丸ごと置き換える。
+ * 1000文字まで。文字数を変えるときはここの max と doctor-memo.tsx の maxLength。
+ */
 export const saveDoctorMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ body: z.string().trim().max(1000, "1000文字以内で入力してください") }), input))

@@ -3,9 +3,17 @@
  * チワワ／スムースだけはカロリー段階の4枚（saburo.ts）を使う。ほかの犬種は1枚。
  * 今のさぶろうの絵は chihuahua-smooth-wr。今の人の絵は woman。
  */
-/** 犬を選んでいないときの id。段階つきのさぶろう絵。変えると初期のメニュー絵が変わる。 */
+/**
+ * 犬を選んでいないときの id。段階つきのさぶろう絵。変えると初期のメニュー絵が変わる。
+ * 保存列は dogs.portrait_id。不明な値も mapDog がここへ落とす。
+ * 別の犬種を初期にするなら、DOG_PORTRAITS にある id を入れる。
+ */
 export const DEFAULT_DOG_PORTRAIT = "chihuahua-smooth-wr";
-/** 人の絵の初期値。user_settings が空のとき、表示は personMenuSrc が大人（女性）に落とす。 */
+/**
+ * 人の絵の初期値。user_settings が空のとき、表示は personMenuSrc が大人（女性）に落とす。
+ * id は PERSON_PORTRAITS。世帯で1つ。犬を替えても変わらない。
+ * 初期の src を変えるなら配列の並びと personMenuSrc のフォールバックを揃える。
+ */
 export const DEFAULT_PERSON_PORTRAIT = "woman";
 
 /**
@@ -29,7 +37,11 @@ export const DOG_PORTRAITS = [
   { id: "mix", label: "ミックス", src: "/calorie/portraits/dogs/mix.jpg", stages: false },
 ] as const;
 
-/** 人の絵一覧。id は user_settings.person_portrait。並びは選択画面の順。 */
+/**
+ * 人の絵一覧。id は user_settings.person_portrait。並びは選択画面の順。
+ * プロフィールの人の絵。未設定は personMenuSrc が3番目（大人・女性）に落とす。
+ * id を足すときは画像を public に置き、isPersonPortrait は配列から自動で広がる。
+ */
 export const PERSON_PORTRAITS = [
   { id: "girl", label: "女の子", src: "/calorie/portraits/people/girl.jpg" },
   { id: "boy", label: "男の子", src: "/calorie/portraits/people/boy.jpg" },
@@ -44,17 +56,33 @@ export const PERSON_PORTRAITS = [
   { id: "elder-man", label: "老人（男性）", src: "/calorie/portraits/people/elder-man.jpg" },
 ] as const;
 
-/** DOG_PORTRAITS の id。文字列を広げるときは配列側を先に足す。 */
+/**
+ * DOG_PORTRAITS の id。文字列を広げるときは配列側を先に足す。
+ * 保存は dogs.portrait_id。段階つきは chihuahua-smooth-wr だけ。
+ * 判定は isDogPortrait。初期値は DEFAULT_DOG_PORTRAIT。
+ */
 export type DogPortraitId = (typeof DOG_PORTRAITS)[number]["id"];
-/** PERSON_PORTRAITS の id。 */
+/**
+ * PERSON_PORTRAITS の id。人の絵の保存値。
+ * 世帯共通の user_settings.person_portrait。犬ごとに分けない。
+ * 不明な id は isPersonPortrait が false。表示の初期は personMenuSrc。
+ */
 export type PersonPortraitId = (typeof PERSON_PORTRAITS)[number]["id"];
 
-/** 知らない id は false。保存前のチェックは api.ts の zod がこれを使う。 */
+/**
+ * 知らない id は false。保存前のチェックは api.ts の zod がこれを使う。
+ * 犬の絵 id は DOG_PORTRAITS。保存列は dogs.portrait_id。
+ * 犬種を足すなら配列を先に足す。初期値は DEFAULT_DOG_PORTRAIT。
+ */
 export function isDogPortrait(value: string): value is DogPortraitId {
   return DOG_PORTRAITS.some((item) => item.id === value);
 }
 
-/** 人の絵 id が一覧にあるか。無い値は保存できない。 */
+/**
+ * 人の絵 id が一覧にあるか。無い値は保存できない。
+ * 保存先は user_settings.person_portrait。一覧は PERSON_PORTRAITS。
+ * id を足すなら配列側。未設定の表示は personMenuSrc。
+ */
 export function isPersonPortrait(value: string): value is PersonPortraitId {
   return PERSON_PORTRAITS.some((item) => item.id === value);
 }
@@ -68,7 +96,11 @@ export function dogMenuSrc(id: string | null | undefined, stageSrc: string): str
   return item.stages ? stageSrc : item.src;
 }
 
-/** 人のメニュー絵。未設定・不明な id は3番目（大人・女性、DEFAULT と同じ src）。並びを変えると初期絵がずれる。 */
+/**
+ * 人のメニュー絵。未設定・不明な id は3番目（大人・女性、DEFAULT と同じ src）。
+ * 暮らし帳と今日画面の人ボード。id は PERSON_PORTRAITS。
+ * 並びを変えると初期絵がずれる。犬の段階絵は dogMenuSrc。
+ */
 export function personMenuSrc(id: string | null | undefined): string {
   return PERSON_PORTRAITS.find((portrait) => portrait.id === id)?.src ?? PERSON_PORTRAITS[2].src;
 }

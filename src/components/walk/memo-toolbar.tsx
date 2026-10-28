@@ -13,7 +13,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 
-/** 検索・並び・犬種。onChange に次の WalkSearch を渡す。並びと犬種はすぐ反映。 */
+/**
+ * 検索・並び・犬種。onChange に次の WalkSearch を渡す。並びと犬種はすぐ反映。
+ * 画面は /dogfriend。検索語はボタンまで URL に載らない（draftQ）。
+ * 絞り込みの中身は filter.ts。並びの選択肢は types.ts の SORT_OPTIONS。
+ */
 export function MemoToolbar({
   search,
   breeds,
@@ -27,13 +31,19 @@ export function MemoToolbar({
   shown: number;
   onChange: (next: WalkSearch) => void;
 }) {
+  // 入力中の検索語。URL の search.q とは別。検索ボタン（または Enter）で確定する。
   const [draftQ, setDraftQ] = useState(search.q);
 
+  // 戻る・進むで URL の検索語が変わったら、入力欄も合わせる。
   useEffect(() => {
     setDraftQ(search.q);
   }, [search.q]);
 
-  /** 検索ボタン（または Enter）で検索語を確定する。並びと犬種はセレクト変更ですぐ onChange。 */
+  /**
+   * 検索ボタン（または Enter）で検索語を確定する。並びと犬種はセレクト変更ですぐ onChange。
+   * 画面は /dogfriend の検索バー。前後の空白は trim してから URL の q にする。
+   * 検索対象（名前・飼い主など）を変えるなら filter.ts の hay。ここは渡すだけ。
+   */
   function onSearch(event: FormEvent) {
     event.preventDefault();
     onChange({ ...search, q: draftQ.trim() });

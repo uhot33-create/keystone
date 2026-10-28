@@ -42,7 +42,10 @@ type StockRow = {
   quantity: unknown;
 };
 
-/** 日付以外の文字列化。品名の createdAt 用。 */
+/**
+ * 日付以外の文字列化。品名の createdAt 用。
+ * Date なら ISO の先頭10文字。画面の期限比較には asDate を使う。
+ */
 function asText(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return String(value ?? "");
@@ -63,7 +66,10 @@ function asDate(value: unknown): string {
   return text.slice(0, 10);
 }
 
-/** cup_items の1行。画像の有無だけ返し、URL 自体は画面へ出さない。 */
+/**
+ * cup_items の1行。画像の有無だけ返し、URL 自体は画面へ出さない。
+ * 画像の表示は /api/cup/image。hasImage の条件を変えるときは image_url。
+ */
 function mapItem(row: ItemRow): CupItem {
   return {
     id: String(row.id),
@@ -73,7 +79,10 @@ function mapItem(row: ItemRow): CupItem {
   };
 }
 
-/** cup_stocks の1行。itemId が null はマスタに繋がっていない直接入力。個数が壊れていたら 0。 */
+/**
+ * cup_stocks の1行。itemId が null はマスタに繋がっていない直接入力。
+ * 個数が壊れていたら 0。期限の形は asDate。並び順は getCupState。
+ */
 function mapStock(row: StockRow): CupStock {
   return {
     id: String(row.id),
@@ -84,19 +93,28 @@ function mapStock(row: StockRow): CupStock {
   };
 }
 
+/** 期限の形だけ。実在するかは assertRealDate。文言を変えるときはこのメッセージ。 */
 const dateText = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付は YYYY-MM-DD で入力してください");
 
-/** 2月31日などを拒否する。比較は UTC で作り直して、入力と同じ年月日か見る。 */
+/**
+ * 2月31日などを拒否する。比較は UTC で作り直して、入力と同じ年月日か見る。
+ * 在庫の追加と更新の validator から呼ぶ。メッセージは「存在しない日付です」。
+ */
 function assertRealDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    // 作り直した年月日が入力と違うときだけ拒否（2月31日など）。
     throw new Error("存在しない日付です");
   }
 }
 
-/** 品名画像の Blob を消す。トークンが無い、失敗しても品名の保存は続ける。 */
+/**
+ * 品名画像の Blob を消す。トークンが無い、失敗しても品名の保存は続ける。
+ * 呼び出しは updateCupItem と deleteCupItem。在庫削除では呼ばない。
+ */
 async function removeBlob(url: string | null) {
+  // トークンが無い環境では消さない。品名の行の更新は呼び出し側が続ける。
   if (!url || !process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
     const { del } = await import("@vercel/blob");
@@ -129,7 +147,10 @@ export const getCupState = createServerFn({ method: "GET" })
     return { items: items.map(mapItem), stocks: stocks.map(mapStock) };
   });
 
-/** 品名の入力。名前は1〜100文字。画像URLは任意。 */
+/**
+ * 品名の入力。名前は1〜100文字。画像URLは任意。
+ * 文言を変えるときはこの schema。clearImage は更新のときだけ見る。
+ */
 const itemInput = z.object({
   name: z.string().trim().min(1, "品名は必須です").max(100, "品名は100文字以内で入力してください"),
   imageUrl: z.string().nullable().optional(),
@@ -137,7 +158,10 @@ const itemInput = z.object({
   clearImage: z.boolean().optional(),
 });
 
-/** 品名を追加する。画像は先にアップロードした URL を渡す。 */
+/**
+ * 品名を追加する。画像は先にアップロードした URL を渡す。
+ * 画面の品名タブ。名前の上限は itemInput（100）。画像が無いときは null。
+ */
 export const addCupItem = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -159,7 +183,11 @@ export const addCupItem = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** 品名を更新。画像を差し替えるか外すときは、古い Blob を消す。 */
+/**
+ * 品名を更新。画像を差し替えるか外すときは、古い Blob を消す。
+ * clearImage なら URL を null。新しい URL なら差し替え。どちらでもなければ今の画像。
+ * 名前の上限は itemInput。他人の id は「品名が見つかりません」。
+ */
 export const updateCupItem = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -176,6 +204,7 @@ export const updateCupItem = createServerFn({ method: "POST" })
     `;
     const current = rows[0];
     if (!current) throw new Error("品名が見つかりません");
+    // clearImage なら外す。新しい URL なら差し替え。どちらでもなければ今の画像を残す。
     const replaceImage = Boolean(data.clearImage) || data.imageUrl != null;
     const nextUrl = data.clearImage ? null : data.imageUrl != null ? data.imageUrl : current.image_url;
     const nextPath = data.clearImage ? null : data.imageUrl != null ? (data.imagePathname ?? null) : current.image_pathname;
@@ -187,13 +216,18 @@ export const updateCupItem = createServerFn({ method: "POST" })
         image_pathname = ${nextPath}
       where id = ${data.id} and user_id = ${context.userId}
     `;
+    // 外したか別 URL にしたときだけ古い Blob を消す。同じ URL なら消さない。
     if (replaceImage && current.image_url && current.image_url !== nextUrl) {
       await removeBlob(current.image_url);
     }
     return { ok: true };
   });
 
-/** 品名を削除。戻り値 referenced は、つながっていた在庫の件数（在庫自体は消さない）。 */
+/**
+ * 品名を削除。戻り値 referenced は、つながっていた在庫の件数（在庫自体は消さない）。
+ * 在庫の item_id は外部キーの set null で切れる。表示名 item_name は残る。
+ * 確認文は画面。画像の Blob は removeBlob。
+ */
 export const deleteCupItem = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -203,6 +237,7 @@ export const deleteCupItem = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    // 削除前に数える。在庫行は delete していない（item_id だけあとで null になる）。
     const counts = await sql<{ count: number }>`
       select count(*)::int as count
       from cup_stocks
@@ -218,7 +253,10 @@ export const deleteCupItem = createServerFn({ method: "POST" })
     return { referenced: Number(counts[0]?.count) || 0 };
   });
 
-/** 在庫の入力。期限は YYYY-MM-DD、個数は0以上の整数。 */
+/**
+ * 在庫の入力。期限は YYYY-MM-DD、個数は0以上の整数。
+ * 実在する日付かは assertRealDate。0個も保存できる。消すのは deleteCupStock。
+ */
 const stockInput = z.object({
   itemId: z.string().uuid().nullable().optional(),
   itemName: z.string().trim().max(100).optional(),
@@ -251,7 +289,11 @@ async function resolveItem(
   return { itemId: null, itemName: name };
 }
 
-/** 在庫を1件追加。マスタ選択か、名前の直接入力。 */
+/**
+ * 在庫を1件追加。マスタ選択か、名前の直接入力。
+ * 同じ品名でも期限が違えば別行。まとめない。期限の実在は assertRealDate。
+ * 品名の決め方を変えるときは resolveItem。
+ */
 export const addCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -270,7 +312,11 @@ export const addCupStock = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** 在庫の品名・期限・個数をまとめて更新。 */
+/**
+ * 在庫の品名・期限・個数をまとめて更新。
+ * 画面の在庫編集。個数の -1/+1 はここではなく adjustCupStock。
+ * 見つからなければ「在庫が見つかりません」。期限は assertRealDate。
+ */
 export const updateCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {
@@ -310,6 +356,7 @@ export const adjustCupStock = createServerFn({ method: "POST" })
   })
   .handler(async ({ context, data }) => {
     const sql = await getSql();
+    // 0未満になる更新は where に合わず行が残る。0個は消えない。消すのは deleteCupStock。
     const rows = await sql<{ quantity: number }>`
       update cup_stocks
       set quantity = quantity + ${data.delta}, updated_at = now()
@@ -322,7 +369,10 @@ export const adjustCupStock = createServerFn({ method: "POST" })
     return { quantity: Number(rows[0].quantity) };
   });
 
-/** 在庫を1件削除。 */
+/**
+ * 在庫を1件削除。確認文は画面の在庫カード。
+ * 自分の user_id だけ。品名マスタと画像は消さない。
+ */
 export const deleteCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {

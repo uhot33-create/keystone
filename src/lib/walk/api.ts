@@ -13,7 +13,11 @@ import { ageFromBirthday, isFutureDate, todayJst } from "./age";
 import type { DogBreed, DogColor, MemoImage, MemoInput, SexValue, WalkMemo } from "./types";
 import { MAX_MEMO_IMAGES } from "./types";
 
-/** zod の最初のエラー文を投げる。画面はその message を出す。 */
+/**
+ * zod の最初のエラー文を投げる。画面はその message を出す。
+ * 新規・編集・削除・画像の各 server function の validator が使う。
+ * 項目ごとの文言は memoInput 側。出し方を変えるならここ。
+ */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -22,13 +26,20 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
-/** 性別はオス・メス・不明だけ通す。選択肢を増やすなら types.ts の SEX_OPTIONS も合わせる。 */
+/**
+ * 性別はオス・メス・不明だけ通す。選択肢を増やすなら types.ts の SEX_OPTIONS も合わせる。
+ * 画面は一覧・編集。列は memos.sex。リストに無い値は null（未選択と同じ）。
+ */
 function asSex(value: string | null): SexValue | null {
   if (value === "オス" || value === "メス" || value === "不明") return value;
   return null;
 }
 
-/** Date でも文字列でも先頭10文字が YYYY-MM-DD ならそれを返す。最後に会った日はタイムゾーン変換しない。 */
+/**
+ * Date でも文字列でも先頭10文字が YYYY-MM-DD ならそれを返す。
+ * 最後に会った日・誕生日・虹渡り日。列は memos の date 系。タイムゾーン変換はしない。
+ * 「今日」の判定に ISO の時刻を使わない。今日は todayJst（age.ts）。
+ */
 function asDate(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (value instanceof Date) {
@@ -39,7 +50,11 @@ function asDate(value: unknown): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }
 
-/** 作成・更新時刻を ISO にする。壊れていたら今。日付の「今日」判定には使わない（それは todayJst）。 */
+/**
+ * 作成・更新時刻を ISO にする。壊れていたら今。
+ * 列は memos.created_at / updated_at。並び「追加が新しい順」がこれを使う。
+ * 日付の「今日」判定には使わない（それは todayJst）。
+ */
 function asIso(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
   const text = String(value ?? "");
@@ -47,7 +62,11 @@ function asIso(value: unknown): string {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : new Date().toISOString();
 }
 
-/** 年齢やカバー位置などの整数。数値でなければ null。 */
+/**
+ * 年齢やカバー位置などの整数。数値でなければ null。
+ * 画面は一覧・編集。列は age_years、cover_index、sort_order。
+ * 丸め方を変えるなら Math.round。年齢の範囲チェックは memoInput。
+ */
 function intOrNull(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n = typeof value === "number" ? value : Number(value);
@@ -55,6 +74,10 @@ function intOrNull(value: unknown): number | null {
   return Math.round(n);
 }
 
+/**
+ * DB の memos 1行。日付はドライバが Date で返すことがあるので unknown。
+ * 画面に出す形は mapMemo。列を足すならこの型と listMemos / getOwned の select。
+ */
 type MemoRow = {
   id: string;
   name: string;
@@ -129,7 +152,11 @@ function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: stri
   return [];
 }
 
-/** カバー位置を 0 〜 枚数-1 に収める。画像が無ければ 0。 */
+/**
+ * カバー位置を 0 〜 枚数-1 に収める。画像が無ければ 0。
+ * 画面は一覧のサムネと編集の「一覧に表示」。列は memos.cover_index。
+ * 枚数の上限は types.ts の MAX_MEMO_IMAGES。
+ */
 function asCoverIndex(value: unknown, count: number): number {
   if (count <= 0) return 0;
   const n = intOrNull(value) ?? 0;
@@ -171,7 +198,11 @@ function mapMemo(row: MemoRow, includeThumbData = true): WalkMemo {
   };
 }
 
-/** 犬種マスタが空のときだけ入れる初期リスト。並びは sort。足す・消すならここ。 */
+/**
+ * 足りない犬種だけ足す初期リスト。並びは sort。足す・消すならここ。
+ * 表は dog_breeds。同名がすでにあれば listBreeds は insert しない。
+ * 色と違い、表が空でなくても名前の無い行は足す。
+ */
 const BREED_SEED: { id: string; name: string; sort: number }[] = [
   ["a1000000-0000-4000-8000-000000000001", "チワワ", 10],
   ["a1000000-0000-4000-8000-000000000002", "トイプードル", 20],
@@ -201,7 +232,11 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
   ["a1000000-0000-4000-8000-000000000026", "その他", 910],
 ].map(([id, name, sort]) => ({ id: String(id), name: String(name), sort: Number(sort) }));
 
-/** 犬種マスタ。名前が無いものだけ BREED_SEED を足す（表が空でなくても）。有効行だけ sort_order 順。 */
+/**
+ * 犬種マスタ。名前が無いものだけ BREED_SEED を足す（表が空でなくても）。有効行だけ sort_order 順。
+ * 画面は一覧の絞り込みと、新規・編集の種類。表は dog_breeds。
+ * 初期の犬種を足す・消すなら BREED_SEED。すでに同名があれば insert しない。
+ */
 async function listBreeds(): Promise<DogBreed[]> {
   const sql = await getSql();
   const existing = await sql<{ name: string }>`select name from dog_breeds`;
@@ -227,7 +262,10 @@ async function listBreeds(): Promise<DogBreed[]> {
   }));
 }
 
-/** 色マスタが空のときだけ入れる初期リスト。並びは sort。 */
+/**
+ * 色マスタが空のときだけ入れる初期リスト。並びは sort。足す・消すならここ。
+ * 表は dog_colors。1件でもあると listColors は種まきしない（犬種とは違う）。
+ */
 const COLOR_SEED: { id: string; name: string; sort: number }[] = [
   ["c1000000-0000-4000-8000-000000000001", "白", 10],
   ["c1000000-0000-4000-8000-000000000002", "茶", 20],
@@ -236,7 +274,11 @@ const COLOR_SEED: { id: string; name: string; sort: number }[] = [
   ["c1000000-0000-4000-8000-000000000005", "黒／茶", 50],
 ].map(([id, name, sort]) => ({ id: String(id), name: String(name), sort: Number(sort) }));
 
-/** 色マスタ。表が0件のときだけ COLOR_SEED を入れる。犬種と違い、すでにある行には足さない。 */
+/**
+ * 色マスタ。表が0件のときだけ COLOR_SEED を入れる。犬種と違い、すでにある行には足さない。
+ * 画面は新規・編集の色。表は dog_colors。有効行だけ sort_order 順。
+ * 色を足すなら COLOR_SEED。表に1件でもあると種まきは走らない。
+ */
 async function listColors(): Promise<DogColor[]> {
   const sql = await getSql();
   const count = await sql<{ n: number }>`select count(*)::int as n from dog_colors`;
@@ -335,7 +377,11 @@ async function listMemos(userId: string, includeThumbData = true): Promise<WalkM
   return rows.map((row) => mapMemo(row, includeThumbData));
 }
 
-/** 自分のカード1件。他人の id は null（見つかりません、にするのは呼び出し側）。 */
+/**
+ * 自分のカード1件。他人の id は null（見つかりません、にするのは呼び出し側）。
+ * 画面は編集・更新・削除。表は memos を user_id と id で絞る。
+ * 見える列を増やすならこの select と mapMemo。
+ */
 async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
   const sql = await getSql();
   const rows = await sql<MemoRow>`
@@ -371,7 +417,11 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
   return rows[0] ? mapMemo(rows[0]) : null;
 }
 
-/** Vercel Blob を1つ消す。トークンが無い、失敗してもレコード操作は続ける。 */
+/**
+ * Vercel Blob を1つ消す。トークンが無い、失敗してもレコード操作は続ける。
+ * 画面は編集で画像を外したときと、カード削除。実体は Blob、行は memos。
+ * 失敗を画面に出すならここの catch を変える。今は握りつぶす。
+ */
 async function removeBlob(url: string | null | undefined) {
   if (!url || !process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
@@ -382,18 +432,30 @@ async function removeBlob(url: string | null | undefined) {
   }
 }
 
-/** 本画像とサムネの Blob を両方消す。 */
+/**
+ * 本画像とサムネの Blob を両方消す。
+ * 編集の updateWalkMemo と削除の deleteWalkMemo から呼ぶ。
+ * サムネだけ残すなど消す対象を変えるならここ。
+ */
 async function removeImageBlobs(image: MemoImage) {
   await removeBlob(image.url);
   await removeBlob(image.thumbUrl);
 }
 
+/**
+ * 空文字は null。YYYY-MM-DD 以外はエラー。誕生日・最後に会った日・虹渡り日。
+ * 未来日の拒否はここではなく normalize と touchWalkMemoMet（todayJst）。
+ */
 const optionalDate = z
   .union([z.string(), z.null()])
   .transform((value) => (value && value.length > 0 ? value : null))
   .refine((value) => value == null || /^\d{4}-\d{2}-\d{2}$/.test(value), "日付の形式を確認してください");
 
-/** 保存前の入力チェック。名前・飼い主・年齢・メモ・画像枚数の上限はここ。 */
+/**
+ * 保存前の入力チェック。名前・飼い主・年齢・メモ・画像枚数の上限はここ。
+ * 画面は新規・編集の保存。表に書く前の zod。未来日は normalize 側。
+ * 文字数や年齢の上限を変えるならこの schema と、フォームの maxLength も合わせる。
+ */
 const memoInput = z.object({
   name: z
     .string()
@@ -472,7 +534,11 @@ async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[
   };
 }
 
-/** 一覧と犬種・色と、Blob が使えるか。サムネ本体は含めず、あとから getWalkThumbs。 */
+/**
+ * 一覧と犬種・色と、Blob が使えるか。サムネ本体は含めず、あとから getWalkThumbs。
+ * 画面は /dogfriend と /dogfriend/new。表は memos / dog_breeds / dog_colors。
+ * 一覧を再取得する条件は held.ts（保存・削除で drop するまで控えを使う）。
+ */
 export const getWalkState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -489,7 +555,11 @@ export const getWalkState = createServerFn({ method: "GET" })
     };
   });
 
-/** 一覧用のカバー画像サムネだけ返す。文字を先に出すための分割取得。 */
+/**
+ * 一覧用のカバー画像サムネだけ返す。文字を先に出すための分割取得。
+ * 画面は /dogfriend。表は memos.images のカバー1枚。合成は thumbs.ts の applyWalkThumbs。
+ * サムネの有無（長さ・公開 URL）を変えるならこの flatMap。
+ */
 export const getWalkThumbs = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -525,7 +595,10 @@ export const getWalkThumbs = createServerFn({ method: "GET" })
     });
   });
 
-/** 編集画面用の 1 件と犬種・色。他人のカードは「見つかりません」。 */
+/**
+ * 編集画面用の 1 件と犬種・色。他人のカードは「見つかりません」。
+ * 画面は /dogfriend/$id/edit。表は memos（getOwned）とマスタ。一覧の控えは使わない。
+ */
 export const getWalkMemo = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
@@ -544,7 +617,11 @@ export const getWalkMemo = createServerFn({ method: "GET" })
     };
   });
 
-/** 新規カードを保存し、保存後の 1 件を返す。 */
+/**
+ * 新規カードを保存し、保存後の 1 件を返す。
+ * 画面は /dogfriend/new。表は memos へ insert。自分の user_id。
+ * 列を足すならこの insert と normalize、フォームの payload。
+ */
 export const createWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(memoInput, input))
@@ -586,11 +663,19 @@ export const createWalkMemo = createServerFn({ method: "POST" })
     return memo;
   });
 
+/**
+ * 更新の入力。memoInput に id を足しただけ。
+ * 画面は編集の保存。他人の id は handler が「見つかりません」。
+ */
 const updateInput = memoInput.extend({
   id: z.string().min(1),
 });
 
-/** 既存カードを上書きする。外した画像の Blob は削除を試みる。 */
+/**
+ * 既存カードを上書きする。外した画像の Blob は削除を試みる。
+ * 画面は /dogfriend/$id/edit。表は memos。他人の id は「見つかりません」。
+ * 最後に会った日が変わったときだけ prev_last_met_on を残す（下の case）。同じ日の再保存では一つ前を上書きしない。
+ */
 export const updateWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(updateInput, input))
@@ -641,10 +726,18 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
     return memo;
   });
 
-/** base64 の最大長。JSON が Vercel の約 4.5MB を超えないようにする。元の上限は image.ts。 */
+/**
+ * base64 の最大長。JSON が Vercel の約 4.5MB を超えないようにする。
+ * 画面は画像アップロード。元の上限は image.ts の MAX_UPLOAD_BYTES。
+ * ここだけ大きくすると server function が落ちる。両方揃える。
+ */
 const MAX_B64 = Math.ceil((2.8 * 1024 * 1024 * 4) / 3) + 64;
 
-/** 画像を Vercel Blob に置く。本画像は非公開。128px の JPEG サムネも作る。 */
+/**
+ * 画像を Vercel Blob に置く。本画像は非公開。128px の JPEG サムネも作る。
+ * 画面は新規・編集の保存。パスは walk/{userId}/。表示は /api/walk/image。
+ * サムネの大きさは sharp の resize。クライアント側は image.ts の makeListThumb。両方揃える。
+ */
 export const uploadWalkImage = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -717,7 +810,11 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     }
   });
 
-/** カードと、ひも付いた画像 Blob を削除する。 */
+/**
+ * カードと、ひも付いた画像 Blob を削除する。
+ * 画面は編集の「削除」。表は memos。自分の user_id だけ。
+ * Blob の削除に失敗しても行削除は続ける（removeBlob）。
+ */
 export const deleteWalkMemo = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))
