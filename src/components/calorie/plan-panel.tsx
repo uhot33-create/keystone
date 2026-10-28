@@ -44,10 +44,12 @@ export function PlanPanel({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // 犬が替わったら、編集中のステージと割合をその犬の保存値に戻す。
     setStage(dog.lifeStage);
     setTreatRatio(String(dog.treatRatio));
   }, [dog]);
 
+  // 理想体重 × ステージ係数が1日の目標。おやつ割合でごはんとおやつに分ける。提案ステージは suggestedStage。
   const ratio = Number(treatRatio) || 0.1;
   const target = dailyEnergy(dog.idealWeightKg, stage);
   const rer = Math.round(restingEnergy(dog.idealWeightKg));
@@ -56,6 +58,10 @@ export function PlanPanel({
   const meals = useMemo(() => state.foods.filter((item) => item.kind === "food"), [state.foods]);
   const treats = useMemo(() => state.foods.filter((item) => item.kind === "treat"), [state.foods]);
 
+  /**
+   * ステージとおやつ割合だけを saveDogProfile で保存する。名前と体重はいまの dog のまま送る。
+   * 成功すると dogs と、点線用の calorie_period_guides がサーバー側で更新される。
+   */
   async function onSave(event: FormEvent) {
     event.preventDefault();
     setPending(true);
@@ -145,6 +151,7 @@ export function PlanPanel({
         ) : meals.length === 0 && treats.length === 0 ? (
           <p className="mt-3 text-sm text-muted">フードタブで登録すると、何g・何個まで与えられるか計算します。</p>
         ) : (
+          // 登録フードの kcal と分量から、予算内の g や個数を quantityForBudget で出す。
           <div className="mt-4 space-y-5">
             {meals.length > 0 ? (
               <div>

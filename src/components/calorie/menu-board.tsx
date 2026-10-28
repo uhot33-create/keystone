@@ -2,13 +2,17 @@
  * 犬の絵をタップすると、次の犬、最後に人のメニューへ進む。人の次は最初の犬。
  * 犬が3匹以上のときは、左上の「人」で人のメニューへ直接移る。
  * 歯車はプロフィール画面を開く。メニューの並びは変えない。
+ * 暮らし帳の左カード。犬はわんカロリーか別ルート、人は喫煙とカップ麺。DB には書かない。
+ * 開く画面は sessionStorage の calorie-open-view / calorie-open-tab。項目は MENU と PERSON_MENU、送り順は onPortrait。
  */
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Cigarette, Footprints, ListChecks, Map, Pill, Scale, Settings, Soup, Stethoscope, Utensils } from "lucide-react";
 import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
+/** 暮らし帳から今日画面の view（体重・ごはん・おくすり）を一度だけ渡すキー。 */
 const OPEN_VIEW_KEY = "calorie-open-view";
+/** 歯車からプロフィールタブを一度だけ開くキー。名前を変えると、渡した画面が開かなくなる。 */
 const OPEN_TAB_KEY = "calorie-open-tab";
 
 export type CalorieMenuView = "weight" | "add" | "meds";
@@ -42,6 +46,10 @@ export function takeCalorieOpenTab(): "profile" | null {
   return value === "profile" ? "profile" : null;
 }
 
+/**
+ * 犬メニューの項目。view があるものは今日画面、to があるものは別ルート。
+ * 並びとラベルを変えるならここ。おさんぽメモだけ search に DEFAULT_WALK_SEARCH を付ける。
+ */
 const MENU = [
   { key: "food", label: "ごはん", Icon: Utensils, view: "add" as const },
   { key: "weight", label: "体重", Icon: Scale, view: "weight" as const },
@@ -51,6 +59,9 @@ const MENU = [
   { key: "vet", label: "通院履歴", Icon: Stethoscope, to: "/vet" as const },
 ] as const;
 
+/**
+ * 人メニュー。犬の記録ではない項目だけ。リンク先を変えるなら to。
+ */
 const PERSON_MENU = [
   { key: "smoke", label: "喫煙管理", Icon: Cigarette, to: "/smoking" as const },
   { key: "cup", label: "カップ麺", Icon: Soup, to: "/cup" as const },
@@ -60,6 +71,10 @@ const PERSON_MENU = [
 const itemClass =
   "flex h-8 items-center gap-2 border border-fg/25 bg-surface px-2.5 text-sm font-semibold text-fg shadow-card outline-none hover:bg-primary hover:text-primary-fg focus-visible:ring-2 focus-visible:ring-ring/35";
 
+/**
+ * 行の中身（三角・アイコン・ラベル）。リンクでもボタンでも同じ顔にする。
+ * ラベル文言は MENU / PERSON_MENU 側。見た目の余白は itemClass。
+ */
 function face(Icon: (typeof MENU)[number]["Icon"], label: string): ReactNode {
   return (
     <>
@@ -72,6 +87,10 @@ function face(Icon: (typeof MENU)[number]["Icon"], label: string): ReactNode {
   );
 }
 
+/**
+ * カードメニュー本体。board が dog なら MENU、person なら PERSON_MENU。
+ * 絵のタップは onPortrait。onView が無い暮らし帳では sessionStorage 経由で /calorie を開く。
+ */
 export function CalorieMenuBoard({
   dogSrc,
   dogName,
@@ -100,11 +119,19 @@ export function CalorieMenuBoard({
   const dogIndex = dogs.findIndex((dog) => dog.id === dogId);
   const nextDog = dogIndex >= 0 ? dogs[dogIndex + 1] : undefined;
 
+  /**
+   * 犬ボードと人ボードを切り替える。親には onBoard で今どちらを見ているか渡す。
+   * 人のあいだは TodayPanel 側がグラフと今日の記録を出さない。
+   */
   function showBoard(next: "dog" | "person") {
     setBoard(next);
     onBoard?.(next);
   }
 
+  /**
+   * 絵を押したときの送り。人なら最初の犬へ戻す。犬なら次の犬、最後の犬の次は人。
+   * 3頭以上の「人」ショートカットはここを通さず showBoard("person")。
+   */
   function onPortrait() {
     if (board === "person") {
       const first = dogs[0];
@@ -119,6 +146,10 @@ export function CalorieMenuBoard({
     showBoard("person");
   }
 
+  /**
+   * 歯車。onOpenProfile があればそれを呼ぶ。無ければ calorie-open-tab を書いて /calorie へ。
+   * 保存に失敗しても画面遷移はする。
+   */
   function openProfile() {
     if (onOpenProfile) {
       onOpenProfile();
@@ -152,6 +183,7 @@ export function CalorieMenuBoard({
               className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
             />
             {board === "dog" && dogs.length >= 3 ? (
+              // 3頭以上のときだけ、絵のタップを待たずに人メニューへ直接移る。
               <button
                 type="button"
                 className="absolute left-1 top-1 z-10 h-7 rounded-full bg-surface/90 px-2 text-[11px] font-medium text-fg shadow-card"
@@ -209,6 +241,7 @@ export function CalorieMenuBoard({
                 );
               }
               return (
+                // onView が無い暮らし帳では、開く view を session に残して /calorie へ行く。
                 <Link
                   key={item.key}
                   to="/calorie"

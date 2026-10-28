@@ -42,7 +42,8 @@ export function nextJstMidnightIso(ms: number): string {
 
 /**
  * 日付が変わっていたら残りを上限に戻す。
- * 期間開始が今日なら何もしない（didReset は false）。
+ * 期間開始が今日（日本時間の日付）なら何もしない（didReset は false）。
+ * 壊れた開始時刻は、今日の0時から上限に戻した扱いにする。0時の境界は startOfJstDayIso（+09:00）。
  */
 export function applyReset(
   dailyLimit: number,

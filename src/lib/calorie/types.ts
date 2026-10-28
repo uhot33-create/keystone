@@ -5,6 +5,7 @@
  * グラフの1点は DayTrend。画面全体のまとまりが CalorieState です。
  * グラフ切替の文言「日／週／月／年」は TREND_GRAINS です。ここだけ変えればボタンの文字が変わります。
  * SQLの列名とは別物です（例: current_weight_kg は currentWeightKg に直してから渡します）。
+ * 摂取 kcal の小数第1位切り捨ては formula.ts の truncKcal。期末体重と点線の保存は summary.ts。
  */
 /** 登録フードの種類。food はごはん、treat はおやつです。 */
 export type FoodKind = "food" | "treat";

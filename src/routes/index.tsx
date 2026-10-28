@@ -23,6 +23,7 @@ import type { CalorieState } from "@/lib/calorie/types";
 /** / 。セッションがあればメニュー、無ければログイン。 */
 export const Route = createFileRoute("/")({ component: Home });
 
+/** ログイン済み（セッションかクライアント）ならメニュー。確認中は待ち、未ログインはログイン画面。 */
 function Home() {
   const { sessionUser } = useRouteContext({ from: "__root__" });
   const { user, isPending } = useCurrentUserState();
@@ -38,6 +39,7 @@ function Home() {
   return <LoginScreen />;
 }
 
+/** カードメニューと机。机の中身は DeskPanel。 */
 function MenuScreen() {
   return (
     <div className="stagger-in flex flex-1 flex-col gap-6">
@@ -47,6 +49,7 @@ function MenuScreen() {
   );
 }
 
+/** 犬と人のカード、見ている日。日付の変更は HomeCalorieDate が publish へ返す。 */
 function CardMenu() {
   const router = useRouter();
   const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
@@ -59,10 +62,12 @@ function CardMenu() {
       )
     : { src: "/calorie/saburo/01-standard.jpg", label: "今の体型" };
 
+  /** メニュー先の部品とデータを先に読む。一度だけ。失敗してもこの画面は出す。処理は warm-menus.ts。 */
   useEffect(() => {
     warmMenus(router);
   }, [router]);
 
+  /** キャッシュが無ければ、今日（日本時間）と前回の犬で getCalorieState を取る。日付は state.date として残す。 */
   useEffect(() => {
     if (peekCalorieState()) return;
     let cancelled = false;
@@ -80,11 +85,13 @@ function CardMenu() {
     };
   }, []);
 
+  /** 日付変更や犬の切り替えの結果を、画面とキャッシュの両方に置く。 */
   function publish(next: CalorieState) {
     holdCalorieState(next);
     setState(next);
   }
 
+  /** 別の犬を選ぶ。日付は今見ている日のまま。犬 id は rememberDogId に残し、次の取得で使う。 */
   async function selectDog(dogId: number) {
     if (!state || dogId === state.dog.id) return;
     setBusy(true);

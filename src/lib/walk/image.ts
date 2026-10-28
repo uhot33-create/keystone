@@ -44,6 +44,7 @@ export function assertImageFile(file: File): void {
   }
 }
 
+/** ビットマップを長辺 maxEdge 以内の JPEG にする。品質は quality。HEIC 変換も縮小もここを通る。 */
 function drawToJpeg(bitmap: ImageBitmap, name: string, quality: number, maxEdge: number): Promise<File> {
   const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -68,6 +69,7 @@ function drawToJpeg(bitmap: ImageBitmap, name: string, quality: number, maxEdge:
   });
 }
 
+/** createImageBitmap して drawToJpeg し、必ず bitmap を閉じる。 */
 async function toJpeg(file: File, quality: number, maxEdge: number): Promise<File> {
   const bitmap = await createImageBitmap(file);
   try {
@@ -159,6 +161,7 @@ export async function fileFromImageSrc(src: string): Promise<File | null> {
   return namedPaste(new File([blob], "paste.jpg", { type, lastModified: Date.now() }));
 }
 
+/** クリップボード由来の無名ファイルに paste.拡張子 を付ける。すでに名前があるものはそのまま。 */
 function namedPaste(file: File): File {
   if (file.name && file.name !== "image.png" && file.name !== "image.jpg") return file;
   const subtype = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";

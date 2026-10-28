@@ -19,6 +19,7 @@ const UA = "KurashiCho/1.0 (https://github.com/uhot33-create/keystone)";
 /** 取得結果のメモリキャッシュ。期限（exp）まで同じ値を返す。 */
 const memory = new Map<string, { exp: number; value: unknown }>();
 
+/** いまを日本時間の日付キーと「○月○日（曜）」にする。何の日のページ名は月と日から作る。 */
 function jstNow(ms = Date.now()) {
   const dateKey = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -48,6 +49,7 @@ function cached<T>(key: string, ttlMs: number, load: () => Promise<T>, force = f
   });
 }
 
+/** 外部の本文を取る。9秒で打ち切る。User-Agent は UA。失敗はステータス付きの Error。 */
 async function fetchText(url: string, init?: RequestInit): Promise<string> {
   const res = await fetch(url, {
     ...init,
@@ -58,11 +60,13 @@ async function fetchText(url: string, init?: RequestInit): Promise<string> {
   return res.text();
 }
 
+/** fetchText の結果を JSON にする。 */
 async function fetchJson<T>(url: string): Promise<T> {
   const text = await fetchText(url);
   return JSON.parse(text) as T;
 }
 
+/** Wikipedia のウィキテキストを表示用の1行にする。国旗テンプレートは countries.ts。 */
 function cleanWiki(text: string): string {
   return text
     .replace(/\{\{仮リンク\|([^}|]+)[^}]*\}\}/g, "$1")
@@ -79,6 +83,7 @@ function cleanWiki(text: string): string {
     .trim();
 }
 
+/** 節の先頭が * の行を最大5件。注釈（*:）と入れ子（**）は捨てる。 */
 function wikiBullets(section: string): string[] {
   const out: string[] = [];
   for (const raw of section.split("\n")) {
@@ -90,11 +95,13 @@ function wikiBullets(section: string): string[] {
   return out;
 }
 
+/** 見出し（記念日・年中行事、できごと）から次の見出しまでを切り出す。 */
 function wikiSection(wikitext: string, heading: string): string {
   const match = wikitext.match(new RegExp(`==+\\s*${heading}\\s*==+\\s*([\\s\\S]*?)(?=\\n==+|$)`));
   return match?.[1] ?? "";
 }
 
+/** 日本時間の今日。祝日 API と ja.wikipedia の「○月○日」。6時間キャッシュ。最大6件。 */
 async function loadOnThisDay(): Promise<OnThisDay> {
   const { dateKey, dateLabel, year, month, day } = jstNow();
   return cached(`day:${dateKey}`, 6 * 60 * 60 * 1000, async () => {
@@ -128,6 +135,7 @@ async function loadOnThisDay(): Promise<OnThisDay> {
   });
 }
 
+/** 名言 API を先に試し、空ならことわざ API。どちらも空ならエラー。 */
 async function fetchQuoteOnce(): Promise<DailyQuote> {
   try {
     const rows = await fetchJson<{ meigen?: string; auther?: string; author?: string }[]>(
@@ -157,6 +165,7 @@ async function fetchQuoteOnce(): Promise<DailyQuote> {
   };
 }
 
+/** 今日の格言。日本時間の日付キーで6時間。force で同じ文ならもう一度だけ取り直す。 */
 async function loadQuote(force = false): Promise<DailyQuote> {
   const { dateKey } = jstNow();
   const key = `quote:${dateKey}`;
@@ -267,6 +276,7 @@ const FALLBACK_STORIES: DailyStory[] = [
   },
 ];
 
+/** 句点で切っておよそ90文字以上、max（既定180）以内。短文が無ければ先頭を切る。 */
 function firstSentences(text: string, max = 180): string {
   const parts = text.split(/(?<=。)/);
   let out = "";
@@ -280,6 +290,7 @@ function firstSentences(text: string, max = 180): string {
   return out || text.slice(0, max).trim();
 }
 
+/** 日付文字列から話題の番号。同じ日は同じ起点。更新で進めるのは storyOffset。 */
 function topicIndex(dateKey: string): number {
   let hash = 0;
   for (const ch of dateKey) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
@@ -288,6 +299,7 @@ function topicIndex(dateKey: string): number {
 
 const storyOffset = new Map<string, number>();
 
+/** STORY_TOPICS の1件を Wikipedia 要約にする。20文字未満や失敗は FALLBACK_STORIES。 */
 async function fetchStoryAt(index: number): Promise<DailyStory> {
   const title = STORY_TOPICS[index]!;
   try {
@@ -310,6 +322,7 @@ async function fetchStoryAt(index: number): Promise<DailyStory> {
   return FALLBACK_STORIES[index % FALLBACK_STORIES.length]!;
 }
 
+/** 今日の小話。force のたびに話題を一つ進める。キャッシュは日付キー（中身の index は force 時に取り直す）。 */
 async function loadStory(force = false): Promise<DailyStory> {
   const { dateKey } = jstNow();
   if (force) storyOffset.set(dateKey, (storyOffset.get(dateKey) ?? 0) + 1);
@@ -317,10 +330,15 @@ async function loadStory(force = false): Promise<DailyStory> {
   return cached(`story:${dateKey}`, 6 * 60 * 60 * 1000, () => fetchStoryAt(index), force);
 }
 
+/** 星座 HTML のタグを落として1行にする。 */
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * 朝日新聞の12星座ページを読む。id は /uranai/12seiza/{id}.html。
+ * 点数は alt の「Nポイント」。3時間キャッシュ。項目が0ならエラー。
+ */
 async function loadZodiac(key: string): Promise<DailyFortune> {
   const sign = ZODIAC_OPTIONS.find((item) => item.id === key) ?? ZODIAC_OPTIONS[0]!;
   const { dateKey } = jstNow();
@@ -347,12 +365,14 @@ async function loadZodiac(key: string): Promise<DailyFortune> {
   });
 }
 
+/** 日付と種類から1〜5の点数。血液型・干支用。星座の点数は外部 HTML。 */
 function dailyScore(seed: string): number {
   let hash = 0;
   for (const ch of seed) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
   return 1 + (hash % 5);
 }
 
+/** 血液型と干支。ことわざを1行目にし、点数は dailyScore。星座は loadZodiac。6時間。 */
 async function loadAdviceFortune(kind: FortuneKind, key: string, title: string): Promise<DailyFortune> {
   const { dateKey } = jstNow();
   return cached(`${kind}:${dateKey}:${key}`, 6 * 60 * 60 * 1000, async () => {
@@ -379,12 +399,14 @@ async function loadAdviceFortune(kind: FortuneKind, key: string, title: string):
   });
 }
 
+/** 占いの種類に対応する選択肢。未知の kind は星座。 */
 function optionsFor(kind: FortuneKind) {
   if (kind === "blood") return BLOOD_OPTIONS;
   if (kind === "eto") return ETO_OPTIONS;
   return ZODIAC_OPTIONS;
 }
 
+/** FORTUNE_KINDS にある id か。違う文字列は星座に戻す。 */
 function isKind(value: string): value is FortuneKind {
   return FORTUNE_KINDS.some((item) => item.id === value);
 }
@@ -425,6 +447,7 @@ export const getDesk = createServerFn({ method: "GET" })
     const key = options.some((item) => item.id === data.key) ? data.key! : options[0]!.id;
     const title = options.find((item) => item.id === key)?.label ?? key;
     const errors: string[] = [];
+    // 項目ごとに失敗を分ける。一つの取得失敗で他のカードまで空にしない。オフの項目は取りに行かない。
     const [dayRes, quoteRes, storyRes, dogRes, newsRes, fortuneRes] = await Promise.allSettled([
       data.onThisDay ? loadOnThisDay() : Promise.resolve(null),
       data.quote ? loadQuote() : Promise.resolve(null),

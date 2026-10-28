@@ -17,6 +17,7 @@ import { holdRouteContext, peekRouteContext } from "@/lib/route-context";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 import appCss from "../styles.css?url";
 
+/** セッションの id と email だけ返す。未ログインは null。判定の中身は verify.server.ts。 */
 const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
   const { getSessionUser } = await import("@/lib/auth/verify.server");
   const u = await getSessionUser();
@@ -25,6 +26,7 @@ const fetchSessionUser = createServerFn({ method: "GET" }).handler(async () => {
 
 /** ルート経路。セッションと机の設定を読み、head のメタ情報を置く。 */
 export const Route = createRootRoute({
+  /** 子へ渡すセッションと机。ブラウザにキャッシュがあればそれを使い、無ければ取り直す。 */
   beforeLoad: async () => {
     if (typeof window !== "undefined") {
       const cached = peekRouteContext();
@@ -71,12 +73,15 @@ export const Route = createRootRoute({
   component: RootDocument,
 });
 
+/** html 全体。配色は ThemeProvider、認証は AuthProvider。子ページは Outlet。 */
 function RootDocument() {
   const { sessionUser, desk } = Route.useRouteContext();
+  /** このページで確定したセッションと机の設定を、次の遷移用に残す。中身は route-context.ts。 */
   useLayoutEffect(() => {
     holdRouteContext({ sessionUser, desk });
   }, [sessionUser, desk]);
 
+  /** タッチ端末だけ、長押しメニューとドラッグ開始を止める。マウス操作では何もしない。 */
   useEffect(() => {
     if (!window.matchMedia("(pointer: coarse)").matches) return;
     const block = (event: Event) => event.preventDefault();

@@ -36,6 +36,11 @@ export function FoodsPanel({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * 名前・kcal・分量が揃っていれば addDogFood で dog_foods に足す。
+   * 成功したら名前と kcal だけ空に戻す（分量と単位は選んでいる種類のまま）。
+   * 足りないときの文言を変えるなら、ここの setError。
+   */
   async function onAdd(event: FormEvent) {
     event.preventDefault();
     const kcal = Number(foodKcal);
@@ -86,6 +91,7 @@ export function FoodsPanel({
               id="food-kind"
               value={foodKind}
               onChange={(event) => {
+                // ごはんに切り替えたら 100g、おやつなら 1個。保存済みのフードは変えない。
                 const next = event.target.value === "treat" ? "treat" : "food";
                 setFoodKind(next);
                 setFoodAmount(next === "treat" ? "1" : "100");
@@ -150,6 +156,7 @@ export function FoodsPanel({
                     {food.kind === "treat" ? "おやつ" : "ごはん"} · {food.kcal}kcal / {formatQuantity(food.amount, food.unit)}
                   </p>
                 </div>
+                {/* 削除は deleteDogFood。一覧は返ってきた state で差し替える。失敗しても他の行は残す。 */}
                 <Button
                   type="button"
                   variant="ghost"

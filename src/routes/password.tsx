@@ -17,6 +17,7 @@ export const Route = createFileRoute("/password")({
   component: PasswordPage,
 });
 
+/** 未ログインはログインへ返す。入力は ChangePasswordForm。 */
 function PasswordPage() {
   return (
     <Protected>
@@ -25,6 +26,7 @@ function PasswordPage() {
   );
 }
 
+/** 現在のパスワードと、8文字以上で一致する新しいパスワード。成功すると約1.2秒でトップへ戻る。 */
 function ChangePasswordForm() {
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState("");
@@ -34,6 +36,7 @@ function ChangePasswordForm() {
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
 
+  /** changePassword を呼ぶ。revokeOtherSessions が true なので、この端末以外のログインは切れる。 */
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);

@@ -21,6 +21,7 @@ export const Route = createFileRoute("/dogwalklogs/$id")({
   component: WalkLogDetail,
 });
 
+/** URL の id の1件。一覧キャッシュで先に出し、getWalkLog で軌跡を足す。 */
 function WalkLogDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ function WalkLogDetail() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  /** id が変わるたびに詳細を取り直す。一覧にあれば距離と名前だけ先に出す。軌跡は getWalkLog。 */
   useEffect(() => {
     const cached = detailFromList(peekWalkLogs(), id);
     if (cached) setLog(cached);
@@ -48,6 +50,7 @@ function WalkLogDetail() {
     };
   }, [id]);
 
+  /** 確認のあと削除し、一覧キャッシュを捨てる。前後があればその詳細、無ければ一覧へ戻る。 */
   async function onDelete() {
     if (!log || !confirm(`「${log.name}」を削除しますか？`)) return;
     setPending(true);
@@ -94,6 +97,7 @@ function WalkLogDetail() {
   );
 }
 
+/** 一覧キャッシュから仮の詳細を作る。前後の id は並び順。軌跡はまだ無い。 */
 function detailFromList(list: WalkLogList | null, id: string): WalkLogDetail | null {
   if (!list) return null;
   const flat = [...list.years.flatMap((year) => year.months.flatMap((month) => month.logs)), ...list.undated];
@@ -103,6 +107,7 @@ function detailFromList(list: WalkLogList | null, id: string): WalkLogDetail | n
   return { ...log, prevId: flat[index - 1]?.id ?? null, nextId: flat[index + 1]?.id ?? null };
 }
 
+/** 前後のログへ id を渡す。端ではボタンを止める。並びの規則は getWalkLog。 */
 function LogNav({ prevId, nextId }: { prevId?: string | null; nextId?: string | null }) {
   return (
     <div className="flex gap-2">

@@ -13,6 +13,7 @@ import { ageFromBirthday, isFutureDate, todayJst } from "./age";
 import type { DogBreed, DogColor, MemoImage, MemoInput, SexValue, WalkMemo } from "./types";
 import { MAX_MEMO_IMAGES } from "./types";
 
+/** zod の最初のエラー文を投げる。画面はその message を出す。 */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -21,11 +22,13 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
+/** 性別はオス・メス・不明だけ通す。選択肢を増やすなら types.ts の SEX_OPTIONS も合わせる。 */
 function asSex(value: string | null): SexValue | null {
   if (value === "オス" || value === "メス" || value === "不明") return value;
   return null;
 }
 
+/** Date でも文字列でも先頭10文字が YYYY-MM-DD ならそれを返す。最後に会った日はタイムゾーン変換しない。 */
 function asDate(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (value instanceof Date) {
@@ -36,6 +39,7 @@ function asDate(value: unknown): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }
 
+/** 作成・更新時刻を ISO にする。壊れていたら今。日付の「今日」判定には使わない（それは todayJst）。 */
 function asIso(value: unknown): string {
   if (value instanceof Date) return value.toISOString();
   const text = String(value ?? "");
@@ -43,6 +47,7 @@ function asIso(value: unknown): string {
   return Number.isFinite(ms) ? new Date(ms).toISOString() : new Date().toISOString();
 }
 
+/** 年齢やカバー位置などの整数。数値でなければ null。 */
 function intOrNull(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n = typeof value === "number" ? value : Number(value);
@@ -81,6 +86,10 @@ type BreedRow = {
   sort_order: unknown;
 };
 
+/**
+ * memos.images の jsonb を MemoImage にする。古い1枚だけの image_url も1件に畳む。
+ * thumbData は 16〜80000 文字のときだけ残す（一覧を重くしない）。枚数は MAX_MEMO_IMAGES。
+ */
 function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: string | null): MemoImage[] {
   const raw = typeof value === "string" ? (() => {
     try {
@@ -120,12 +129,17 @@ function asImages(value: unknown, fallbackUrl: string | null, fallbackPath: stri
   return [];
 }
 
+/** カバー位置を 0 〜 枚数-1 に収める。画像が無ければ 0。 */
 function asCoverIndex(value: unknown, count: number): number {
   if (count <= 0) return 0;
   const n = intOrNull(value) ?? 0;
   return Math.min(Math.max(0, n), count - 1);
 }
 
+/**
+ * 1行を WalkMemo にする。includeThumbData が false のときは thumbData を落とす（一覧の先出し）。
+ * prevLastMetOn は戻すボタン用。飼い主名は trim して空なら null（多頭飼いの名前合わせに使う）。
+ */
 function mapMemo(row: MemoRow, includeThumbData = true): WalkMemo {
   const images = asImages(row.images, row.image_url, row.image_pathname).map((image) =>
     includeThumbData ? image : { ...image, thumbData: null },
@@ -187,6 +201,7 @@ const BREED_SEED: { id: string; name: string; sort: number }[] = [
   ["a1000000-0000-4000-8000-000000000026", "その他", 910],
 ].map(([id, name, sort]) => ({ id: String(id), name: String(name), sort: Number(sort) }));
 
+/** 犬種マスタ。名前が無いものだけ BREED_SEED を足す（表が空でなくても）。有効行だけ sort_order 順。 */
 async function listBreeds(): Promise<DogBreed[]> {
   const sql = await getSql();
   const existing = await sql<{ name: string }>`select name from dog_breeds`;
@@ -221,6 +236,7 @@ const COLOR_SEED: { id: string; name: string; sort: number }[] = [
   ["c1000000-0000-4000-8000-000000000005", "黒／茶", 50],
 ].map(([id, name, sort]) => ({ id: String(id), name: String(name), sort: Number(sort) }));
 
+/** 色マスタ。表が0件のときだけ COLOR_SEED を入れる。犬種と違い、すでにある行には足さない。 */
 async function listColors(): Promise<DogColor[]> {
   const sql = await getSql();
   const count = await sql<{ n: number }>`select count(*)::int as n from dog_colors`;
@@ -246,6 +262,10 @@ async function listColors(): Promise<DogColor[]> {
   }));
 }
 
+/**
+ * ログインユーザーのカードだけ。user_id で絞る。名前昇順は SQL、画面の並び替えは filter.ts。
+ * includeThumbData が false のときは url と pathname だけ残し、サムネは getWalkThumbs に任せる。
+ */
 async function listMemos(userId: string, includeThumbData = true): Promise<WalkMemo[]> {
   const sql = await getSql();
   const rows = includeThumbData
@@ -315,6 +335,7 @@ async function listMemos(userId: string, includeThumbData = true): Promise<WalkM
   return rows.map((row) => mapMemo(row, includeThumbData));
 }
 
+/** 自分のカード1件。他人の id は null（見つかりません、にするのは呼び出し側）。 */
 async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
   const sql = await getSql();
   const rows = await sql<MemoRow>`
@@ -350,6 +371,7 @@ async function getOwned(userId: string, id: string): Promise<WalkMemo | null> {
   return rows[0] ? mapMemo(rows[0]) : null;
 }
 
+/** Vercel Blob を1つ消す。トークンが無い、失敗してもレコード操作は続ける。 */
 async function removeBlob(url: string | null | undefined) {
   if (!url || !process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
@@ -360,6 +382,7 @@ async function removeBlob(url: string | null | undefined) {
   }
 }
 
+/** 本画像とサムネの Blob を両方消す。 */
 async function removeImageBlobs(image: MemoImage) {
   await removeBlob(image.url);
   await removeBlob(image.thumbUrl);
@@ -413,6 +436,10 @@ const memoInput = z.object({
   coverIndex: z.number().int().min(0).max(MAX_MEMO_IMAGES - 1),
 });
 
+/**
+ * 保存直前の整え。犬種・色はマスタにある id だけ。誕生日・最後に会った日・虹の日は未来を拒否（todayJst）。
+ * 誕生日があると年齢は ageFromBirthday で上書き。虹渡りでなければ虹の日は null。
+ */
 async function normalize(input: MemoInput, breeds: DogBreed[], colors: DogColor[]): Promise<MemoInput> {
   const today = todayJst();
   if (input.breedId && !breeds.some((breed) => breed.id === input.breedId)) {
@@ -581,6 +608,8 @@ export const updateWalkMemo = createServerFn({ method: "POST" })
 
     const colorName = next.colorId ? colors.find((color) => color.id === next.colorId)?.name ?? null : null;
 
+    // 最後に会った日が変わるときだけ、いまの last_met_on を prev_last_met_on に残す。
+    // 同じ日付の再保存では一つ前を上書きしない。戻す操作は restoreWalkMemoMet（日付の入れ替え）。
     await sql`
       update memos
       set
@@ -635,6 +664,7 @@ export const uploadWalkImage = createServerFn({ method: "POST" })
     const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
     const buf = Buffer.from(data.base64, "base64");
     if (!buf.length) throw new Error("画像を読み込めませんでした");
+    // クライアントのサムネが無ければ sharp で 128px JPEG。失敗しても本画像の保存は続ける。
     let thumbBuf = data.thumbBase64 ? Buffer.from(data.thumbBase64, "base64") : null;
     if (!thumbBuf?.length) {
       try {
@@ -702,7 +732,11 @@ export const deleteWalkMemo = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** 「今日会った」か、編集で指定した日を最後に会った日にする。変わったときだけ一つ前を残す。虹渡りのカードは更新しない。 */
+/**
+ * 「今日会った」か、編集で指定した日を最後に会った日にする。変わったときだけ一つ前を残す。虹渡りのカードは更新しない。
+ * on を省略すると日本時間の今日（todayJst）。未来日は拒否。user_id が自分の行だけ。
+ * 同じ日を再度入れても prev は動かない（is distinct from）。多頭飼いへ同じ日を広げるのは画面の確認のあと、この関数を犬ごとに呼ぶ。
+ */
 export const touchWalkMemoMet = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -739,7 +773,11 @@ export const touchWalkMemoMet = createServerFn({ method: "POST" })
     };
   });
 
-/** 最後に会った日を一つ前に戻す。戻した日が次の一つ前になる。 */
+/**
+ * 最後に会った日を一つ前に戻す。戻した日が次の一つ前になる。
+ * last_met_on と prev_last_met_on を入れ替えるだけ。履歴は1世代。prev が null なら「戻せる日付がありません」。
+ * 自分の user_id の行だけ。一覧の「○に戻す」と編集画面の戻すボタンがここを呼ぶ。
+ */
 export const restoreWalkMemoMet = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ id: z.string().min(1) }), input))

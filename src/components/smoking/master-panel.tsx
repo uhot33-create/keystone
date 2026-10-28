@@ -30,6 +30,7 @@ export function MasterPanel({
     setLimit(String(state.dailyLimit));
   }, [state.dailyLimit]);
 
+  /** 1〜80の整数だけ保存。上げた分を残りに足す処理は saveDailyLimit。画面の下限チェックはここ、上限80は input の max。 */
   async function onSave(event: FormEvent) {
     event.preventDefault();
     const dailyLimit = Number(limit);

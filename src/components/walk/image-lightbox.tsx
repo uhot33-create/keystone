@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 
+/** 共有シートに渡す拡張子。png / webp / gif 以外は jpg。 */
 function extOf(type: string): string {
   if (type.includes("png")) return "png";
   if (type.includes("webp")) return "webp";
@@ -15,11 +16,16 @@ function extOf(type: string): string {
   return "jpg";
 }
 
+/** 共有ファイル名。alt から使えない文字を除き、空なら「写真」。 */
 function fileName(alt: string, type: string): string {
   const base = alt.replace(/[\\/:*?"<>|]/g, "").trim().slice(0, 40) || "写真";
   return `${base}.${extOf(type)}`;
 }
 
+/**
+ * 表示中の src を File にする。ログイン Cookie 付き（credentials: include）で /api/walk/image を取る。
+ * 失敗すると共有ボタン側が「写真を読み込めませんでした」。blob: のプレビューも同じ経路。
+ */
 async function imageFile(src: string, alt: string): Promise<File> {
   const response = await fetch(src, { credentials: "include" });
   if (!response.ok) throw new Error("写真を読み込めませんでした");
@@ -42,6 +48,7 @@ export function ImageLightbox({
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
 
+  // Escape で閉じ、開いているあいだ背景をスクロールさせない。
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -55,6 +62,7 @@ export function ImageLightbox({
     };
   }, [onClose]);
 
+  // 開いたら先に File を作っておく。共有シートを押した瞬間に待たせないため。src が変わるとやり直す。
   useEffect(() => {
     let cancelled = false;
     ready.current = null;
@@ -70,6 +78,8 @@ export function ImageLightbox({
     };
   }, [src, alt]);
 
+  // iPhone の共有シート（AirDrop 含む）へ画像ファイルを渡す。URL 文字列ではなく File。
+  // canShare が無い端末はエラー。ユーザーがシートを閉じた AbortError は黙って戻す。
   async function onShare(event: MouseEvent) {
     event.stopPropagation();
     if (sharing) return;

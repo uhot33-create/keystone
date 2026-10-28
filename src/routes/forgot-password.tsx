@@ -20,18 +20,21 @@ export const Route = createFileRoute("/forgot-password")({
   component: ForgotPasswordPage,
 });
 
+/** 空と形式だけ見る。登録の有無はここでは調べない。 */
 const emailSchema = z
   .string()
   .trim()
   .min(1, "メールアドレスを入力してください")
   .email("メールアドレスの形式が正しくありません");
 
+/** 再設定メールの入力。成功しても、登録があるときだけ送った、と出す。 */
 function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, setPending] = useState(false);
 
+  /** 形式を通し、認証が有効なら requestPasswordReset。リンク先は /reset-password。 */
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);

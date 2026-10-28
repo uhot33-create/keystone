@@ -8,7 +8,11 @@
 import type { Sql } from "@/lib/db";
 import { decodePolyline } from "@/lib/walk-log/gpx";
 
-/** 軌跡の中心が同じ700m四方なら、同じ地図に載せる。 */
+/**
+ * 軌跡の中心が同じ700m四方なら、同じ地図に載せる。
+ * 1本の線を切る距離（100m、gpx.ts の TRACK_GAP_M）とは別。こちらは「どの散歩を1枚の月地図にまとめるか」。
+ * 変えた月は dirtyMonths が cell_m の違いを見て作り直す。画面の線の切れ目は変わらない。
+ */
 const REGION_CELL_M = 700;
 
 const PREFECTURES: ReadonlyArray<readonly [string, number, number]> = [
@@ -139,6 +143,7 @@ export function bucketMonthTracks(rows: TrackRow[]): Bucket[] {
   });
 }
 
+/** 中心を 700m マス（REGION_CELL_M）に落としたキーで束ねる。マスが違う散歩は別の地図。 */
 function clusterPieces(pieces: Piece[]): Array<MonthRegion & { box: Box }> {
   const groups = new Map<string, Piece[]>();
   for (const piece of pieces) {
@@ -157,6 +162,10 @@ function clusterPieces(pieces: Piece[]): Array<MonthRegion & { box: Box }> {
   }));
 }
 
+/**
+ * 軌跡の中心をメートルに直して 700m で割ったマス番号。緯度は 111320m/度。
+ * 経度は緯度で縮める。このキーが同じ散歩だけ同じ地図（clusterPieces）。
+ */
 function cellKey(box: Box): string {
   const lat = (box.minLat + box.maxLat) / 2;
   const lng = (box.minLng + box.maxLng) / 2;
@@ -165,6 +174,7 @@ function cellKey(box: Box): string {
   return `${Math.floor(latM / REGION_CELL_M)}:${Math.floor(lngM / REGION_CELL_M)}`;
 }
 
+/** 中心に一番近い都道府県名。同じ県が2マス以上なら「東京都（1）」のように番号を足す。長い順。 */
 function labelRegions(regions: Array<MonthRegion & { box: Box }>): MonthRegion[] {
   const named = regions
     .map((region) => ({ ...region, label: nearestPrefecture(region.box) }))
@@ -180,6 +190,7 @@ function labelRegions(regions: Array<MonthRegion & { box: Box }>): MonthRegion[]
   });
 }
 
+/** 県庁所在地に近い方。県境の精度は粗い（代表点との距離）。 */
 function nearestPrefecture(box: Box): string {
   const lat = (box.minLat + box.maxLat) / 2;
   const lng = (box.minLng + box.maxLng) / 2;
@@ -198,6 +209,7 @@ function nearestPrefecture(box: Box): string {
   return best[0];
 }
 
+/** 点列を囲む緯度経度の箱。空なら null。 */
 function boxOf(points: [number, number][]): Box | null {
   if (points.length === 0) return null;
   let minLat = points[0]![0];
@@ -213,6 +225,7 @@ function boxOf(points: [number, number][]): Box | null {
   return { minLat, maxLat, minLng, maxLng };
 }
 
+/** 二つの箱を含む最小の箱。同じマスに入った散歩のラベル位置に使う。 */
 function unite(a: Box, b: Box): Box {
   return {
     minLat: Math.min(a.minLat, b.minLat),
@@ -222,6 +235,7 @@ function unite(a: Box, b: Box): Box {
   };
 }
 
+/** 箱同士の隙間をメートルで見る。重なっていれば 0。県名の近さ判定に使う。 */
 function boxGapMeters(a: Box, b: Box): number {
   const latGap = a.minLat > b.maxLat ? a.minLat - b.maxLat : b.minLat > a.maxLat ? b.minLat - a.maxLat : 0;
   const lngGap = a.minLng > b.maxLng ? a.minLng - b.maxLng : b.minLng > a.maxLng ? b.minLng - a.maxLng : 0;
@@ -234,6 +248,10 @@ function boxGapMeters(a: Box, b: Box): number {
 
 type MonthKey = { userId: string; yearMonth: string };
 
+/**
+ * 作り直しが要るユーザーと月。日本時間の YYYY-MM。
+ * 件数違い、未集計、集計後にログが増えた、cell_m がいまの 700 と違う、のどれか。
+ */
 async function dirtyMonths(sql: Sql): Promise<MonthKey[]> {
   const rows = await sql<{ user_id: string; year_month: string }>`
     with live as (
@@ -260,6 +278,7 @@ async function dirtyMonths(sql: Sql): Promise<MonthKey[]> {
   return rows.map((row) => ({ userId: String(row.user_id), yearMonth: String(row.year_month) }));
 }
 
+/** 対象月の walk_logs を、日本時間の月で切って読む。ユーザーは dirty の user_id だけ。 */
 async function loadTracks(sql: Sql, keys: MonthKey[]): Promise<TrackRow[]> {
   if (keys.length === 0) return [];
   const userIds = keys.map((key) => key.userId);
@@ -279,6 +298,7 @@ async function loadTracks(sql: Sql, keys: MonthKey[]): Promise<TrackRow[]> {
   `;
 }
 
+/** 対象月を消してから入れ直す。cell_m にいまの 700 を書く。全ユーザーではなく dirty の月だけ。 */
 async function writeBuckets(sql: Sql, keys: MonthKey[], buckets: Bucket[]) {
   if (keys.length === 0) return;
   const userIds = keys.map((key) => key.userId);

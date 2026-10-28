@@ -41,8 +41,13 @@ export function DogSwitcher({
   onBusy?: (label: string | null) => void;
   onError?: (message: string | null) => void;
 }) {
+  // 1頭のときは切り替え自体が要らないので、何も描かない。
   if (state.dogs.length < 2) return null;
 
+  /**
+   * 別の犬を選んだときだけ getCalorieState を取り直す。同じ犬なら何もしない。
+   * 先に rememberDogId し、失敗したら onError。読み込み中の文言を変えるなら「読み込み中…」。
+   */
   async function selectDog(dogId: number) {
     if (dogId === state.dog.id) return;
     onBusy?.("読み込み中…");

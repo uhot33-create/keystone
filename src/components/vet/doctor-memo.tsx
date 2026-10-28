@@ -34,6 +34,7 @@ export function DoctorMemoCard() {
     };
   }, []);
 
+  /** 本文を上書き。空でも保存する。1000文字は欄の maxLength と API。 */
   async function save() {
     setPending(true);
     setError(null);
@@ -100,6 +101,7 @@ export function DoctorMemoCopy() {
 
   if (!body) return null;
 
+  /** 全文をコピー。Clipboard API が使えないときは見えない textarea に退避して execCommand。 */
   async function copy() {
     try {
       await navigator.clipboard.writeText(body);

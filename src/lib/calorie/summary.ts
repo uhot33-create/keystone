@@ -9,12 +9,15 @@
 import type { Sql } from "@/lib/db";
 import { shiftIsoDate, todayJst, truncKcal } from "./formula";
 import type { DayTrend, TrendGrain } from "./types";
+
+/** DB の日付を YYYY-MM-DD にする。形式が違えば空。期間の突き合わせはこの形で行う。 */
 function asDateKey(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   const text = String(value ?? "").slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : "";
 }
 
+/** 表示用の丸め。places 桁で四捨五入する。摂取合計の切り捨ては、このあと truncKcal を別途かける。 */
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed)) return 0;
@@ -65,6 +68,7 @@ export function weekKey(iso: string): string {
   return `${year}-W${String(weeks).padStart(2, "0")}`;
 }
 
+/** 週の軸ラベル。「M/D–M/D」。週の区切りそのものは mondayOf。 */
 function weekLabel(start: string, end: string): string {
   const a = `${Number(start.slice(5, 7))}/${Number(start.slice(8, 10))}`;
   const b = `${Number(end.slice(5, 7))}/${Number(end.slice(8, 10))}`;
@@ -140,7 +144,8 @@ export function periodList(grain: TrendGrain, asOf: string, from?: string) {
 
 /**
  * 期間内で、終了日に一番近い体重です。終了日が無ければ前日へ遡ります。無ければ null。
- * グラフの赤点（期末の体重）はここです。
+ * グラフの赤点（期末の体重）はここです。日次は「その日」だけ、週・月・年は期間の終わり側です。
+ * 計測が無い期間は点を出しません。さかのぼり方を変えると、赤点が別の日の体重になります。
  */
 export function weightOnEnd(
   weights: Map<string, number>,
@@ -156,7 +161,7 @@ export function weightOnEnd(
   return null;
 }
 
-/** 開始日から終了日までの kcal 合計です。結果は truncKcal（小数第1位で切り捨て）です。 */
+/** 開始日から終了日までの kcal 合計です。結果は truncKcal（小数第1位で切り捨て、四捨五入ではない）です。 */
 export function kcalInRange(kcal: Map<string, number>, start: string, end: string): number {
   let total = 0;
   for (let cursor = start; cursor <= end; cursor = shiftIsoDate(cursor, 1)) {
@@ -194,6 +199,7 @@ type StatRow = {
   computed_at?: unknown;
 };
 
+/** computed_at を日本時間の日付にする。集計日が今日より前なら、画面は今日の kcal を足し直す。 */
 function jstDay(value: unknown): string {
   if (value instanceof Date) {
     return new Intl.DateTimeFormat("en-CA", {
@@ -228,6 +234,11 @@ export function trendsForDisplay(
 ): Record<TrendGrain, DayTrend[]> {
   const todayKcal = options?.todayKcal ?? 0;
   const mapsFrom = options?.mapsFrom ?? dayFrom;
+  /**
+   * 進行中の1期間。マップが期間の開始まで届いていれば日次合計（truncKcal）。
+   * 届いていなければ保存済み合計に、集計日が今日より前のときだけ今日の kcal を足す。
+   * 体重は weightOnEnd（期間内で終了日に一番近い計測）。無ければ保存済みの期末体重。
+   */
   function currentPoint(grain: Exclude<TrendGrain, "day">, rows: StatRow[]): DayTrend {
     const period = describePeriod(grain, asOf);
     const end = period.end > asOf ? asOf : period.end;
@@ -251,6 +262,7 @@ export function trendsForDisplay(
       walkKm: 0,
     };
   }
+  /** 終わった期間は calorie_period_stats の合計と期末体重をそのまま出す。進行中は currentPoint。 */
   function fromStats(grain: Exclude<TrendGrain, "day">): DayTrend[] {
     const rows = stats.filter((row) => row.period_type === grain);
     const current = currentPoint(grain, rows);
@@ -312,6 +324,7 @@ export function buildTrends(
   return out;
 }
 
+/** 開始と終了を含む日数。目安 kcal = 1日の目標 × この日数。壊れた範囲は 1 日として扱う。 */
 function inclusiveDays(start: string, end: string): number {
   const from = Date.parse(`${start}T00:00:00Z`);
   const to = Date.parse(`${end}T00:00:00Z`);
@@ -319,6 +332,7 @@ function inclusiveDays(start: string, end: string): number {
   return Math.round((to - from) / 86400000) + 1;
 }
 
+/** from から to まで期間を進める。ガイドの一括作成が使う。4000 回で打ち切る。 */
 function periodsThrough(grain: TrendGrain, from: string, to: string) {
   const items = [];
   let cursor = from;
@@ -333,8 +347,9 @@ function periodsThrough(grain: TrendGrain, from: string, to: string) {
 }
 
 /**
- * 1日の目標から、期間ごとの目安（guide_kcal = 目標 × 日数）を calorie_period_guides に書き込みます。
- * 範囲は約5年前から翌年末まで。目標を変えてプロフィールを保存したときに呼ばれ、グラフの点線が変わります。
+ * 1日の目標から、期間ごとの目安（guide_kcal = 目標 × 日数、小数第1位で切り捨て）を calorie_period_guides に書き込みます。
+ * 範囲は約5年前から翌年末まで。プラン（プロフィール）保存の saveDogProfile から呼ばれ、グラフの点線が変わります。
+ * 摂取の合計や期末体重はここでは書きません。それらは calorie_period_stats 側です。
  */
 export async function storePeriodGuides(sql: Sql, userId: string, dogId: number, dailyKcal: number, asOf = todayJst()) {
   const from = shiftIsoDate(asOf, -5 * 366);
@@ -457,6 +472,7 @@ export function shiftViewEnd(grain: TrendGrain, viewEnd: string, direction: -1 |
 
 /**
  * 週・月・年だけ calorie_period_stats に upsert します。日次は保存せず、毎回 calorie_logs から計算します。
+ * kcal_total は呼び元が truncKcal 済み。weight_kg は期末体重（weightOnEnd の結果）。
  * computed_at は now()。この時刻が今日より前だと、画面側が今日のkcalを足し直します。
  */
 export async function persistTrends(
@@ -497,8 +513,9 @@ export async function persistTrends(
 
 /**
  * 記録の追加・削除・体重保存のあとに呼ぶ集計です。
- * full でなければ今年の初めから読み、週・月・年の「いまの期間」1件だけ上書きします。
- * full なら約5年（5×366日）を読み直し、全期間を calorie_period_stats に書き直します。cron は full です。
+ * full でなければ今年の初めから読み、週・月・年の「いまの期間」1件だけ上書きします。期末体重もその期間分だけです。
+ * full なら約5年（5×366日）を読み直し、全期間を calorie_period_stats に書き直します。cron の rebuildAllCalorieStats だけが full です。
+ * 点線（calorie_period_guides）はここでは触りません。ガイドはプラン保存の storePeriodGuides です。
  */
 export async function refreshDogStats(
   sql: Sql,
@@ -525,7 +542,8 @@ export async function refreshDogStats(
 }
 
 /**
- * dogs の全頭について refreshDogStats(..., true) します。cron のカロリー部分です。
+ * dogs の全頭について refreshDogStats(..., true) します。cron（/api/cron/calorie-summary）のカロリー部分です。
+ * 頭ごとに約5年分を小数第1位切り捨てで作り直し、期末体重も保存し直します。ガイドの点線は作り直しません。
  * 戻り値は処理した頭数と基準日。頭数が多いと、この1回が長くなります。
  */
 export async function rebuildAllCalorieStats(sql: Sql) {

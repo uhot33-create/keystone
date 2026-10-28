@@ -15,12 +15,14 @@ import type { DogBreed, DogColor } from "@/lib/walk/types";
 /** 新規ルート。保存後の移動は MemoForm が /dogfriend へ行う。 */
 export const Route = createFileRoute("/dogfriend/new")({ component: WalkNew });
 
+/** 犬種と色を読んで MemoForm に渡す。項目の検証はフォーム側。 */
 function WalkNew() {
   const [breeds, setBreeds] = useState<DogBreed[] | null>(null);
   const [colors, setColors] = useState<DogColor[]>([]);
   const [blobConfigured, setBlobConfigured] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** マスタ（犬種・色・画像を保存できるか）を一度取る。カード本文はまだ空。 */
   useEffect(() => {
     let cancelled = false;
     getWalkState()

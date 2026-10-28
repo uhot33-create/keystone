@@ -21,6 +21,7 @@ type LocalSource = {
 };
 type DogSource = WikiSource | LocalSource;
 
+/** Wikipedia の出典名と記事 URL。ページ名を変えるとリンクも変わる。 */
 function wikiCite(page: string) {
   return {
     source: `Wikipedia「${page}」`,
@@ -165,6 +166,7 @@ const POOL: DogSource[] = [
   ...LOCAL_FACTS,
 ];
 
+/** 日本時間の YYYY-MM-DD。同じ豆知識を「今日分」と見なす日付。 */
 function jstDateKey(ms = Date.now()) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -174,6 +176,7 @@ function jstDateKey(ms = Date.now()) {
   }).format(new Date(ms));
 }
 
+/** 句点で切っておよそ90文字以上、max（既定180）以内。 */
 function firstSentences(text: string, max = 180): string {
   const parts = text.split(/(?<=。)/);
   let out = "";
@@ -187,12 +190,14 @@ function firstSentences(text: string, max = 180): string {
   return out || text.slice(0, max).trim();
 }
 
+/** ユーザーと日付から候補の開始位置。毎回同じ人に同じ先頭が来ないようにする。 */
 function hashIndex(seed: string, size: number) {
   let hash = 7;
   for (const ch of seed) hash = (hash * 33 + ch.charCodeAt(0)) >>> 0;
   return size === 0 ? 0 : hash % size;
 }
 
+/** Wikipedia 要約。20文字未満や失敗は null（次の候補へ）。 */
 async function fetchWiki(page: string): Promise<DailyStory | null> {
   const res = await fetch(`https://ja.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(page)}`, {
     headers: { "user-agent": UA, accept: "application/json" },
@@ -211,6 +216,7 @@ async function fetchWiki(page: string): Promise<DailyStory | null> {
   };
 }
 
+/** 手元の短文ならそのまま。wiki なら fetchWiki。 */
 async function resolve(source: DogSource): Promise<DailyStory | null> {
   if (source.kind === "local") {
     return {
@@ -223,10 +229,12 @@ async function resolve(source: DogSource): Promise<DailyStory | null> {
   return fetchWiki(source.page);
 }
 
+/** key（wiki:ページ名 か local:...）から候補を1件。 */
 function byKey(key: string): DogSource | undefined {
   return POOL.find((item) => item.key === key);
 }
 
+/** このユーザーが今日この key を見た、と user_dog_facts に書く。同じ key は日付を更新。 */
 async function remember(userId: string, factKey: string, dateKey: string) {
   const sql = await getSql();
   await sql`
@@ -242,6 +250,7 @@ async function remember(userId: string, factKey: string, dateKey: string) {
 export async function loadDogFact(userId: string, force: boolean): Promise<DailyStory> {
   const sql = await getSql();
   const dateKey = jstDateKey();
+  // 31日より古い履歴は全員分を消す。30日以内は同じユーザーに同じ key を出さない。
   await sql`delete from user_dog_facts where shown_at < now() - interval '31 days'`;
 
   if (!force) {
@@ -267,6 +276,7 @@ export async function loadDogFact(userId: string, force: boolean): Promise<Daily
   const used = new Set(recent.map((row) => row.fact_key));
   const unused = POOL.filter((item) => !used.has(item.key));
   const candidates = unused.length > 0 ? unused : POOL;
+  // 30日以内に出した key を避け、日付と user_id から開始位置をずらす。force のときは今日の分も避ける。
   const start = hashIndex(`${dateKey}:${userId}:${force ? `r:${Date.now()}` : "d"}`, candidates.length);
 
   for (let step = 0; step < candidates.length; step += 1) {

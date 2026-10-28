@@ -1,16 +1,24 @@
 /**
  * メニューの日付行の下に出す、その日の記録とおくすりのお知らせ。
  * 記録は読むだけ。おくすりは時刻を過ぎて未投与のものだけ。
+ * 暮らし帳の HomeCalorieDate と、今日タブのホーム（TodayPanel）で使う。
+ * 目標は dailyEnergy、合計は logs を足して truncKcal。遅れは medicine-panel の overdueMedicines。
+ * 開きっぱなしの再判定は 30 秒の setInterval。案内の文言は「おくすりがまだです」。
  */
 import { useEffect, useState } from "react";
 import { overdueMedicines } from "@/components/calorie/medicine-panel";
 import { dailyEnergy, formatJaDayWeek, formatKcal, formatQuantity, todayJst, truncKcal } from "@/lib/calorie/formula";
 import type { CalorieState } from "@/lib/calorie/types";
 
+/** 記録行の種類ラベル。treat 以外はごはん。文言だけここ（保存値 kind は変えない）。 */
 function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
 }
 
+/**
+ * その日の kcal 合計と残／超、記録一覧、未投与のお知らせ。
+ * onOpenMeds は案内ボタンだけ。記録の追加や削除はしない。
+ */
 export function MenuDayNotes({
   state,
   onOpenMeds,
@@ -23,18 +31,21 @@ export function MenuDayNotes({
   const [clock, setClock] = useState(() => new Date());
 
   useEffect(() => {
+    // 投与時刻を跨いでも開きっぱなしで案内が出るよう、30秒ごとに今を取り直す。
     const id = window.setInterval(() => setClock(new Date()), 30_000);
     return () => window.clearInterval(id);
   }, []);
 
   const target = dailyEnergy(state.dog.idealWeightKg, state.dog.lifeStage);
   const total = truncKcal(state.logs.reduce((sum, log) => sum + log.kcal, 0));
+  // 目標超過は「超」、以内は「残」。理想体重が無く目標 0 なら「残 —」。
   const remainText =
     target > 0
       ? total > target
         ? `超 ${formatKcal(truncKcal(total - target))}`
         : `残 ${formatKcal(truncKcal(target - total))}`
       : "残 —";
+  // 機能追加前・未来日・時刻前は overdueMedicines が空にする。手入れはここには出さない。
   const late = overdueMedicines(state.medicines ?? [], state.date, state.medicineAddedOn, clock);
 
   return (

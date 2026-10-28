@@ -42,11 +42,16 @@ type StockRow = {
   quantity: unknown;
 };
 
+/** 日付以外の文字列化。品名の createdAt 用。 */
 function asText(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return String(value ?? "");
 }
 
+/**
+ * 在庫の期限を YYYY-MM-DD にする。Date は UTC の年月日（日付型をずらさない）。
+ * 「今日」の比較は画面の todayJst。ここでは保存値を切るだけ。
+ */
 function asDate(value: unknown): string {
   if (value instanceof Date) {
     const y = value.getUTCFullYear();
@@ -58,6 +63,7 @@ function asDate(value: unknown): string {
   return text.slice(0, 10);
 }
 
+/** cup_items の1行。画像の有無だけ返し、URL 自体は画面へ出さない。 */
 function mapItem(row: ItemRow): CupItem {
   return {
     id: String(row.id),
@@ -67,6 +73,7 @@ function mapItem(row: ItemRow): CupItem {
   };
 }
 
+/** cup_stocks の1行。itemId が null はマスタに繋がっていない直接入力。個数が壊れていたら 0。 */
 function mapStock(row: StockRow): CupStock {
   return {
     id: String(row.id),
@@ -79,6 +86,7 @@ function mapStock(row: StockRow): CupStock {
 
 const dateText = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付は YYYY-MM-DD で入力してください");
 
+/** 2月31日などを拒否する。比較は UTC で作り直して、入力と同じ年月日か見る。 */
 function assertRealDate(value: string) {
   const [year, month, day] = value.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -87,6 +95,7 @@ function assertRealDate(value: string) {
   }
 }
 
+/** 品名画像の Blob を消す。トークンが無い、失敗しても品名の保存は続ける。 */
 async function removeBlob(url: string | null) {
   if (!url || !process.env.BLOB_READ_WRITE_TOKEN) return;
   try {
@@ -97,7 +106,10 @@ async function removeBlob(url: string | null) {
   }
 }
 
-/** 品名一覧（名前順）と在庫一覧（期限の早い順）。 */
+/**
+ * 品名一覧（名前順）と在庫一覧（期限の早い順、同日は作成順）。
+ * どちらもログイン中の user_id だけ。在庫の個数と期限のルールは stockInput。画面の30日強調はここではない。
+ */
 export const getCupState = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -214,6 +226,10 @@ const stockInput = z.object({
   quantity: z.number().int().min(0, "個数は0以上の整数で入力してください"),
 });
 
+/**
+ * 在庫の品名を決める。itemId があれば自分の cup_items の名前を使う（他人の id は拒否）。
+ * 無ければ直接入力。空は「品名を選択するか、直接入力してください」。
+ */
 async function resolveItem(
   sql: Awaited<ReturnType<typeof getSql>>,
   userId: string,
@@ -281,7 +297,10 @@ export const updateCupStock = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** 個数を delta だけ増減。結果が0未満ならエラー。 */
+/**
+ * 個数を delta だけ増減。結果が0未満ならエラー（行を更新しない）。
+ * 自分の user_id の在庫だけ。0個の行は残る。消すのは deleteCupStock。
+ */
 export const adjustCupStock = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => {

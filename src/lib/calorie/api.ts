@@ -16,6 +16,7 @@ import { DEFAULT_DOG_PORTRAIT, DEFAULT_PERSON_PORTRAIT, isDogPortrait, isPersonP
 import { attachGuides, attachWalks, buildDaySeries, chartWindowStart, loadDayMaps, refreshDogStats, storePeriodGuides, trendsForDisplay } from "./summary";
 import type { CalorieLog, CalorieState, DayTrend, DogCare, DogMedicine, DogProfile, FoodKind, HouseholdDogDay, LogKind, TrendGrain } from "./types";
 
+/** 数値を places 桁で四捨五入する。摂取kcalの切り捨てはこちらではなく truncKcal。体重は 2 桁。 */
 function num(value: unknown, places = 1): number {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed)) return 0;
@@ -23,15 +24,18 @@ function num(value: unknown, places = 1): number {
   return Math.round(parsed * factor) / factor;
 }
 
+/** dog_foods.kind。treat 以外はごはん（food）として扱う。 */
 function asKind(value: string): FoodKind {
   return value === "treat" ? "treat" : "food";
 }
 
+/** calorie_logs.kind。food / treat 以外は other（手入力）。 */
 function asLogKind(value: string): LogKind {
   if (value === "food" || value === "treat") return value;
   return "other";
 }
 
+/** zod を通し、最初のエラーメッセージを投げる。文言を変えるときは各スキーマ側。 */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -70,6 +74,7 @@ type LogRow = {
   unit: string | null;
 };
 
+/** dogs の1行を画面用にする。体重は小数2桁。おやつ割合が 0 なら 10% に戻す。絵が不明なら初期の犬。 */
 function mapDog(row: DogRow): DogProfile {
   return {
     id: row.id,
@@ -82,6 +87,7 @@ function mapDog(row: DogRow): DogProfile {
   };
 }
 
+/** このユーザーの犬を id 順で全部返す。0頭なら空。並びを変えると切り替えの先頭も変わる。 */
 async function listDogs(userId: string): Promise<DogProfile[]> {
   const sql = await getSql();
   const rows = await sql<DogRow>`
@@ -93,6 +99,7 @@ async function listDogs(userId: string): Promise<DogProfile[]> {
   return rows.map(mapDog);
 }
 
+/** 犬が居なければ「うちの子」を1頭作る。初期は体重0、成犬去勢済み、おやつ10%。 */
 async function ensureDogs(userId: string): Promise<DogProfile[]> {
   const existing = await listDogs(userId);
   if (existing.length > 0) return existing;
@@ -107,6 +114,7 @@ async function ensureDogs(userId: string): Promise<DogProfile[]> {
   return [mapDog(row)];
 }
 
+/** dogId が一致すればそれ、無ければ先頭。一覧が空ならエラー。 */
 function pickDog(dogs: DogProfile[], dogId?: number): DogProfile {
   const selected = dogId ? dogs.find((item) => item.id === dogId) : undefined;
   const dog = selected ?? dogs[0];
@@ -114,6 +122,7 @@ function pickDog(dogs: DogProfile[], dogId?: number): DogProfile {
   return dog;
 }
 
+/** 指定 id がそのユーザーの犬でなければエラー。無ければ先に1頭作る。 */
 async function requireDog(userId: string, dogId: number): Promise<DogProfile> {
   const dogs = await ensureDogs(userId);
   const dog = dogs.find((item) => item.id === dogId);
@@ -121,11 +130,13 @@ async function requireDog(userId: string, dogId: number): Promise<DogProfile> {
   return dog;
 }
 
+/** YYYY-MM-DD 以外は今日（日本時間）に落とす。画面から来る日付の入口。 */
 function isoDate(value: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return todayJst();
   return value;
 }
 
+/** 投与時刻などを ISO 文字列にする。空や不正は null。 */
 function asIso(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (value instanceof Date) return value.toISOString();
@@ -133,6 +144,7 @@ function asIso(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
+/** HH:MM だけ残す。時が24以上、分が60以上は null。 */
 function asClock(value: unknown): string | null {
   const match = String(value ?? "").match(/(\d{2}):(\d{2})/);
   if (!match) return null;
@@ -142,11 +154,13 @@ function asClock(value: unknown): string | null {
   return `${match[1]}:${match[2]}`;
 }
 
+/** dog_cares の1行。日付でなければ未実施（null）。 */
 function mapCare(row: { id: number; name: string; last_done_on: unknown }): DogCare {
   const day = asDateKey(row.last_done_on);
   return { id: row.id, name: row.name, lastDoneOn: day || null };
 }
 
+/** 薬と、その日の投与。trackedFrom はここでは常に null。機能追加前の判定は medicineAddedOn。 */
 function mapMedicine(row: { id: number; name: string; note?: string; due_time?: unknown; given_at: unknown }): DogMedicine {
   return {
     id: row.id,
@@ -158,6 +172,7 @@ function mapMedicine(row: { id: number; name: string; note?: string; due_time?: 
   };
 }
 
+/** app_settings.medicine_added_on。この日以前の投与は画面で「—」にする。 */
 async function medicineAddedOn(sql: Awaited<ReturnType<typeof getSql>>): Promise<string | null> {
   const rows = await sql<{ value: string }>`
     select value from app_settings where key = 'medicine_added_on' limit 1
@@ -166,6 +181,7 @@ async function medicineAddedOn(sql: Awaited<ReturnType<typeof getSql>>): Promise
   return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
 }
 
+/** Date や文字列から YYYY-MM-DD だけ取る。取れなければ空。集計のキーもこの形。 */
 function asDateKey(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   const text = String(value ?? "").slice(0, 10);
@@ -177,6 +193,11 @@ function measuredAt20(date: string): string {
   return `${date}T20:00:00+09:00`;
 }
 
+/**
+ * 画面を開く一式。犬・フード・定番・薬・手入れ・その日の記録と体重・人の絵を1本の SQL で取る。
+ * 摂取 kcal は truncKcal（小数第1位で切り捨て）。グラフは空。点線と期末体重は getCalorieChart 側。
+ * 犬が0頭なら「うちの子」を作って読み直す。
+ */
 async function loadState(userId: string, date: string, dogId?: number): Promise<CalorieState> {
   const sql = await getSql();
   const bundle = await sql<{
@@ -341,6 +362,7 @@ async function loadState(userId: string, date: string, dogId?: number): Promise<
   };
 }
 
+/** json_agg の結果を配列にする。文字列で来た JSON も読む。失敗は空配列。 */
 function asRows<T>(value: unknown): T[] {
   if (Array.isArray(value)) return value as T[];
   if (typeof value === "string") {
@@ -469,6 +491,10 @@ export const getCalorieDay = createServerFn({ method: "GET" })
     };
   });
 
+/**
+ * グラフ用の散歩距離。walk_logs を日本時間の日付で合計し、メートルを小数1桁で持つ。
+ * km への換算は summary.ts の attachWalks。カロリーの切り捨てとは別。
+ */
 async function loadWalkMeters(userId: string, from: string, to: string) {
   const sql = await getSql();
   const rows = await sql<{ log_date: string; distance_m: unknown }>`
@@ -488,6 +514,13 @@ async function loadWalkMeters(userId: string, from: string, to: string) {
   return meters;
 }
 
+/**
+ * いま画面に出す日・週・月・年。確定した週・月・年の kcal は calorie_period_stats。
+ * 進行中の期間は、集計日が今日より前なら今日の calorie_logs を足す（trendsForDisplay）。
+ * 体重の点は期間内で終了日に一番近い計測（weightOnEnd。summary.ts）。日次はその日の体重。
+ * 点線は calorie_period_guides。ガイドはプラン保存（saveDogProfile）で storePeriodGuides し直す。
+ * 摂取は小数第1位で切り捨て（truncKcal）。全頭の作り直しは cron の rebuildAllCalorieStats（full）。
+ */
 async function loadVisibleChart(userId: string, dogId: number): Promise<Record<TrendGrain, DayTrend[]>> {
   const sql = await getSql();
   const seriesEnd = todayJst();
@@ -549,11 +582,12 @@ async function loadVisibleChart(userId: string, dogId: number): Promise<Record<T
   );
 }
 
+/** グラフ取得は犬 id だけ。終端の日付は常に今日（日本時間）。 */
 const chartInput = z.object({
   dogId: z.number().int().positive(),
 });
 
-/** いま画面に出ている範囲のグラフ（日・週・月・年）です。散歩距離は walk_logs から足します。 */
+/** いま画面に出ている範囲のグラフ（日・週・月・年）です。散歩距離は walk_logs から足します。切り捨て・期末体重・点線は loadVisibleChart。 */
 export const getCalorieChart = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(chartInput, input))
@@ -563,6 +597,7 @@ export const getCalorieChart = createServerFn({ method: "GET" })
     return { trend: trends.day, trends };
   });
 
+/** 過去へ送るときの入力。grain は日週月年、end は窓の終端（YYYY-MM-DD）。未来は handler が今日まで切る。 */
 const trendInput = z.object({
   dogId: z.number().int().positive(),
   grain: z.enum(["day", "week", "month", "year"]),
@@ -571,7 +606,8 @@ const trendInput = z.object({
 
 /**
  * グラフを過去へ送ったとき、その粒度の1窓分を足します。未来の日付は今日までに切ります。
- * 週・月・年の確定分は calorie_period_stats、進行中の期間は今日の calorie_logs を足します。
+ * 週・月・年の確定分は calorie_period_stats（kcal は小数第1位で切り捨て、体重は保存済みの期末）。
+ * 進行中の期間は今日の calorie_logs を足します。点線は calorie_period_guides（プラン保存時に作成）。
  */
 export const getCalorieTrend = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
@@ -650,6 +686,7 @@ export const getCalorieTrend = createServerFn({ method: "GET" })
 /**
  * 名前・体重・ステージ・おやつ割合を dogs に保存します。
  * 続けて dailyEnergy（理想体重 × 係数）で calorie_period_guides の点線を作り直します。
+ * 目安は「1日の目標 × 期間の日数」で、小数第1位まで切り捨てて保存します。過去の摂取合計はここでは変えません。
  */
 export const saveDogProfile = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -916,6 +953,7 @@ export const deleteCalorieStaple = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 薬の名前は30文字、予定時刻は HH:MM、メモは40文字まで。時刻の形式を変えるときは画面の入力も揃える。 */
 const medicineInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
@@ -998,6 +1036,7 @@ export const undoDogMedicine = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 薬の登録そのものを消す。その日の取り消しだけなら undoDogMedicine。履歴の残り方は外部キー次第。 */
 export const deleteDogMedicine = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
@@ -1011,6 +1050,7 @@ export const deleteDogMedicine = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 手入れの名前は30文字まで。最後にやった日はこの入力では変えない。 */
 const careInput = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付が正しくありません"),
   dogId: z.number().int().positive(),
@@ -1093,6 +1133,7 @@ export const undoDogCare = createServerFn({ method: "POST" })
     return loadState(context.userId, data.date, dog.id);
   });
 
+/** 手入れの登録を消す。最後にやった日だけ消すなら undoDogCare。 */
 export const deleteDogCare = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(idDateInput, input))
@@ -1108,7 +1149,8 @@ export const deleteDogCare = createServerFn({ method: "POST" })
 
 /**
  * 摂取を1件足します。14日ロック（assertCalorieEditable）より前は保存しません。
- * kcal は truncKcal して calorie_logs へ。そのあと refreshDogStats で週・月・年の集計を更新します。
+ * kcal は truncKcal（小数第1位で切り捨て）して calorie_logs へ。そのあと refreshDogStats で週・月・年の「いまの期間」だけ更新します。
+ * 約5年分の全作り直し（full）は cron の rebuildAllCalorieStats だけです。
  */
 export const addCalorieLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -1138,7 +1180,8 @@ export const addCalorieLog = createServerFn({ method: "POST" })
 
 /**
  * 摂取を1件消します。ロック判定はその行の log_date です（画面の表示日ではありません）。
- * 消したあと同じく refreshDogStats で集計を更新します。
+ * 消したあと同じく refreshDogStats（full ではない）で、その時点の週・月・年だけ更新します。
+ * 期末体重は体重の保存側。ここは摂取合計だけが変わります。
  */
 export const deleteCalorieLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -1171,7 +1214,7 @@ const saveWeightInput = z.object({
 /**
  * その日の体重を1件保存します（同じ日なら上書き）。計測時刻は20:00（日本時間）です。
  * それより新しい体重が無いときだけ、dogs.current_weight_kg もこの値に更新します。
- * 14日より前は変更できません。保存後に集計（期末体重）を更新します。
+ * 14日より前は変更できません。保存後に集計（期末体重は期間内の最終計測）を更新します。full 再計算はしません。
  */
 export const saveWeightLog = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -1217,6 +1260,7 @@ type HouseholdRow = {
   staples: unknown;
 };
 
+/** 全頭分の行を画面用にする。定番の kcal はフード定義の値で、食べた記録の切り捨て前。 */
 function mapHouseholdDogs(rows: HouseholdRow[]): HouseholdDogDay[] {
   return rows.map((row) => ({
     id: row.id,
@@ -1279,6 +1323,7 @@ async function loadHouseholdDay(userId: string, date: string): Promise<Household
   return mapHouseholdDogs(rows);
 }
 
+/** まとめて入力の初期表示。ログイン必須。グラフは取らない。日付はその日の体重と定番だけ。 */
 export const getHouseholdDay = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(z.object({ date: dateInput.shape.date }), input))
@@ -1297,7 +1342,7 @@ const saveHouseholdWeightsInput = z.object({
     .max(10),
 });
 
-/** 複数の犬の体重を、その日の20時として一度に保存する。空欄の犬は送らない。 */
+/** 複数の犬の体重を、その日の20時として一度に保存する。空欄の犬は送らない。頭ごとに期末体重の集計を更新する（full ではない）。 */
 export const saveHouseholdWeights = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => parse(saveHouseholdWeightsInput, input))

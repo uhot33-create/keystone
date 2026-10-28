@@ -23,6 +23,7 @@ export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
 });
 
+/** token が空、または error があれば無効リンク。新しいパスワードは8文字以上。 */
 function ResetPasswordPage() {
   const { token, error: searchError } = Route.useSearch();
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ function ResetPasswordPage() {
     [searchError, token],
   );
 
+  /** URL の token で resetPassword。成功したらログイン画面へ。認証オフなら送らない。 */
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);

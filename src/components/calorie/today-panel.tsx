@@ -42,6 +42,10 @@ const QTY_STEPS = [15, 2, 4] as const;
 /** グラフ1ページの件数です。summary.ts の WINDOW と同じにしてください。片方だけ変えると、読み込み幅と表示幅がずれます。 */
 const CHART_WINDOW: Record<TrendGrain, number> = { day: 7, week: 12, month: 12, year: 5 };
 
+/**
+ * 定番 id の配列で from を抜いて to に差し込む。範囲外や同じ位置はそのまま返す。
+ * 並びの保存は pointerup 側の reorderCalorieStaples。ここは見た目の入れ替えだけ。
+ */
 function moveId(ids: number[], from: number, to: number): number[] {
   if (from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return ids;
   const next = ids.slice();
@@ -50,6 +54,10 @@ function moveId(ids: number[], from: number, to: number): number[] {
   return next;
 }
 
+/**
+ * viewEnd 以前だけ残し、末尾から CHART_WINDOW 件にする。
+ * 件数を変えるなら上の定数。暮らし帳の windowedTrend と同じ切り方。
+ */
 function windowedTrend(points: DayTrend[], grain: TrendGrain, viewEnd: string): DayTrend[] {
   return points.filter((point) => point.start <= viewEnd).slice(-CHART_WINDOW[grain]);
 }
@@ -59,6 +67,9 @@ function historyFloor(today: string): string {
   return shiftIsoDate(today, -5 * 366);
 }
 
+/**
+ * 持っている点と追加取得を start でマージし、日付順に並べる。同じ start は extra が勝つ。
+ */
 function mergeTrends(current: DayTrend[], extra: DayTrend[]): DayTrend[] {
   const byStart = new Map<string, DayTrend>();
   for (const point of current) byStart.set(point.start, point);
@@ -83,11 +94,16 @@ function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, to
   return next;
 }
 
+/**
+ * チップに出す短い名前。g のときだけ「kcal/分量g」、それ以外は名前と kcal。
+ * 表示だけ。登録の計算は foods の kcal と amount。
+ */
 function chipText(food: DogFood): string {
   if (food.unit === "g") return `${food.name} ${trimNum(food.kcal)}/${trimNum(food.amount)}g`;
   return `${food.name} ${trimNum(food.kcal)}`;
 }
 
+/** 記録行の種類。treat 以外はごはん。文言を変えても kind の保存値は変わらない。 */
 function kindLabel(kind: string): string {
   return kind === "treat" ? "おやつ" : "ごはん";
 }
@@ -142,6 +158,7 @@ export function TodayPanel({
   const [stapleDragging, setStapleDragging] = useState<number | null>(null);
 
   useEffect(() => {
+    // 初回の view 反映ではスクロールしない。画面を切り替えたときだけ先頭へ戻す。
     if (skipScroll.current) {
       skipScroll.current = false;
       return;
@@ -155,6 +172,7 @@ export function TodayPanel({
   }, [view, onHeading, onView]);
 
   useEffect(() => {
+    // 日付か保存済み体重が変わったときだけ、入力中の文字を上書きする。
     setWeightText(state.todayWeightKg != null ? state.todayWeightKg.toFixed(2) : "");
   }, [state.date, state.todayWeightKg]);
 
@@ -177,9 +195,13 @@ export function TodayPanel({
   const qtyNum = Number(qty);
 
   const computed = selected && qtyNum > 0 ? kcalForQuantity(selected.kcal, selected.amount, qtyNum) : 0;
+  // 手で kcal を触ったら数量からの換算をやめ、入力値を使う。保存時は truncKcal。
   const shownKcal = kcalTouched ? Number(kcalText) : computed;
   const addKcal = truncKcal(shownKcal > 0 ? shownKcal : 0);
 
+  /**
+   * 登録フードを選ぶ。名前を合わせ、手入力フラグを下ろして数量から kcal を再計算する。
+   */
   function pickFood(food: DogFood) {
     setFoodId(food.id);
     setName(food.name);
@@ -187,6 +209,9 @@ export function TodayPanel({
     setKcalText(qtyNum > 0 ? String(kcalForQuantity(food.kcal, food.amount, qtyNum)) : "");
   }
 
+  /**
+   * 数量を変える。kcal を手で触っていなければ、選んだフードの kcalForQuantity で入れ直す。
+   */
   function onQty(next: string) {
     setQty(next);
     const n = Number(next);
@@ -195,11 +220,13 @@ export function TodayPanel({
     }
   }
 
+  /** 数量に step を足す。0 未満にはしない。刻みの種類は QTY_STEPS。 */
   function bumpQty(step: number) {
     const next = Math.max(0, (Number(qty) || 0) + step);
     onQty(String(next));
   }
 
+  /** ごはん／おやつを切り替える。選んでいたフードと数量と kcal はクリアする。 */
   function switchKind(next: FoodKind) {
     setKind(next);
     setFoodId(null);
@@ -209,6 +236,10 @@ export function TodayPanel({
     setKcalTouched(false);
   }
 
+  /**
+   * メニューの絵から別の犬へ。rememberDogId して getCalorieState を取り直す。
+   * 同じ犬なら何もしない。失敗しても日付は変えない。
+   */
   async function selectMenuDog(dogId: number) {
     if (dogId === state.dog.id) return;
     setBusy("読み込み中…");
@@ -223,6 +254,10 @@ export function TodayPanel({
     }
   }
 
+  /**
+   * 保存系の共通口。成功したら state を差し替える。グラフを開いているときは getCalorieChart も取り直す。
+   * グラフ更新だけ失敗したらグラフを閉じて、本体の保存は残す。
+   */
   async function run(action: () => Promise<CalorieState>, label = "保存中…") {
     setPending(true);
     setBusy(label);
@@ -250,11 +285,16 @@ export function TodayPanel({
   }
 
   useEffect(() => {
+    // 犬が替わったら、前の犬のグラフを開いたままにしない。
     setChartOpen(false);
   }, [state.dog.id]);
 
+  // 人のメニューのあいだはグラフを出さない。
   if (board === "person" && chartOpen) setChartOpen(false);
 
+  /**
+   * グラフを開く。日・週・月・年のどれかがあれば取り直さない。無ければ getCalorieChart を一度取る。
+   */
   async function openChart() {
     const loaded = state.trends?.day.length || state.trends?.week.length || state.trends?.month.length || state.trends?.year.length;
     if (!loaded) {
@@ -278,6 +318,10 @@ export function TodayPanel({
     }
   }
 
+  /**
+   * 過去へ送るとき、窓の開始より古い点が無ければ getCalorieTrend で足す。未来方向は取りに行かない。
+   * 日次の追加分は trend にも書く。週・月・年は trends だけ。
+   */
   async function shiftChart(direction: -1 | 1) {
     const today = todayJst();
     const next = shiftChartEnd(grain, chartEnd, direction, today);
@@ -310,6 +354,10 @@ export function TodayPanel({
     }
   }
 
+  /**
+   * 日付を変えて getCalorieDay。連打は最後の要求だけ反映する。
+   * 待つあいだ logs と体重を空にし、前の日の数字を残さない。薬の済／未もその日の分に差し替える。
+   */
   async function selectDate(date: string) {
     if (date === state.date) return;
     const request = dayRequest.current + 1;
@@ -336,6 +384,10 @@ export function TodayPanel({
     }
   }
 
+  /**
+   * カロリーを1件足す。手入力が無ければ数量から換算し、truncKcal で切って addCalorieLog。
+   * 14日ロック中は保存しない。成功したら数量と kcal 欄だけ空にする。
+   */
   function onAdd(event: FormEvent) {
     event.preventDefault();
     if (locked) {
@@ -371,6 +423,10 @@ export function TodayPanel({
     });
   }
 
+  /**
+   * その日の体重を小数2桁で saveWeightLog。0 以下は保存しない。ロック中は止める。
+   * 計測の想定（20時）は画面の文言側。ここは数値だけ。上限 120kg は入力欄の max。
+   */
   function onSaveWeight(event: FormEvent) {
     event.preventDefault();
     if (locked) {
@@ -491,6 +547,7 @@ export function TodayPanel({
                 disabled={pending || locked}
                 className="rounded-full border border-border bg-surface-2 px-2.5 py-1 text-xs font-medium text-fg disabled:opacity-50"
                 onClick={() => {
+                  // 定番は数量から kcal を割り、その日の calorie_logs に1件足す。0kcal は足さない。
                   const kcal = kcalForQuantity(food.kcal, food.amount, item.qty);
                   if (!(kcal > 0)) return;
                   void run(() =>
@@ -607,6 +664,7 @@ export function TodayPanel({
                         aria-label={`${label}を並べ替え`}
                         disabled={pending || locked || state.staples.length < 2}
                         onPointerDown={(event) => {
+                          // 行の高さで何段動いたかを pointermove で丸める。並びが違えば pointerup で sort_order を保存する。
                           if (pending || locked || state.staples.length < 2) return;
                           const row = event.currentTarget.closest("li");
                           if (!row) return;
@@ -633,6 +691,7 @@ export function TodayPanel({
                           setStapleOrder(next);
                         }}
                         onPointerUp={() => {
+                          // 指を離した並びが元と同じなら保存しない。違うときだけ reorderCalorieStaples。
                           const next = stapleOrderRef.current;
                           const current = state.staples.map((entry) => entry.id);
                           stapleDrag.current = null;
@@ -651,6 +710,7 @@ export function TodayPanel({
                           });
                         }}
                         onPointerCancel={() => {
+                          // 中断したら見た目の並びだけ捨て、サーバーには書かない。
                           stapleDrag.current = null;
                           stapleOrderRef.current = null;
                           setStapleDragging(null);
@@ -872,6 +932,7 @@ export function TodayPanel({
         </section>
       ) : null}
 
+      {/* 人のメニューのあいだは出さない。点は windowedTrend、ページ送りは shiftChart。 */}
       {chartOpen && board === "dog" ? (
       <TrendChart
         grain={grain}

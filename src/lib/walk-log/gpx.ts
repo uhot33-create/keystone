@@ -52,6 +52,7 @@ export async function parseGpxFile(file: File): Promise<ParsedGpx> {
     throw new Error("軌跡の点が足りません。別の GPX を試してください");
   }
   const sampled = downsample(points, MAX_POINTS);
+  // 距離は間引く前の全点。保存する線は間引き後。100m で線を切るのは描画時（splitTrack）で、ここではない。
   const nameFromXml =
     doc.querySelector("trk > name")?.textContent?.trim() ||
     doc.querySelector("metadata > name")?.textContent?.trim() ||
@@ -72,6 +73,7 @@ export async function parseGpxFile(file: File): Promise<ParsedGpx> {
   };
 }
 
+/** 点を max 個へ均等に間引く。距離計算の前には使わない。地図用ポリラインの直前だけ。 */
 function downsample(points: [number, number][], max: number): [number, number][] {
   if (points.length <= max) return points;
   const step = (points.length - 1) / (max - 1);
@@ -82,6 +84,7 @@ function downsample(points: [number, number][], max: number): [number, number][]
   return out;
 }
 
+/** 隣接点のハバーサインを足した全長（メートル）。間引く前の全点で呼ぶ。 */
 function pathDistance(points: [number, number][]): number {
   let total = 0;
   for (let i = 1; i < points.length; i += 1) {
@@ -90,6 +93,7 @@ function pathDistance(points: [number, number][]): number {
   return total;
 }
 
+/** 2点間のメートル。地球半径は 6371000。100m 切れ目（TRACK_GAP_M）もこの距離。 */
 function haversine(a: [number, number], b: [number, number]): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b[0] - a[0]);
@@ -113,6 +117,7 @@ export function decodePolyline(encoded: string): [number, number][] {
   }
   return points;
 
+  /** 1成分の可変長整数を読む。index はこの関数の外（decodePolyline）と共有する。 */
   function readDelta(): number {
     let shift = 0;
     let result = 0;
@@ -126,7 +131,11 @@ export function decodePolyline(encoded: string): [number, number][] {
   }
 }
 
-/** 隣り合う点がこの距離を超えたら、地図では線を切る。 */
+/**
+ * 隣り合う点がこの距離を超えたら、地図では線を切る。
+ * 100m。GPS の飛びや計測の切れ目で直線を引かないため。月まとめの「同じ地図」は 700m（merge.ts の REGION_CELL_M）で、こちらとは別。
+ * 変えるときは詳細地図と月地図の線が両方変わる（splitTrack の既定）。
+ */
 export const TRACK_GAP_M = 100;
 
 /** 距離が gapM を超えるところで軌跡を分割する。既定は上の TRACK_GAP_M。 */
@@ -146,6 +155,7 @@ export function splitTrack(points: [number, number][], gapM = TRACK_GAP_M): [num
   return segments;
 }
 
+/** Google のエンコードドポリライン。精度は 1e5。保存するのは間引き後の点。 */
 function encodePolyline(points: [number, number][]): string {
   let prevLat = 0;
   let prevLng = 0;
@@ -161,6 +171,7 @@ function encodePolyline(points: [number, number][]): string {
   return out;
 }
 
+/** ポリライン1成分の差分を符号付きで文字にする。 */
 function encodeDelta(value: number): string {
   let v = value < 0 ? ~(value << 1) : value << 1;
   let s = "";

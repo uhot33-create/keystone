@@ -29,6 +29,7 @@ const listeners = new Set<() => void>();
 let snapshot: DeskVisibility | null = null;
 let hydrateStarted = false;
 
+/** メモリのオンオフを差し替えて、購読中の画面を描き直す。 */
 function emit(next: DeskVisibility) {
   snapshot = next;
   for (const listener of listeners) listener();

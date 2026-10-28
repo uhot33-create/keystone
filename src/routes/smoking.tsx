@@ -23,6 +23,7 @@ import type { SmokingState } from "@/lib/smoking/types";
 /** 喫煙ルート。中身はログイン後の SmokingApp。 */
 export const Route = createFileRoute("/smoking")({ component: SmokingPage });
 
+/** 未ログインは Protected が止める。タブと取得は SmokingApp。 */
 function SmokingPage() {
   return (
     <Protected>
@@ -31,6 +32,7 @@ function SmokingPage() {
   );
 }
 
+/** 減算・上限・バッチ。残り本数は getSmokingState、バッジは getSmokingBadges。判定は lib/smoking。 */
 function SmokingApp() {
   const [tab, setTab] = useState<"count" | "master" | "badge">("count");
   const [state, setState] = useState<SmokingState | null>(() => peekSmoking());
@@ -39,6 +41,7 @@ function SmokingApp() {
   const [cheerIndex, setCheerIndex] = useState(0);
   const askedBadges = useRef(false);
 
+  /** キャッシュが無ければ残り本数を取る。日付の区切りはサーバー側（日本時間0時）。 */
   useEffect(() => {
     if (peekSmoking()) return;
     let cancelled = false;
@@ -58,6 +61,7 @@ function SmokingApp() {
     };
   }, []);
 
+  /** 状態が来ていてバッジ未取得なら、一度だけバッジを足す。減算のたびに取り直さない。 */
   useEffect(() => {
     if (!state || smokingBadgesLoaded() || askedBadges.current) return;
     askedBadges.current = true;
@@ -97,6 +101,7 @@ function SmokingApp() {
         ].join(":")
       : "";
 
+  /** バッジの数字が変わったときだけ、未受け取りの達成を出す。見た扱いは celebrate.ts。 */
   useEffect(() => {
     const current = peekSmoking();
     if (!current || !badgeStamp) return;
@@ -109,6 +114,7 @@ function SmokingApp() {
     setCheers(next);
   }, [badgeStamp]);
 
+  /** 減算・上限の結果を載せる。バッジは画面の値を残す。期間が変わったときだけバッジを取り直す。 */
   function applyState(next: SmokingState) {
     setState((prev) => {
       const periodChanged = Boolean(prev && next.periodStartedAt !== prev.periodStartedAt);
@@ -130,6 +136,7 @@ function SmokingApp() {
     });
   }
 
+  /** 達成が複数あれば次へ、最後なら受け取り済みにして閉じる。 */
   function closeCheer() {
     if (!state) return;
     if (cheerIndex + 1 < cheers.length) {
@@ -200,6 +207,7 @@ function SmokingApp() {
   );
 }
 
+/** タブボタンの見た目。選択中だけ地色を出す。文言は呼び出し側。 */
 function tabClass(active: boolean) {
   return [
     "h-11 rounded-sm text-sm font-medium transition-colors duration-150",

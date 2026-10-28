@@ -1,6 +1,7 @@
 /**
  * 暮らし帳を出したあと、メニュー先の画面を裏で読む。
- * タップしたときは、ここが残した内容をすぐ出す。一度だけ。
+ * 対象は /calorie、/calorie-batch、/dogfriend、/dogwalklogs、/vet、/smoking、/cup。ログイン済みのメニューからだけ呼ぶ。
+ * カロリーの中身はここではなく、index.tsx が getCalorieState で取る。タップしたときは hold した内容をすぐ出す。一度だけ。
  */
 import type { AnyRouter } from "@tanstack/router-core";
 import { getCupState } from "@/lib/cup/api";
@@ -18,7 +19,7 @@ import { DEFAULT_WALK_SEARCH } from "@/lib/walk/types";
 
 let started = false;
 
-/** 画面の部品とデータを先に取る。失敗してもメニューはそのまま。 */
+/** 画面の部品（preloadRoute）と、下の warmData を先に取る。サーバーでは動かさない。失敗してもメニューはそのまま。 */
 export function warmMenus(router: AnyRouter) {
   if (started || typeof window === "undefined") return;
   started = true;
@@ -33,10 +34,12 @@ export function warmMenus(router: AnyRouter) {
   void warmData();
 }
 
+/** 散歩メモ・ログ・通院・喫煙・カップを並行で取る。どれか失敗しても他は続ける（各関数が握る）。 */
 async function warmData() {
   await Promise.all([warmWalk(), warmLogs(), warmVet(), warmSmoke(), warmCup()]);
 }
 
+/** おさんぽメモ。一覧が無ければ getWalkState、サムネが無ければ getWalkThumbs。検索条件は載せない。 */
 async function warmWalk() {
   if (peekWalkList()?.thumbs) return;
   try {
@@ -53,6 +56,7 @@ async function warmWalk() {
   }
 }
 
+/** 散歩ログの一覧。軌跡の中身は取らない。キャッシュがあれば何もしない。 */
 async function warmLogs() {
   if (peekWalkLogs()) return;
   try {
@@ -62,6 +66,7 @@ async function warmLogs() {
   }
 }
 
+/** 通院一覧。キャッシュがあれば取り直さない。並びは listVetVisits のまま。 */
 async function warmVet() {
   if (peekVetVisits()) return;
   try {
@@ -71,6 +76,7 @@ async function warmVet() {
   }
 }
 
+/** 喫煙の残り本数とバッジを一度に取る。減算のあとの取り直しは画面側。 */
 async function warmSmoke() {
   if (peekSmoking()) return;
   try {
@@ -81,6 +87,7 @@ async function warmSmoke() {
   }
 }
 
+/** カップ麺の一覧。30日の強調は cup 画面側。ここは getCupState を hold するだけ。 */
 async function warmCup() {
   if (peekCup()) return;
   try {

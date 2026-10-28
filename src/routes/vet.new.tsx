@@ -17,6 +17,7 @@ export const Route = createFileRoute("/vet/new")({
   component: VetNew,
 });
 
+/** as が done 以外は予定。フォームは VisitForm。保存先は lib/vet/api.ts。 */
 function VetNew() {
   const { as } = Route.useSearch();
   const planned = as !== "done";

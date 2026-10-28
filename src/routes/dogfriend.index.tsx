@@ -30,6 +30,7 @@ export const Route = createFileRoute("/dogfriend/")({
   component: WalkIndex,
 });
 
+/** 一覧。検索は URL、カードはキャッシュ優先。今日にする処理とサムネはここで取る。 */
 function WalkIndex() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
@@ -42,6 +43,7 @@ function WalkIndex() {
   const [showTop, setShowTop] = useState(false);
   const thumbsFetchStarted = useRef(cached?.thumbs ?? false);
 
+  /** 240px より下へスクロールしたら TOP を出す。データの取得ではない。 */
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 240);
     onScroll();
@@ -49,6 +51,7 @@ function WalkIndex() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /** キャッシュが無ければカードと犬種を getWalkState で取る。検索条件は URL のまま。 */
   useEffect(() => {
     if (peekWalkList()) return;
     let cancelled = false;
@@ -69,6 +72,7 @@ function WalkIndex() {
     };
   }, []);
 
+  /** 一覧のあと、一度だけサムネを足す。失敗しても文字のカードは残す。 */
   useEffect(() => {
     if (!memos || thumbsFetchStarted.current) return;
     thumbsFetchStarted.current = true;
@@ -87,8 +91,10 @@ function WalkIndex() {
       });
   }, [memos]);
 
+  /** 検索語・並び・犬種で絞る。規則は filterMemos。URL の search を変えるとここが変わる。 */
   const shown = useMemo(() => (memos ? filterMemos(memos, search) : []), [memos, search]);
 
+  /** そのカードを今日にする。同じ飼い主のほかの犬がいれば、一頭ずつ確認を出す。 */
   async function onMetToday(id: string) {
     const list = memos;
     setPendingId(id);
@@ -116,6 +122,7 @@ function WalkIndex() {
     }
   }
 
+  /** 確認ダイアログの返事。いいえは次の犬へ。はいならその犬も今日にする。 */
   async function answerFollow(yes: boolean) {
     const dog = follow[0];
     if (!dog || pendingId) return;
@@ -144,6 +151,7 @@ function WalkIndex() {
     }
   }
 
+  /** 最後に会った日を、ひとつ前の日付へ戻す。確認ダイアログの日付は prevLastMetOn。 */
   async function onRestoreMet(id: string) {
     const memo = memos?.find((item) => item.id === id);
     if (!memo?.prevLastMetOn) return;

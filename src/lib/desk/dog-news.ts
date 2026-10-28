@@ -17,6 +17,7 @@ const QUERIES = [
   "チワワ (グッズ OR ごはん OR おやつ OR フード OR イベント)",
 ];
 
+/** キャッシュの日付。日本時間の YYYY-MM-DD。desk_dog_news.shown_on は1日1行。 */
 function jstDateKey(ms = Date.now()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Tokyo",
@@ -26,6 +27,7 @@ function jstDateKey(ms = Date.now()): string {
   }).format(new Date(ms));
 }
 
+/** RSS の文字参照と CDATA を普通の文字に戻す。 */
 function decodeXml(text: string): string {
   return text
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -40,6 +42,7 @@ function decodeXml(text: string): string {
     .trim();
 }
 
+/** item から見出し・URL・媒体・日時。http 以外のリンクは捨てる。 */
 function parseRss(xml: string): DogNewsItem[] {
   const items: DogNewsItem[] = [];
   for (const block of xml.split(/<item\b/i).slice(1)) {
@@ -55,6 +58,7 @@ function parseRss(xml: string): DogNewsItem[] {
   return items;
 }
 
+/** Google ニュース RSS を日本語（hl=ja, gl=JP）で1検索。9秒で打ち切る。 */
 async function searchNews(query: string): Promise<DogNewsItem[]> {
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=ja&gl=JP&ceid=JP:ja`;
   const res = await fetch(url, {
@@ -65,6 +69,7 @@ async function searchNews(query: string): Promise<DogNewsItem[]> {
   return parseRss(await res.text());
 }
 
+/** QUERIES を上から試し、見出しの空白を除いて重複を捨て、最大4件。0件ならエラー。 */
 async function collectNews(): Promise<DogNewsItem[]> {
   const picked: DogNewsItem[] = [];
   const seen = new Set<string>();
@@ -87,6 +92,7 @@ async function collectNews(): Promise<DogNewsItem[]> {
   return picked;
 }
 
+/** desk_dog_news.items の jsonb。タイトルと http URL が無い要素は捨てる。 */
 function asItems(value: unknown): DogNewsItem[] {
   const raw = typeof value === "string" ? JSON.parse(value) : value;
   if (!Array.isArray(raw)) return [];

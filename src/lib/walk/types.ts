@@ -66,7 +66,11 @@ export type WalkMemo = {
   ageYears: number | null;
   note: string | null;
   lastMetOn: string | null;
-  /** 直前の最後に会った日。次に日付を変えるまで残す。 */
+  /**
+   * 直前の最後に会った日。次に日付を変えるまで残す。
+   * 更新時は last_met_on が変わるときだけ、いまの last_met_on をここへ移す（api.ts の touch / update）。
+   * 戻すと last と prev を入れ替える（restoreWalkMemoMet）。画面の「○に戻す」は memo-card と memo-form。
+   */
   prevLastMetOn: string | null;
   rainbowBridge: boolean;
   rainbowBridgeOn: string | null;

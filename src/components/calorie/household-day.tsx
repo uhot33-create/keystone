@@ -2,6 +2,8 @@
  * 多頭の体重と定番ごはんを、一頭一行で入れる。
  * 体重は変えた欄だけまとめて保存する。定番は押した犬のその日に足す。
  * 2週間より前は isCalorieLocked で止める。
+ * 暮らし帳の「まとめて」。読み込みは getHouseholdDay、体重は saveHouseholdWeights、定番は addCalorieLog。
+ * いま開いている犬と同じ日なら holdCalorieState の体重と logs も合わせる。空欄禁止と上限 120kg は onSaveWeights。
  */
 import { useEffect, useState } from "react";
 import { addCalorieLog, getHouseholdDay, saveHouseholdWeights } from "@/lib/calorie/api";
@@ -13,10 +15,15 @@ import { BusyOverlay } from "@/components/ui/busy-overlay";
 import { Input } from "@/components/ui/input";
 import { PageHeading } from "@/components/page-heading";
 
+/** 体重欄の初期文字列。未記録や 0 以下は空。ある値は常に小数2桁。桁を変えるなら toFixed。 */
 function weightText(value: number | null): string {
   return value != null && value > 0 ? value.toFixed(2) : "";
 }
 
+/**
+ * まとめて画面。date が変わると getHouseholdDay を取り直す。
+ * 体重の一括保存は onSaveWeights、定番チップは onStaple。ロック中はどちらも止める。
+ */
 export function HouseholdDay({ date }: { date: string }) {
   const [dogs, setDogs] = useState<HouseholdDogDay[] | null>(null);
   const [weights, setWeights] = useState<Record<number, string>>({});
@@ -27,6 +34,7 @@ export function HouseholdDay({ date }: { date: string }) {
   const locked = isCalorieLocked(date);
 
   useEffect(() => {
+    // 日付が変わったら取り直す。戻る前の応答は cancelled で捨て、古い日の体重を上書きしない。
     let cancelled = false;
     setDogs(null);
     setError(null);
@@ -44,12 +52,20 @@ export function HouseholdDay({ date }: { date: string }) {
     };
   }, [date]);
 
+  /**
+   * いま保持している CalorieState が同じ日・同じ犬なら、今日の体重だけ差し替える。
+   * 別の日や別の犬の保持分は触らない。合わせる条件を変えるなら peek の if。
+   */
   function patchHeldWeight(dogId: number, weightKg: number | null) {
     const held = peekCalorieState();
     if (!held || held.date !== date || held.dog.id !== dogId) return;
     holdCalorieState({ ...held, todayWeightKg: weightKg });
   }
 
+  /**
+   * 表示と違う欄だけ { dogId, weightKg } にする。空欄はエラー、0 以下と 120kg 超も拒否。
+   * 1件も無ければ保存せず「変更はありません」。上限を変えるならここの 120。
+   */
   async function onSaveWeights() {
     if (!dogs) return;
     const changes: { dogId: number; weightKg: number }[] = [];
@@ -62,6 +78,7 @@ export function HouseholdDay({ date }: { date: string }) {
         return;
       }
       const weightKg = Number(text);
+      // 空は「消す」ではなくエラー。0 と 120kg 超も保存しない。小数は 2 桁に丸める。
       if (!Number.isFinite(weightKg) || weightKg <= 0 || weightKg > 120) {
         setError(`${dog.name}の体重は0より大きく120kgまでです`);
         return;
@@ -89,6 +106,10 @@ export function HouseholdDay({ date }: { date: string }) {
     }
   }
 
+  /**
+   * 定番1件をその犬のその日の記録に足す。kcal は kcalForQuantity、保存値は truncKcal。
+   * ロック中と 0kcal は何もしない。同じ日の保持 state があれば logs だけ更新する。
+   */
   async function onStaple(dog: HouseholdDogDay, stapleId: number) {
     const staple = dog.staples.find((item) => item.id === stapleId);
     if (!staple || locked) return;
@@ -111,6 +132,7 @@ export function HouseholdDay({ date }: { date: string }) {
         },
       });
       const held = peekCalorieState();
+      // 今日タブで同じ日・同じ犬を開いているときだけ、足した記録を保持分にも反映する。
       if (held && held.date === date && held.dog.id === dog.id) {
         holdCalorieState({ ...held, logs: next.logs });
       }

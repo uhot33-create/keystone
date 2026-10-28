@@ -13,6 +13,7 @@ import { applyClosedDay, convertStoredNices, eachJstDay, emptyBadges, yesterdayJ
 import { applyReset, clampRemaining, jstDateKey, resetsAtIso, startOfJstDayIso, toIso } from "./period";
 import type { SmokingBadges, SmokingState } from "./types";
 
+/** zod の最初のエラー文を投げる。 */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -21,12 +22,14 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
+/** 本数などの整数。壊れていたら 0。 */
 function int(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(parsed)) return 0;
   return Math.round(parsed);
 }
 
+/** 判定済み日を日本時間の YYYY-MM-DD にする。バッジの lastEvaluatedOn 用。 */
 function asDateKey(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (value instanceof Date) return jstDateKey(value.getTime());
@@ -62,6 +65,7 @@ type BadgeRow = {
   last_was_exceeded: unknown;
 };
 
+/** smoking_badges の1行。行が無ければゼロ。ナイスの繰り上げは convertStoredNices。 */
 function mapBadges(row: BadgeRow | undefined): SmokingBadges {
   if (!row) return emptyBadges();
   return convertStoredNices({
@@ -85,6 +89,7 @@ function mapBadges(row: BadgeRow | undefined): SmokingBadges {
   });
 }
 
+/** 画面用の状態。resetsAt は次の日本時間0時。上限が壊れていたら 10。残りは 0〜上限。 */
 function toState(row: SettingsRow, badges: SmokingBadges): SmokingState {
   const dailyLimit = Math.max(1, int(row.daily_limit) || 10);
   const periodStartedAt = toIso(row.period_started_at) ?? startOfJstDayIso(Date.now());
@@ -100,6 +105,7 @@ function toState(row: SettingsRow, badges: SmokingBadges): SmokingState {
   };
 }
 
+/** 自分の smoking_settings。無ければ上限10・残り10で作る。user_id はログイン中の本人。 */
 async function ensureRow(userId: string): Promise<SettingsRow> {
   const sql = await getSql();
   const existing = await sql<SettingsRow>`
@@ -120,6 +126,7 @@ async function ensureRow(userId: string): Promise<SettingsRow> {
   return row;
 }
 
+/** 自分の smoking_badges を1行。未作成なら undefined（mapBadges がゼロにする）。 */
 async function loadBadgeRow(userId: string): Promise<BadgeRow | undefined> {
   const sql = await getSql();
   const rows = await sql<BadgeRow>`
@@ -135,6 +142,7 @@ async function loadBadgeRow(userId: string): Promise<BadgeRow | undefined> {
   return rows[0];
 }
 
+/** バッジを1人1行で上書き。日付またぎの加算結果もここへ書く。 */
 async function saveBadges(userId: string, badges: SmokingBadges) {
   const sql = await getSql();
   await sql`
@@ -187,6 +195,12 @@ async function saveBadges(userId: string, badges: SmokingBadges) {
   `;
 }
 
+/**
+ * 日付が変わったときだけ、昨日までの日をバッジに足す。
+ * didReset が false（まだ同じ日本時間の日）なら何もしない。
+ * 記録の無い日は skipped（限度内・ゼロ扱い）。期間開始日だけ exceeded と残り本数を見る。
+ * 最後に lastEvaluatedOn を昨日にする。ルールの中身は badges.ts の applyClosedDay。
+ */
 async function settleBadges(userId: string, raw: SettingsRow, didReset: boolean): Promise<SmokingBadges> {
   const yesterday = yesterdayJst();
   const current = mapBadges(await loadBadgeRow(userId));
@@ -222,12 +236,17 @@ async function settleBadges(userId: string, raw: SettingsRow, didReset: boolean)
   return next;
 }
 
+/** 画面の先出し用。バッジは空のまま返す（バッチタブが別に取る）。行が無ければ ensureRow が作る。 */
 async function loadState(userId: string): Promise<SmokingState> {
   const raw = await ensureRow(userId);
   return toState(raw, emptyBadges());
 }
 
-/** 全ユーザーを見て、日付が変わっていればバッジを締めて残りを上限に戻す。 */
+/**
+ * 全ユーザーを見て、日本時間の日付が変わっていればバッジを締めて残りを上限に戻す。
+ * 区切りは period.ts の applyReset（JST 0時）。同じ日なら didReset は false でスキップ。
+ * 戻したあとは exceeded を false。画面を開いていなくても、定期実行からここが呼ばれる想定。
+ */
 export async function resetSmokingIfDue(sql: Sql): Promise<{ users: number }> {
   const rows = await sql<SettingsRow & { user_id: unknown }>`
     select user_id, daily_limit, remaining, period_started_at, last_smoked_at, exceeded
@@ -238,6 +257,7 @@ export async function resetSmokingIfDue(sql: Sql): Promise<{ users: number }> {
     const dailyLimit = Math.max(1, int(raw.daily_limit) || 10);
     const remainingNow = clampRemaining(int(raw.remaining), dailyLimit);
     const periodIso = toIso(raw.period_started_at) ?? new Date(0).toISOString();
+    // 日本時間の日付が同じなら戻さない。変わった人だけ昨日までを締めて残りを上限にする。
     const reset = applyReset(dailyLimit, remainingNow, periodIso);
     if (!reset.didReset) continue;
     const userId = String(raw.user_id);

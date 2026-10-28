@@ -12,6 +12,7 @@ import { getSql, type Sql } from "@/lib/db";
 import { todayJst } from "@/lib/walk/age";
 import { isNextVisitStatus, isVisitKind, isVisitStatus, type NextVisitStatus, type VetVisit, type VisitKind, type VisitStatus } from "./types";
 
+/** zod の最初のエラー文を投げる。 */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -20,6 +21,7 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
+/** 通院日を YYYY-MM-DD にする。時刻は捨てる。日本時間への変換はしない（日付型の先頭10文字）。 */
 function asDate(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (value instanceof Date) {
@@ -30,20 +32,24 @@ function asDate(value: unknown): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(text) ? text : null;
 }
 
+/** 種類が VISIT_KINDS に無ければ「その他」。 */
 function asKind(value: string | null): VisitKind {
   return value && isVisitKind(value) ? value : "その他";
 }
 
+/** HH:mm だけ通す。秒や壊れた文字列は null。 */
 function asTime(value: unknown): string | null {
   if (value == null || value === "") return null;
   const text = String(value).slice(0, 5);
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(text) ? text : null;
 }
 
+/** need / booked 以外は null。 */
 function asNextStatus(value: string | null): NextVisitStatus | null {
   return value && isNextVisitStatus(value) ? value : null;
 }
 
+/** planned / done 以外は done（履歴扱い）。 */
 function asStatus(value: string | null): VisitStatus {
   return value && isVisitStatus(value) ? value : "done";
 }
@@ -65,6 +71,7 @@ type VisitRow = {
   status: string | null;
 };
 
+/** 1行を VetVisit にする。日付が空なら日本時間の今日を入れる。 */
 function mapVisit(row: VisitRow): VetVisit {
   return {
     id: row.id,
@@ -109,6 +116,10 @@ const visitInput = z.object({
   status: z.enum(["planned", "done"]).default("done"),
 });
 
+/**
+ * 同じ日・同じ病院名の行を1件探す。病院名は trim して空も同じ。
+ * status を渡すと予定か履歴だけ。自分の user_id だけ。
+ */
 async function findByDateClinic(
   sql: Sql,
   userId: string,
@@ -135,6 +146,10 @@ async function findByDateClinic(
   return rows[0]?.id ?? null;
 }
 
+/**
+ * 次回の予定行を足すか、既存の予定の時刻だけ更新する。過去日は何もしない（todayJst より前）。
+ * すでにその日・病院の行があれば、予定のときだけ時刻と予約状態を書く。履歴行は上書きしない。
+ */
 async function upsertPlanned(
   sql: Sql,
   userId: string,
@@ -169,6 +184,10 @@ async function upsertPlanned(
   `;
 }
 
+/**
+ * 履歴を書いた日に一致する「次回来院」を、他の行から外す。
+ * 今書いた行（keepId）は残す。病院名が同じ行だけ。自分の user_id。
+ */
 async function clearMatchedPlans(sql: Sql, userId: string, visitOn: string, clinic: string | null, keepId: string) {
   await sql`
     update vet_visits
@@ -232,6 +251,7 @@ export const saveVetVisit = createServerFn({ method: "POST" })
     if (status === "done" && nextVisitStatus === "need" && !nextVisitOn) nextVisitTime = null;
     const costYen = status === "planned" ? null : data.costYen;
     let id = data.id ?? null;
+    // 新規の履歴で、同じ日・病院の予定があればその行を履歴に昇格する（二重にしない）。
     if (!id && status === "done") {
       id = await findByDateClinic(sql, context.userId, data.visitOn, clinic, "planned");
     }
@@ -282,6 +302,7 @@ export const saveVetVisit = createServerFn({ method: "POST" })
         )
       `;
     }
+    // 履歴を書くと、同じ日を次回にしていた他の行の次回を外し、別の日なら予定行を足す。
     if (status === "done") {
       await clearMatchedPlans(sql, context.userId, data.visitOn, clinic, writingId);
       if (nextVisitOn && nextVisitOn !== data.visitOn) {

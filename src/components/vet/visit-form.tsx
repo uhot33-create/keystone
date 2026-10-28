@@ -48,6 +48,10 @@ export function VisitForm({
   const [error, setError] = useState<string | null>(null);
   const planned = status === "planned";
 
+  /**
+   * 予定か履歴を保存して一覧へ戻る。予約済は日付必須。予定では費用・診断を送らない。
+   * 次回の予定行を足すのは API。成功したら通院の控えを捨てる。
+   */
   async function save(nextStatus: VisitStatus) {
     const cost = costYen.trim() === "" ? null : Number(costYen);
     if (nextStatus === "done" && costYen.trim() !== "" && (!Number.isInteger(cost) || (cost ?? 0) < 0)) {
@@ -88,11 +92,13 @@ export function VisitForm({
     }
   }
 
+  /** いま選んでいるタブ（予定 / 履歴）のまま保存する。 */
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     await save(status);
   }
 
+  /** 予定も履歴も deleteVetVisit。確認の文言だけ違う。 */
   async function onDelete() {
     if (!visit || !window.confirm(planned ? "この予定を削除しますか？" : "この通院記録を削除しますか？")) return;
     setPending(true);

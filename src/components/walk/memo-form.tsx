@@ -49,10 +49,12 @@ type ImageSlot = {
   thumbData?: string | null;
 };
 
+/** 空の写真枠。最大枚数までこの形で埋める。 */
 function emptySlot(): ImageSlot {
   return { preview: null, file: null, url: null, pathname: null, thumbUrl: null, thumbPathname: null, thumbPublic: false, thumbData: null };
 }
 
+/** 保存済み画像を枠に載せる。足りない分は空枠。枚数は MAX_MEMO_IMAGES。プレビュー URL は walkMemoImageSrc。 */
 function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
   const images = memo?.images?.length
     ? memo.images
@@ -73,6 +75,7 @@ function slotsFromMemo(memo?: WalkMemo | null): ImageSlot[] {
   return slots.slice(0, MAX_MEMO_IMAGES);
 }
 
+/** 編集の初期値。新規は空。最後に会った日はそのまま（今日にはしない）。 */
 function fromMemo(memo?: WalkMemo | null): Draft {
   return {
     name: memo?.name ?? "",
@@ -115,10 +118,12 @@ export function MemoForm({
   const [prevMet, setPrevMet] = useState<string | null>(memo?.prevLastMetOn ?? null);
   const today = todayJst();
 
+  /** 入力の一部だけ差し替える。 */
   function patch(next: Partial<Draft>) {
     setDraft((prev) => ({ ...prev, ...next }));
   }
 
+  /** 生年月日を変えたら満年齢を入れ直す。空にしたときは今の年齢欄は残す。計算は age.ts。 */
   function onBirthday(value: string) {
     const age = value ? ageFromBirthday(value) : null;
     patch({
@@ -127,6 +132,7 @@ export function MemoForm({
     });
   }
 
+  /** 選んだ1枚を縮小して枠のプレビューにする。前の blob: は解放する。まだサーバーには上げない。 */
   async function applyFile(picked: File, slotIndex: number) {
     if (slotIndex < 0 || slotIndex >= MAX_MEMO_IMAGES) return;
     const prepared = await prepareImageFile(picked);
@@ -149,6 +155,7 @@ export function MemoForm({
     });
   }
 
+  /** ファイル選択。中身の検査と HEIC 変換は prepareImageFile。 */
   async function onPick(list: FileList | null, slotIndex: number) {
     const picked = list?.[0];
     if (!picked) return;
@@ -160,6 +167,7 @@ export function MemoForm({
     }
   }
 
+  /** 枠への貼り付け。画像でなければ何もしない（文字のペーストは通す）。 */
   function onZonePaste(event: ClipboardEvent<HTMLDivElement>, slotIndex: number) {
     const pasted = imageFileFromClipboard(event.clipboardData);
     if (!pasted) return;
@@ -171,6 +179,7 @@ export function MemoForm({
     });
   }
 
+  /** 「貼り付け」ボタン。clipboard.read が使えない iPhone は長押しペーストへ案内する。 */
   async function onPasteSlot(slotIndex: number) {
     setError(null);
     try {
@@ -190,6 +199,7 @@ export function MemoForm({
     }
   }
 
+  /** contentEditable に入った data: / blob: を File に戻して枠へ載せる。 */
   function onZoneInput(event: FormEvent<HTMLDivElement>, slotIndex: number) {
     const root = event.currentTarget;
     const img = root.querySelector("img");
@@ -206,6 +216,7 @@ export function MemoForm({
       });
   }
 
+  /** 枠を空にする。カバーがその枠なら先頭へ戻す。保存時に外れた Blob は updateWalkMemo が消す。 */
   function onClearSlot(slotIndex: number) {
     setSlots((prev) => {
       const next = prev.map((slot) => ({ ...slot }));
@@ -217,6 +228,7 @@ export function MemoForm({
     setCoverIndex((prev) => (prev === slotIndex ? 0 : prev > slotIndex ? prev : prev));
   }
 
+  /** 保存。新規は create、編集は update。画像がある枠だけ送り、そのあと多頭飼いを聞く。 */
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setPending("saving");
@@ -266,6 +278,7 @@ export function MemoForm({
         }
       }
       setPending("saving");
+      // 残った枠だけを詰める。新しいファイルはサムネ付きで uploadWalkImage。既存 URL はそのまま。
       const nextCover = Math.max(0, sourceIndexes.indexOf(coverIndex));
 
       const ageRaw = draft.ageYears.trim();
@@ -291,6 +304,9 @@ export function MemoForm({
         await createWalkMemo({ data: payload });
       }
       dropWalkList();
+      // 多頭飼いの確認。編集で最後に会った日が変わったときだけ。
+      // 同じ飼い主・虹渡りでない・まだその日付でない犬を householdOthers で集め、1頭ずつはい／いいえ。
+      // はいなら touchWalkMemoMet。いいえは飛ばす。聞けなかったときはこのカードだけ保存して一覧へ戻る。
       const entered = draft.lastMetOn;
       if (memo && entered && entered !== (memo.lastMetOn ?? "")) {
         try {
@@ -317,6 +333,10 @@ export function MemoForm({
     }
   }
 
+  /**
+   * 多頭飼い確認の1頭ぶん。はいならその犬の最後に会った日を followDate にする（一つ前の日は API が残す）。
+   * いいえは日付を変えない。残りが無くなったら一覧へ戻る。
+   */
   async function answerFollow(yes: boolean) {
     const dog = follow[0];
     const day = followDate;
@@ -340,11 +360,16 @@ export function MemoForm({
     }
   }
 
+  /** 確認ダイアログ用。YYYY-MM-DD を 2024/1/2 にする。 */
   function formatFollowDate(value: string): string {
     const [year, month, day] = value.split("-");
     return `${year}/${Number(month)}/${Number(day)}`;
   }
 
+  /**
+   * 編集画面の「一つ前に戻す」。confirm のあと restoreWalkMemoMet。
+   * 戻った日付が新しい last、いまの日付が次の prev になる。控え一覧は捨てて、次の一覧で取り直す。
+   */
   async function onRestoreMet() {
     if (!memo || !prevMet || pending !== "idle") return;
     const label = formatFollowDate(prevMet);
@@ -363,6 +388,7 @@ export function MemoForm({
     }
   }
 
+  /** カード削除。画像 Blob も API が消す。成功したら一覧へ。 */
   async function onDelete() {
     if (!memo) return;
     if (!window.confirm(`${memo.name} のカードを削除しますか？`)) return;

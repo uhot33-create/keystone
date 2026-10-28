@@ -62,6 +62,7 @@ export type WalkLogDetail = WalkLog & {
   nextId: string | null;
 };
 
+/** zod の最初のエラー文を投げる。 */
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
   if (!result.success) {
@@ -70,6 +71,7 @@ function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   return result.data;
 }
 
+/** 開始日時を ISO にする。空や不正は null（一覧では「日時なし」側）。 */
 function asIso(value: unknown): string | null {
   if (value == null || value === "") return null;
   if (value instanceof Date) return value.toISOString();
@@ -87,6 +89,7 @@ type LogRow = {
   source_name: string | null;
 };
 
+/** walk_logs の1行。距離・秒が壊れていたら 0。軌跡は summary_polyline のまま。 */
 function mapLog(row: LogRow): WalkLog {
   return {
     id: row.id,
@@ -99,6 +102,7 @@ function mapLog(row: LogRow): WalkLog {
   };
 }
 
+/** 開始日時を日本時間の YYYY-MM にする。月まとめの区切り。タイムゾーンを変えるならここ。 */
 function jstYearMonth(iso: string | null): string | null {
   if (!iso) return null;
   const date = new Date(iso);
@@ -146,6 +150,7 @@ export function groupWalkLogs(logs: WalkLog[]): WalkLogList {
   return { years, undated };
 }
 
+/** walk_month_tracks.regions の jsonb。線が空の地域は捨てる。ラベルが空なら「地域」。 */
 function asRegions(value: unknown): WalkMonthRegion[] {
   const list = Array.isArray(value) ? value : typeof value === "string" ? safeJson(value) : [];
   return list.flatMap((item) => {
@@ -165,11 +170,13 @@ function asRegions(value: unknown): WalkMonthRegion[] {
   });
 }
 
+/** ポリライン文字列の配列。空文字は捨てる。 */
 function asTracks(value: unknown): string[] {
   const list = Array.isArray(value) ? value : typeof value === "string" ? safeJson(value) : [];
   return list.filter((item): item is string => typeof item === "string" && item.length > 0);
 }
 
+/** JSON 配列でなければ空。壊れた文字列でも落とさない。 */
 function safeJson(value: string): unknown[] {
   try {
     const parsed = JSON.parse(value);
@@ -178,6 +185,7 @@ function safeJson(value: string): unknown[] {
     return [];
   }
 }
+/** 自分のログ一覧。軌跡本文は取らない（summary_polyline は null）。並びは開始が新しい順。 */
 async function listLogs(userId: string): Promise<WalkLogList> {
   const sql = await getSql();
   const rows = await sql<LogRow>`
@@ -290,6 +298,7 @@ export const getWalkMonth = createServerFn({ method: "GET" })
     } satisfies WalkMonthTrack;
   });
 
+/** 1ユーザー・1月の集計行。無ければ画面は「毎日0時の集計のあと」。700m の中身は merge.ts が書く。 */
 async function loadMonth(sql: Sql, userId: string, yearMonth: string) {
   return sql<{
     distance_m: unknown;

@@ -31,6 +31,7 @@ export function TrackMap({ encoded, tracks }: { encoded?: string | null; tracks?
         .addTo(instance);
       const color =
         getComputedStyle(document.documentElement).getPropertyValue("--color-primary").trim() || "#2f3a32";
+      // 隣の点が 100m（TRACK_GAP_M）より離れた区間は別の線にする。月地図の 700m とは別の話。
       const drawn = lines.flatMap((line) =>
         splitTrack(decodePolyline(line)).map((segment) => leaflet.polyline(segment, { color, weight: 4, opacity: 0.9 })),
       );

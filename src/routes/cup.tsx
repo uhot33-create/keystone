@@ -11,6 +11,7 @@ import { Protected } from "@/components/protected";
 /** カップ麺ルート。 */
 export const Route = createFileRoute("/cup")({ component: CupPage });
 
+/** ログイン後だけ CupApp を出す。品目の読み書きは components/cup/cup-app.tsx。 */
 function CupPage() {
   return (
     <Protected>

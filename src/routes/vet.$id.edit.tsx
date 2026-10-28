@@ -17,11 +17,13 @@ import type { VetVisit } from "@/lib/vet/types";
 /** このURLの画面定義。中身は VetEdit。 */
 export const Route = createFileRoute("/vet/$id/edit")({ component: VetEdit });
 
+/** URL の id。一覧キャッシュにあればそれを出し、無ければ getVetVisit。 */
 function VetEdit() {
   const { id } = Route.useParams();
   const [visit, setVisit] = useState<VetVisit | null>(() => peekVetVisits()?.find((item) => item.id === id) ?? null);
   const [error, setError] = useState<string | null>(null);
 
+  /** キャッシュにその id が無いときだけ getVetVisit する。id が変わったら取り直す。 */
   useEffect(() => {
     if (peekVetVisits()?.some((item) => item.id === id)) return;
     let cancelled = false;

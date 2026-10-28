@@ -3,6 +3,9 @@
  * 薬ごとに毎日の予定時刻を登録し、「投与した」でその日は済みになる。
  * その下の手入れは毎日ではない。ブラッシングや歯磨きなど、最後にやった日だけ残す。未完了の案内は出さない。
  * 機能追加日は app_settings.medicine_added_on。その日以前は「—」、以降は「済」か「未」。
+ * TodayPanel の「お世話」と、暮らし帳の未投与案内（overdueMedicines）から開く。
+ * 薬は save / give / undo / deleteDogMedicine、手入れは save / mark / undo / deleteDogCare。
+ * 遅れの条件を変えるなら overdueMedicines。チップの候補は CARE_SUGGESTIONS。
  */
 import { useState } from "react";
 import { createPortal } from "react-dom";
@@ -11,6 +14,10 @@ import type { CalorieState, DogMedicine } from "@/lib/calorie/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+/**
+ * いまを日本時間の日付（YYYY-MM-DD）と時刻（HH:mm）にする。投与遅れの比較にだけ使う。
+ * タイムゾーンを変えるなら timeZone。秒は見ない。
+ */
 function jstNow(now: Date): { date: string; clock: string } {
   const parts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Tokyo",
@@ -30,8 +37,13 @@ export function beforeMedicineFeature(date: string, addedOn: string | null): boo
   return Boolean(addedOn && date <= addedOn);
 }
 
+/** まだ登録していないとき、チップで足せる手入れ名。文言を足すと「○○を追加」が増える。 */
 const CARE_SUGGESTIONS = ["ブラッシング", "歯磨き"];
 
+/**
+ * 最後にやった日を yyyy/M/d にする。空や日付でない値は「まだ」。
+ * 表示だけ。保存形式は YYYY-MM-DD のまま。
+ */
 function formatDone(value: string | null): string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "まだ";
   const [year, month, day] = value.split("-");
@@ -55,6 +67,10 @@ export function overdueMedicines(
   });
 }
 
+/**
+ * おくすりと手入れの一覧と、下に固定する管理シート。保存は全部 onRun 経由。
+ * 薬はその日の済／未（追加日以前は「—」）。手入れは最後にやった日だけで、未完了の案内は出さない。
+ */
 export function MedicinePanel({
   state,
   pending,
@@ -74,10 +90,13 @@ export function MedicinePanel({
   const medicines = state.medicines ?? [];
   const cares = state.cares ?? [];
   const today = jstNow(new Date()).date;
+  // 未来日は手入れの「やった」を押せない。薬の済／未は選んでいる日のまま出す。
   const future = state.date > today;
   const beforeFeature = beforeMedicineFeature(state.date, state.medicineAddedOn);
+  // 未投与の件数。機能追加前の見出しは「—」になり、この件数は使わない。
   const waiting = medicines.filter((item) => !item.givenAt).length;
 
+  /** 薬フォームと手入れフォームを、開閉と登録成功のときに空へ戻す。編集 id も捨てる。 */
   function resetForm() {
     setEditing(null);
     setName("");
@@ -87,6 +106,10 @@ export function MedicinePanel({
     setCareName("");
   }
 
+  /**
+   * 手入れの名前を saveDogCare で登録または更新する。空文字は無視。
+   * id があればその行の更新。候補チップは id なしでこの関数を使う。
+   */
   function saveCare(label: string, id?: number) {
     const trimmed = label.trim();
     if (!trimmed) return;
@@ -123,6 +146,7 @@ export function MedicinePanel({
                 {item.note ? <p className="truncate text-[11px] text-muted">{item.note}</p> : null}
               </div>
               {beforeFeature ? (
+                // 機能追加日以前はその日の済／未を付けない。時刻を過ぎても案内しない。
                 <span className="shrink-0 text-xs tabular-nums text-muted">—</span>
               ) : item.givenAt ? (
                 <>
@@ -179,6 +203,7 @@ export function MedicinePanel({
                   <p className="text-[11px] text-muted">最後 {formatDone(item.lastDoneOn)}</p>
                 </div>
                 {onThisDay ? (
+                  // この日が最終日なら取消できる。undoDogCare は lastDoneOn を空に戻し、それ以前の日は残さない。
                   <>
                     <span className="shrink-0 text-xs font-medium text-fg">この日</span>
                     <button
@@ -196,6 +221,7 @@ export function MedicinePanel({
                     </button>
                   </>
                 ) : later ? null : (
+                  // 最終日がこの日より後ならボタンを出さない（後の記録を潰さない）。未来日も「やった」を止める。
                   <Button
                     type="button"
                     size="sm"
@@ -232,6 +258,7 @@ export function MedicinePanel({
     {typeof document === "undefined"
       ? null
       : createPortal(
+          // 画面下に固定する管理シート。薬は名前・時刻・用量、手入れは名前だけ。SSR では document が無いので出さない。
           <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface">
             {open ? (
               <div className="mx-auto max-h-[50vh] max-w-3xl space-y-2 overflow-y-auto px-5 pt-3">

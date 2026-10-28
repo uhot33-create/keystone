@@ -29,6 +29,7 @@ export const Route = createFileRoute("/calorie")({
 /** 今日・プラン・フード・プロフィール。下のタブは使わない。 */
 type Tab = "today" | "plan" | "foods" | "profile";
 
+/** 未ログインは Protected が止める。画面の状態は CalorieApp。 */
 function CaloriePage() {
   return (
     <Protected>
@@ -37,6 +38,7 @@ function CaloriePage() {
   );
 }
 
+/** 今日・プラン・フード・プロフィール。入力の保存は各パネル、サーバーは lib/calorie/api.ts。 */
 function CalorieApp() {
   const [tab, setTab] = useState<Tab>("today");
   const [state, setState] = useState<CalorieState | null>(() => peekCalorieState());
@@ -50,12 +52,14 @@ function CalorieApp() {
   const pageTitle = tab === "plan" ? "プラン" : tab === "foods" ? "フード" : tab === "profile" ? "プロフィール" : todayHeading;
   const quick = tab === "today" && (todayHeading === "ごはん" || todayHeading === "体重" || todayHeading === "お世話");
 
+  /** メニューが渡した初期ビューを消し、開くタブがあれば切り替える。日付はここでは動かさない。 */
   useEffect(() => {
     clearCalorieOpenView();
     const next = takeCalorieOpenTab();
     if (next) setTab(next);
   }, []);
 
+  /** 暮らし帳のキャッシュがあればそれを使う。無ければ今日（JST）と保存済みの犬で取り、日付ごと hold する。 */
   useEffect(() => {
     if (peekCalorieState()) {
       rememberDogId(peekCalorieState()!.dog.id);
@@ -77,6 +81,7 @@ function CalorieApp() {
     };
   }, []);
 
+  /** パネルが返した状態をキャッシュへ戻す。見ている日は next.date のまま。 */
   function onChange(next: CalorieState) {
     rememberDogId(next.dog.id);
     holdCalorieState(next);

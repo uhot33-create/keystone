@@ -45,11 +45,16 @@ export function ProfilePanel({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // 表示中の犬が変わったら、入力欄をその犬の名前と体重に戻す。
     setName(dog.name);
     setCurrent(kgText(dog.currentWeightKg));
     setIdeal(kgText(dog.idealWeightKg));
   }, [dog]);
 
+  /**
+   * 名前・現在体重・理想体重を saveDogProfile で dogs に書く。
+   * 空の名前は「うちの子」。ライフステージとおやつ割合は触らず、いまの値をそのまま送る。
+   */
   async function onSave(event: FormEvent) {
     event.preventDefault();
     const currentKg = Number(current) || 0;
@@ -144,6 +149,7 @@ export function ProfilePanel({
                 aria-pressed={active}
                 className={`w-16 shrink-0 text-center ${active ? "text-primary" : "text-muted"}`}
                 onClick={() => {
+                  // 犬の絵は saveDogPortrait。選んでいるものを押し直しても保存しない。
                   if (active) return;
                   setPending(true);
                   setError(null);
@@ -179,6 +185,7 @@ export function ProfilePanel({
                 aria-pressed={active}
                 className={`w-16 shrink-0 text-center ${active ? "text-primary" : "text-muted"}`}
                 onClick={() => {
+                  // 人の絵は savePersonPortrait。世帯共通で、犬を替えても同じ絵のまま。
                   if (active) return;
                   setPending(true);
                   setError(null);
@@ -212,6 +219,7 @@ export function ProfilePanel({
           className="mt-4 w-full"
           disabled={pending || state.dogs.length >= 10}
           onClick={() => {
+            // 仮名は「うちの子」+ 頭数+1。11頭目はサーバーの addDog が拒否する（ボタンは 10 頭で無効）。
             const nextName = `うちの子${state.dogs.length + 1}`;
             setPending(true);
             setError(null);
@@ -234,6 +242,7 @@ export function ProfilePanel({
             className="mt-2 w-full text-danger"
             disabled={pending}
             onClick={() => {
+              // 確認のあと deleteDog。最後の 1 頭はこのボタンを出さず、下の文言だけにする。
               if (!window.confirm(`${dog.name} の記録・フードも削除します。よろしいですか？`)) return;
               setPending(true);
               setError(null);

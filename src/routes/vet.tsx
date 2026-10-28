@@ -12,6 +12,7 @@ export const Route = createFileRoute("/vet")({
   component: VetLayout,
 });
 
+/** 子の一覧・新規・編集を Protected で包む。件数や項目はこのファイルに無い。 */
 function VetLayout() {
   return (
     <Protected>

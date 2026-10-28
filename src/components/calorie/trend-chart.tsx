@@ -75,6 +75,7 @@ export function TrendChart({
   const innerH = height - pad.top - pad.bottom;
 
   const guides = days.map((day) => day.guideKcal ?? 0);
+  // 縦軸の粗さ。kcal は日 100・それ以外 500。散歩は日 1km・年 20km・それ以外 5km。
   const maxKcal = niceMax(
     Math.max(...days.map((day) => day.kcal), ...guides, 1),
     grain === "day" ? 100 : 500,
@@ -84,26 +85,33 @@ export function TrendChart({
   const maxWalk = niceMax(Math.max(...walks, 0), grain === "day" ? 1 : grain === "year" ? 20 : 5);
   const minW = weights.length ? Math.min(...weights) : 0;
   const maxW = weights.length ? Math.max(...weights) : 1;
+  // 体重は実測の幅が 0.4kg 未満でもそれだけは広げ、上下に 2 割の余白を取る。
   const span = Math.max(0.4, maxW - minW);
   const weightMin = Math.max(0, minW - span * 0.2);
   const weightMax = maxW + span * 0.2;
   const isToday = activeDate === todayDate;
+  // 週だけ横軸ラベルを 1 つおき。末日は描画側で必ず出す。
   const showEvery = grain === "day" ? 1 : grain === "week" ? 2 : 1;
 
+  /** 点の横位置。1点だけのときは中央。点の数を変えても左端と右端は pad の内側。 */
   function x(index: number) {
     if (days.length <= 1) return pad.left + innerW / 2;
     return pad.left + (index / (days.length - 1)) * innerW;
   }
+  /** 左軸。0 が下、maxKcal が上。刻みを変えるなら上の niceMax の step。 */
   function yKcal(value: number) {
     return pad.top + innerH - (value / maxKcal) * innerH;
   }
+  /** 右軸。weightMin から weightMax まで。体重が無い日は点を打たない。 */
   function yWeight(value: number) {
     return pad.top + innerH - ((value - weightMin) / (weightMax - weightMin || 1)) * innerH;
   }
+  /** 散歩の棒。上 12px は数値用に空け、kcal の線と完全には重ねない。room を変えると棒の頭が上下する。 */
   function yWalk(value: number) {
     const room = 12;
     return pad.top + room + (innerH - room) - (value / (maxWalk || 1)) * (innerH - room);
   }
+  /** 10km 未満は小数1桁、以上は四捨五入。0 は空文字で棒もラベルも出さない。 */
   function walkLabel(km: number) {
     if (!(km > 0)) return "";
     return km < 10 ? km.toFixed(1) : String(Math.round(km));
@@ -128,10 +136,15 @@ export function TrendChart({
   const startX = useRef<number | null>(null);
   const swiped = useRef(false);
 
+  /** スライド開始位置。48px 未満は日付タップのままにする。 */
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     startX.current = event.clientX;
     swiped.current = false;
   }
+  /**
+   * 48px 以上の横スライド。右（dx>0）が過去、左が未来。足りない方向は canOlder / canNewer で止める。
+   * 動いたあとの click は swiped で捨て、日付タップと誤爆しない。
+   */
   function onPointerUp(event: PointerEvent<HTMLDivElement>) {
     if (startX.current == null) return;
     const dx = event.clientX - startX.current;
@@ -205,6 +218,7 @@ export function TrendChart({
           strokeWidth={1.75}
         />
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
+        {/* 描画順: 散歩の棒 → 目安の点線 → kcal の線 → 体重の線と点。日付文字だけ onSelect。 */}
         {days.map((day, index) => {
           const km = day.walkKm ?? 0;
           if (!(km > 0)) return null;

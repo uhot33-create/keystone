@@ -27,6 +27,7 @@ const KIND_KEY = "kurashi-fortune-kind";
 /** localStorage のキー。星座・血液型・干支の id。 */
 const VALUE_KEY = "kurashi-fortune-key";
 
+/** ブラウザに残した占い。壊れていたらおひつじ座。種類と値が食い違ったらその種類の先頭。 */
 function readStored(): { kind: FortuneKind; key: string } {
   if (typeof localStorage === "undefined") return { kind: "zodiac", key: "aries" };
   try {
@@ -41,12 +42,17 @@ function readStored(): { kind: FortuneKind; key: string } {
   }
 }
 
+/** 占いの種類に対応する選択肢。星座 id は外部サイトのパス（desk/types.ts）。 */
 function optionsFor(kind: FortuneKind) {
   if (kind === "blood") return BLOOD_OPTIONS;
   if (kind === "eto") return ETO_OPTIONS;
   return ZODIAC_OPTIONS;
 }
 
+/**
+ * 今回オンの項目だけ新しい結果に差し替える。オフの項目は前の文を残す（再表示したとき用）。
+ * エラー配列は常に新しい方。
+ */
 function applyDesk(current: DeskState | null, next: DeskState, shown: DeskVisibility): DeskState {
   if (!current) return next;
   return {
@@ -60,6 +66,7 @@ function applyDesk(current: DeskState | null, next: DeskState, shown: DeskVisibi
   };
 }
 
+/** 犬ネタの日付を日本時間の「月/日」にする。壊れていたら空。 */
 function formatNewsDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -129,6 +136,7 @@ export function DeskPanel() {
     };
   }, [anyVisible, kind, key, visible]);
 
+  /** 格言・小話・豆知識・犬ネタだけ取り直す。何の日と占いは種類の変更で取り直す。 */
   async function onRefresh(part: "quote" | "story" | "dogFact" | "dogNews") {
     setRefreshing(part);
     setError(null);
@@ -173,6 +181,7 @@ export function DeskPanel() {
     }
   }
 
+  /** 占いの種類と値を画面と localStorage の両方に残す。保存できなくても表示は変える。 */
   function persist(nextKind: FortuneKind, nextKey: string) {
     setKind(nextKind);
     setKey(nextKey);

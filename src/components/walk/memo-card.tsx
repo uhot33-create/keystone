@@ -14,6 +14,7 @@ import { walkMemoHasPhoto, walkMemoImageSrc } from "@/lib/walk/image";
 import type { WalkMemo } from "@/lib/walk/types";
 import { ImageLightbox } from "@/components/walk/image-lightbox";
 
+/** 虹渡りの印。色の並びを変えるなら path の stroke。 */
 function RainbowIcon() {
   return (
     <svg viewBox="0 0 24 24" className="size-4 shrink-0" aria-label="虹渡り" role="img">
@@ -26,6 +27,7 @@ function RainbowIcon() {
   );
 }
 
+/** YYYY-MM-DD を 2024/1/2 にする。空や形式違いのときは「—」。最後に会った日と戻す日の両方。 */
 function formatMet(value: string | null): string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "—";
   const [year, month, day] = value.split("-");
@@ -78,6 +80,7 @@ export function MemoCard({
                 aria-label={metToday ? "今日会った（記録済）" : "今日会った"}
                 disabled={pending || metToday}
                 onClick={() => {
+                  // この犬だけ。同じ飼い主の他犬を聞くのは編集保存（memo-form の householdOthers）。
                   if (!window.confirm(`${memo.name} の最後に会った日を今日にしますか？`)) return;
                   onMetToday(memo.id);
                 }}
@@ -104,6 +107,7 @@ export function MemoCard({
           </Link>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
             <span>最後に会った日 {formatMet(memo.lastMetOn)}</span>
+            {/* prevLastMetOn があるときだけ「○に戻す」。中身は restoreWalkMemoMet が日付を入れ替える。 */}
             {memo.prevLastMetOn && onRestoreMet ? (
               <button
                 type="button"

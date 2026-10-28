@@ -12,6 +12,7 @@ export type Cheer = {
   line: string;
 };
 
+/** localStorage の前回見たバッジ。ブラウザで無いか壊れていたら null（初回は祝わない判定へ）。 */
 function readSeen(): SmokingBadges | null {
   if (typeof localStorage === "undefined") return null;
   try {
@@ -25,6 +26,7 @@ function readSeen(): SmokingBadges | null {
   }
 }
 
+/** いま見ている数字を記録する。次に増えた分だけ pendingCheers が祝う。 */
 export function markCheersSeen(badges: SmokingBadges) {
   if (typeof localStorage === "undefined") return;
   localStorage.setItem(SEEN_KEY, JSON.stringify(badges));
@@ -37,6 +39,7 @@ export function pendingCheers(badges: SmokingBadges): Cheer[] {
   return cheersSince(before, badges);
 }
 
+/** 記録が無い最初の一回。過去の到達を全部は祝わず、いちばん上の印を一つだけ出す。 */
 function currentCheer(badges: SmokingBadges): Cheer[] {
   if (badges.lifetimeNice <= 0 && badges.streak <= 0) return [];
   if (badges.wonderfulCount > 0) {
@@ -51,6 +54,10 @@ function currentCheer(badges: SmokingBadges): Cheer[] {
   return [{ title: "ナイス", line: `これまで${badges.lifetimeNice}日、限度内でした。` }];
 }
 
+/**
+ * 前回との差分。百日・ひと月・一週間は同時でも上の一つ。とっても素敵とベリーナイスも同様。
+ * 静かな週とスタートは別枠。それ以外のナイス増加だけなら「ナイス」を1件。最大3件。
+ */
 export function cheersSince(before: SmokingBadges, after: SmokingBadges): Cheer[] {
   const out: Cheer[] = [];
   if (!before.hundredEarned && after.hundredEarned) {

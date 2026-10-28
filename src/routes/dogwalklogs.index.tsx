@@ -21,6 +21,7 @@ export const Route = createFileRoute("/dogwalklogs/")({
   component: WalkLogsPage,
 });
 
+/** 年・月でたたんだ一覧。キャッシュが無ければ getWalkLogs。軌跡の中身は詳細側。 */
 function WalkLogsPage() {
   const [logs, setLogs] = useState<WalkLogList | null>(() => peekWalkLogs());
   const [openYears, setOpenYears] = useState<number[]>(() => [jstYear()]);
@@ -29,6 +30,7 @@ function WalkLogsPage() {
   const [pending, setPending] = useState(false);
   const [showTop, setShowTop] = useState(false);
 
+  /** 240px より下で TOP を出す。ログの取得とは別。 */
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 240);
     onScroll();
@@ -36,6 +38,7 @@ function WalkLogsPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /** キャッシュが無ければ一覧を取る。開く年・月の初期値は日本時間の今年・今月（jstYear / jstYearMonth）。 */
   useEffect(() => {
     if (peekWalkLogs()) return;
     let cancelled = false;
@@ -53,6 +56,7 @@ function WalkLogsPage() {
     };
   }, []);
 
+  /** GPX を parseGpxFile で読んで saveWalkLog する。8MB 超は gpx.ts が落とす。 */
   async function onPick(list: FileList | null) {
     const file = list?.[0];
     if (!file) return;
@@ -170,10 +174,12 @@ function WalkLogsPage() {
   );
 }
 
+/** 日本時間の西暦。最初に開く年。タイムゾーンを変えると「今年」がずれる。 */
 function jstYear(): number {
   return Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tokyo", year: "numeric" }).format(new Date()));
 }
 
+/** 日本時間の YYYY-MM。最初に開く月。月の地図リンクの形と揃える。 */
 function jstYearMonth(): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Tokyo",
@@ -185,6 +191,7 @@ function jstYearMonth(): string {
   return `${year}-${month}`;
 }
 
+/** 1か月分。開くとその月のログ。地図へは yearMonth をそのまま渡す。 */
 function MonthBlock({
   month,
   maxDistance,
@@ -225,6 +232,7 @@ function MonthBlock({
   );
 }
 
+/** 同じグループ内の最大距離に対する棒。距離0は幅0。比率の下限は 6%。 */
 function DistanceBar({ value, max, className = "min-w-8 flex-1" }: { value: number; max: number; className?: string }) {
   const width = max > 0 && value > 0 ? Math.max(6, Math.round((value / max) * 100)) : 0;
   return (
@@ -234,6 +242,7 @@ function DistanceBar({ value, max, className = "min-w-8 flex-1" }: { value: numb
   );
 }
 
+/** 開始時刻を日本時間の「D日 HH:MM」にする。時刻が無ければ「日時なし」。 */
 function formatDayTime(iso: string | null): string {
   if (!iso) return "日時なし";
   const date = new Date(iso);
@@ -252,6 +261,7 @@ function formatDayTime(iso: string | null): string {
   return `${day}日 ${hour}:${minute}`;
 }
 
+/** 1件の行。詳細へ id を渡す。km と時間の表記は format.ts。 */
 function LogRow({ log, maxDistance }: { log: WalkLog; maxDistance: number }) {
   return (
     <li>

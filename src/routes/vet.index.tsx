@@ -23,6 +23,7 @@ const PAGE_SIZE = 10;
 /** 一覧ルート。 */
 export const Route = createFileRoute("/vet/")({ component: VetIndex });
 
+/** メモ、次の予定、年ごとの履歴。キャッシュが無ければ listVetVisits。 */
 function VetIndex() {
   const [visits, setVisits] = useState<VetVisit[] | null>(() => peekVetVisits());
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +33,7 @@ function VetIndex() {
   const sentinel = useRef<HTMLDivElement>(null);
   const today = todayJst();
 
+  /** キャッシュが無ければ通院一覧を取る。並びと年の折りたたみはこの画面。 */
   useEffect(() => {
     if (peekVetVisits()) return;
     let cancelled = false;
@@ -49,6 +51,7 @@ function VetIndex() {
     };
   }, []);
 
+  /** 予定だけ、日付の早い順。過ぎた予定の文言は描画側。 */
   const upcoming = useMemo(() => {
     if (!visits) return [];
     return visits
@@ -56,6 +59,7 @@ function VetIndex() {
       .sort((a, b) => a.visitOn.localeCompare(b.visitOn));
   }, [visits]);
 
+  /** 予定以外を履歴にする。並びは listVetVisits の順のまま。 */
   const history = useMemo(() => {
     if (!visits) return [];
     return visits.filter((item) => item.status !== "planned");
@@ -63,6 +67,7 @@ function VetIndex() {
 
   const hasMore = shown < history.length;
 
+  /** 表示中の件数だけを年でまとめる。同じ年が続く前提で、年が変わったら新しい見出し。 */
   const historyByYear = useMemo(() => {
     const groups: { year: string; items: VetVisit[] }[] = [];
     for (const visit of history.slice(0, shown)) {
@@ -74,6 +79,7 @@ function VetIndex() {
     return groups;
   }, [history, shown]);
 
+  /** 240px より下で TOP を出す。 */
   useEffect(() => {
     const onScroll = () => setShowTop(window.scrollY > 240);
     onScroll();
@@ -81,6 +87,7 @@ function VetIndex() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  /** 下端の番兵が見えたら、履歴を PAGE_SIZE 件だけ足す。追加の取得はしない。 */
   useEffect(() => {
     const node = sentinel.current;
     if (!node || !hasMore) return;
@@ -204,11 +211,13 @@ function VetIndex() {
   );
 }
 
+/** 「M月D日」。年は見出し側。日付の保存形式は YYYY-MM-DD のまま。 */
 function formatMonthDay(iso: string): string {
   const parts = iso.split("-");
   return `${Number(parts[1])}月${Number(parts[2])}日`;
 }
 
+/** 履歴の1行。編集へ id を渡す。予定日を過ぎた表示は一覧の upcoming 側。 */
 function HistoryRow({ visit }: { visit: VetVisit }) {
   const detail = [visit.treatment, visit.note].map((value) => value?.trim()).filter(Boolean).join("　");
   return (

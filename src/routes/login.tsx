@@ -9,6 +9,7 @@ import { AuthSplash, LoginScreen } from "@/components/login-form";
 /** ログイン専用ルート。確認中は待ち画面。 */
 export const Route = createFileRoute("/login")({ component: Login });
 
+/** 確認中は待ち画面。ログイン済みならトップへ戻し、未ログインだけフォームを出す。 */
 function Login() {
   const { user, isPending } = useCurrentUserState();
   if (isPending) return <AuthSplash />;

@@ -19,11 +19,13 @@ export const Route = createFileRoute("/dogwalklogs/month/$yearMonth")({
   component: WalkMonthPage,
 });
 
+/** URL の YYYY-MM で月次を取る。未集計の文言は getWalkMonth が返す。 */
 function WalkMonthPage() {
   const { yearMonth } = Route.useParams();
   const [month, setMonth] = useState<WalkMonthTrack | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /** yearMonth が変わるたびに getWalkMonth を取り直す。集計そのものは cron の月次マージ。 */
   useEffect(() => {
     let cancelled = false;
     setMonth(null);
@@ -86,6 +88,7 @@ function WalkMonthPage() {
   );
 }
 
+/** 「YYYY年M月の合計」。壊れた値は「月の合計」。表示だけ。 */
 function monthLabel(yearMonth: string): string {
   const [year, month] = yearMonth.split("-");
   if (!year || !month) return "月の合計";

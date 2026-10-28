@@ -29,13 +29,17 @@ import { Label } from "@/components/ui/label";
 
 type Tab = "stock" | "add" | "items";
 
-/** 今日から期限日までの日数。強調は StockTab で 0〜30。 */
+/**
+ * 今日から期限日までの日数。同じ UTC 日付の差。強調は StockTab で 0〜30。
+ * 負なら期限切れ。比較の「今日」は呼び出し側の todayJst（日本時間）。
+ */
 function daysUntil(expiresOn: string, today: string): number {
   const from = Date.parse(`${today}T00:00:00Z`);
   const to = Date.parse(`${expiresOn}T00:00:00Z`);
   return Math.floor((to - from) / 86400000);
 }
 
+/** タブボタンの見た目。選ばれている方だけ白いカード。 */
 function tabClass(active: boolean) {
   return [
     "h-11 rounded-sm text-sm font-medium transition-colors duration-150",
@@ -43,10 +47,15 @@ function tabClass(active: boolean) {
   ].join(" ");
 }
 
+/** Error ならその message、それ以外は決まった文。画面に出すだけ。 */
 function messageOf(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback;
 }
 
+/**
+ * 品名画像を /api/cup/image へ送る。縮小は prepareImageFile（おさんぽと同じ 8MB / HEIC）。
+ * 返った url と pathname を cup_items に保存する。在庫そのものには画像は付かない。
+ */
 async function uploadImage(file: File): Promise<{ url: string; pathname: string }> {
   const prepared = await prepareImageFile(file);
   const body = new FormData();
@@ -69,6 +78,7 @@ export function CupApp() {
   const [busy, setBusy] = useState(false);
   const today = todayJst();
 
+  /** 品名と在庫を取り直して控えも更新する。保存のあとは必ずここ。並びは期限の早い順（API）。 */
   async function reload() {
     const next = await getCupState();
     holdCup(next);
@@ -94,6 +104,7 @@ export function CupApp() {
     };
   }, []);
 
+  /** 変更してから reload。失敗したら在庫の数字はサーバーのまま（画面はエラーだけ）。 */
   async function run(work: () => Promise<void>) {
     setError(null);
     setBusy(true);
@@ -195,7 +206,10 @@ export function CupApp() {
   );
 }
 
-/** 在庫一覧。期限まで 0〜30 日のカードを強調する。 */
+/**
+ * 在庫一覧。期限まで 0〜30 日のカードを強調する。過ぎたら「期限切れ」（個数は残る）。
+ * -1 / +1 は adjustCupStock。0未満は API が拒否する。削除は行ごと。
+ */
 function StockTab({
   items,
   stocks,
@@ -221,6 +235,7 @@ function StockTab({
     <>
       <ul className="space-y-2">
         {stocks.map((stock) => {
+          // 期限まで30日以内だけ色を変える。過ぎた在庫は消さず「期限切れ」と書く。
           const soon = daysUntil(stock.expiresOn, today);
           const highlight = soon >= 0 && soon <= 30;
           return (
@@ -275,6 +290,10 @@ function StockTab({
   );
 }
 
+/**
+ * 在庫1件の編集。マスタ選択か直接入力。個数は0以上の整数、期限は date 入力。
+ * 実在しない日付の拒否は API の assertRealDate。保存先は updateCupStock。
+ */
 function StockEditor({
   items,
   stock,
@@ -341,6 +360,10 @@ function StockEditor({
   );
 }
 
+/**
+ * 在庫の新規。品名が無ければ最初から直接入力。期限の初期値は日本時間の今日。個数は1。
+ * 保存後に親が在庫タブへ戻す。同じ品名でも期限が違えば別の行（まとめて足さない）。
+ */
 function AddTab({
   items,
   disabled,
@@ -399,6 +422,7 @@ function AddTab({
   );
 }
 
+/** 品名の選び方。マスタが空なら「マスタから」は押せない。名前は100文字まで。 */
 function ItemFields({
   items,
   mode,
@@ -457,6 +481,10 @@ function ItemFields({
   );
 }
 
+/**
+ * 品名マスタ。追加・編集・削除。画像は任意。
+ * 削除しても在庫の item_name は残る。つながり（item_id）だけ切れる、と確認文に書いてある。
+ */
 function ItemsTab({
   items,
   disabled,
@@ -528,6 +556,7 @@ function ItemsTab({
   );
 }
 
+/** 品名1件の編集。新しい画像があれば差し替え、外すチェックだけなら clearImage。 */
 function ItemEditor({
   item,
   disabled,
@@ -582,6 +611,7 @@ function ItemEditor({
   );
 }
 
+/** 品名画像の貼り付け欄。長押しペーストかファイル選択。プレビューは blob:。送信は親の uploadImage。 */
 function ImageField({
   file,
   disabled,
@@ -606,12 +636,14 @@ function ImageField({
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  /** 選んだ1枚を親へ渡す。操作中は無視。 */
   function take(pasted: File | null) {
     if (!pasted || disabled) return;
     setPasteError(null);
     onFile(pasted);
   }
 
+  /** クリップボードに画像があるときだけ貼り付けを止めて取る。 */
   function onZonePaste(event: ClipboardEvent<HTMLDivElement>) {
     const pasted = imageFileFromClipboard(event.clipboardData);
     if (!pasted) return;
@@ -619,6 +651,7 @@ function ImageField({
     take(pasted);
   }
 
+  /** iPhone の長押しで入った img を File に戻す。枠の中身はすぐ空にする。 */
   function onZoneInput(event: FormEvent<HTMLDivElement>) {
     const root = event.currentTarget;
     const img = root.querySelector("img");

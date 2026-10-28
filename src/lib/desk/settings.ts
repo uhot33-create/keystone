@@ -28,6 +28,7 @@ type SettingsRow = {
   show_fortune: unknown;
 };
 
+/** Postgres の真偽。t / true / 1 を true、f / false / 0 を false。それ以外は fallback。 */
 function asBool(value: unknown, fallback: boolean): boolean {
   if (typeof value === "boolean") return value;
   if (value === "t" || value === "true" || value === 1) return true;
@@ -35,6 +36,7 @@ function asBool(value: unknown, fallback: boolean): boolean {
   return fallback;
 }
 
+/** user_settings の1行。行が無ければ6項目すべてオフ。列を足すときは DESK_ITEMS も足す。 */
 function mapRow(row: SettingsRow | undefined): DeskVisibility {
   if (!row) {
     return { onThisDay: false, quote: false, story: false, dogFact: false, dogNews: false, fortune: false };

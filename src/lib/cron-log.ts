@@ -1,7 +1,8 @@
 /**
  * 定期処理（cron）の開始・ログ追記・終了を cron_runs に残す。
- * 開始時に 30 日より古い行を消す。ログの書き込みに失敗しても本処理は止めない。
- * ジョブ名はいま "daily" 固定。残す日数を変えるときは delete の interval。
+ * 呼び出し元は /api/cron/calorie-summary。開始時に 30 日より古い行を消す。
+ * ログの書き込みに失敗しても本処理は止めない。ジョブ名はいま "daily" 固定。
+ * 残す日数を変えるときは startCronRun の interval。成否の意味は finishCronRun の ok。
  */
 import type { Sql } from "@/lib/db";
 

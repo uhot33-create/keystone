@@ -10,6 +10,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getSessionUser } from "@/lib/auth/verify.server";
 import { MAX_UPLOAD_BYTES } from "@/lib/walk/image";
 
+/** multipart の file を Blob として扱う。文字列・空・arrayBuffer が無い値は null。 */
 function asUploadBlob(value: FormDataEntryValue | null): Blob | null {
   if (!value || typeof value === "string") return null;
   if (typeof (value as Blob).arrayBuffer !== "function") return null;

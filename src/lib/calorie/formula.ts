@@ -4,6 +4,7 @@
  * 1日の目安は dailyEnergy = restingEnergy（安静時）× LIFE_STAGES の factor です。
  * 摂取kcalは truncKcal（小数第1位まで、それ以下は切り捨て）に揃えます。
  * 編集ロックは CALORIE_EDIT_DAYS（14）。これより古い記録は変更できません。
+ * 期間合計・期末体重・点線の保存は summary.ts。ここは1日の式と、1件の切り捨てだけです。
  * ラベル（ステージ名、単位、おやつ%）を変えると、その選択肢の文言だけ変わります。
  */
 /**

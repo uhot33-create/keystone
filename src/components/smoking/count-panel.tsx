@@ -37,6 +37,7 @@ export function CountPanel({
     const id = window.setInterval(() => {
       const stamp = Date.now();
       setNow(stamp);
+      // 表示上の次の0時（resetsAt）を過ぎたら取り直す。実際の戻しはサーバーの resetSmokingIfDue（日本時間の日付）。
       if (stamp >= Date.parse(state.resetsAt)) {
         void getSmokingState().then(onChange).catch(() => undefined);
       }
@@ -44,6 +45,7 @@ export function CountPanel({
     return () => window.clearInterval(id);
   }, [onChange, state.resetsAt]);
 
+  /** 減算・残り修正の共通。失敗しても本数表示は変えない（onChange しない）。 */
   async function run(action: () => Promise<SmokingState>) {
     setPending(true);
     setError(null);
@@ -56,6 +58,7 @@ export function CountPanel({
     }
   }
 
+  /** 手入力の残り。0以上の整数。上限を超える切り詰めは setRemaining 側。 */
   function onSaveEdit(event: FormEvent) {
     event.preventDefault();
     const value = Number(draft);

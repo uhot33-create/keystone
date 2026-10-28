@@ -3,9 +3,15 @@
  * チワワ／スムースだけはカロリー段階の4枚（saburo.ts）を使う。ほかの犬種は1枚。
  * 今のさぶろうの絵は chihuahua-smooth-wr。今の人の絵は woman。
  */
+/** 犬を選んでいないときの id。段階つきのさぶろう絵。変えると初期のメニュー絵が変わる。 */
 export const DEFAULT_DOG_PORTRAIT = "chihuahua-smooth-wr";
+/** 人の絵の初期値。user_settings が空のとき、表示は personMenuSrc が大人（女性）に落とす。 */
 export const DEFAULT_PERSON_PORTRAIT = "woman";
 
+/**
+ * 犬の絵一覧。id は dogs.portrait_id に保存する。stages が true のときだけ saburo.ts の4段階を使う。
+ * 犬種を足すときは画像を public に置き、id を既存と被らせない。
+ */
 export const DOG_PORTRAITS = [
   { id: "chihuahua-smooth-wr", label: "チワワ／スムース（ホワイト・レッド）", src: "/calorie/saburo/01-standard.jpg", stages: true },
   { id: "toy-poodle", label: "トイプードル", src: "/calorie/portraits/dogs/toy-poodle.jpg", stages: false },
@@ -23,6 +29,7 @@ export const DOG_PORTRAITS = [
   { id: "mix", label: "ミックス", src: "/calorie/portraits/dogs/mix.jpg", stages: false },
 ] as const;
 
+/** 人の絵一覧。id は user_settings.person_portrait。並びは選択画面の順。 */
 export const PERSON_PORTRAITS = [
   { id: "girl", label: "女の子", src: "/calorie/portraits/people/girl.jpg" },
   { id: "boy", label: "男の子", src: "/calorie/portraits/people/boy.jpg" },
@@ -37,23 +44,31 @@ export const PERSON_PORTRAITS = [
   { id: "elder-man", label: "老人（男性）", src: "/calorie/portraits/people/elder-man.jpg" },
 ] as const;
 
+/** DOG_PORTRAITS の id。文字列を広げるときは配列側を先に足す。 */
 export type DogPortraitId = (typeof DOG_PORTRAITS)[number]["id"];
+/** PERSON_PORTRAITS の id。 */
 export type PersonPortraitId = (typeof PERSON_PORTRAITS)[number]["id"];
 
+/** 知らない id は false。保存前のチェックは api.ts の zod がこれを使う。 */
 export function isDogPortrait(value: string): value is DogPortraitId {
   return DOG_PORTRAITS.some((item) => item.id === value);
 }
 
+/** 人の絵 id が一覧にあるか。無い値は保存できない。 */
 export function isPersonPortrait(value: string): value is PersonPortraitId {
   return PERSON_PORTRAITS.some((item) => item.id === value);
 }
 
-/** チワワ／スムースは段階の絵、ほかの犬種はテンプレート1枚。 */
+/**
+ * メニューの犬の絵。id が stages なら stageSrc（その日のさぶろう段階）、それ以外はテンプレート1枚。
+ * 不明な id は一覧の先頭。段階の切り替え規則は saburo.ts。犬種を足しても stages を true にしない限り1枚のまま。
+ */
 export function dogMenuSrc(id: string | null | undefined, stageSrc: string): string {
   const item = DOG_PORTRAITS.find((portrait) => portrait.id === id) ?? DOG_PORTRAITS[0];
   return item.stages ? stageSrc : item.src;
 }
 
+/** 人のメニュー絵。未設定・不明な id は3番目（大人・女性、DEFAULT と同じ src）。並びを変えると初期絵がずれる。 */
 export function personMenuSrc(id: string | null | undefined): string {
   return PERSON_PORTRAITS.find((portrait) => portrait.id === id)?.src ?? PERSON_PORTRAITS[2].src;
 }

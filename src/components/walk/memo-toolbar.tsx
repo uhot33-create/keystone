@@ -33,6 +33,7 @@ export function MemoToolbar({
     setDraftQ(search.q);
   }, [search.q]);
 
+  /** 検索ボタン（または Enter）で検索語を確定する。並びと犬種はセレクト変更ですぐ onChange。 */
   function onSearch(event: FormEvent) {
     event.preventDefault();
     onChange({ ...search, q: draftQ.trim() });

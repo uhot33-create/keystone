@@ -10,6 +10,7 @@ export const Route = createFileRoute("/dogfriend")({
   component: WalkLayout,
 });
 
+/** 子ルートを Protected で包むだけ。一覧の取得は dogfriend.index.tsx。 */
 function WalkLayout() {
   return (
     <Protected>

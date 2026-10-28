@@ -2,12 +2,19 @@
  * 日付の行。左右スワイプは48px以上で前日・翌日。
  * 「今日」で今日へ。「グラフ」でグラフを開く。
  * 暮らし帳のカードメニューと、わんカロリーの今日画面で使う。
+ * 呼び出しは HomeCalorieDate（暮らし帳）と TodayPanel（今日タブ）。DB には書かず、移動は onShift / onToday / onChart に渡すだけ。
+ * スワイプ幅とグラフボタンの出し分けを変えるならこのファイル。閲覧のみになる日数は formula.ts の isCalorieLocked。
  */
 import { useRef } from "react";
 import { ChartLine, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatJaDayWeek, todayJst } from "@/lib/calorie/formula";
 import { Button } from "@/components/ui/button";
 
+/**
+ * 日付バー本体。date を曜日つきで出し、前日・翌日・今日・グラフを並べる。
+ * chartOpen のあいだ、または showChart が false（人のメニュー）のときはグラフボタンを出さない。locked なら下に閲覧のみと書く。
+ * 横にどれだけ動かしたら日付が変わるかは、下の 48。
+ */
 export function DateBar({
   date,
   chartOpen,
@@ -35,6 +42,7 @@ export function DateBar({
           startX.current = event.clientX;
         }}
         onPointerUp={(event) => {
+          // 48px 未満はタップ扱いで日付を変えない。左へ滑らすと翌日、右へ滑らすと前日。
           const dx = event.clientX - startX.current;
           if (Math.abs(dx) < 48) return;
           onShift(dx < 0 ? 1 : -1);
@@ -60,6 +68,7 @@ export function DateBar({
           >
             今日
           </Button>
+          {/* グラフ表示中と、人メニュー（showChart=false）のあいだはボタンを隠す。 */}
           {chartOpen || !showChart ? null : (
             <Button
               type="button"
@@ -82,6 +91,7 @@ export function DateBar({
           <ChevronRight className="size-4" strokeWidth={1.75} />
         </button>
       </div>
+      {/* locked は呼び出し側の isCalorieLocked。止める日数は formula.ts、文言だけここ。 */}
       {locked ? <p className="text-center text-xs text-muted">2週間以上前の記録は閲覧のみです</p> : null}
     </div>
   );
