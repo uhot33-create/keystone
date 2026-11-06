@@ -54,7 +54,8 @@ function axisTick(grain: TrendGrain, day: DayTrend, prev: DayTrend | undefined):
 /**
  * 渡された days を1枚のグラフに描きます。横軸の日付をタップすると onSelect（その期間の最終日）です。
  * 点やおさんぽの棒は押しません。押した日付の数値は見出しの右に出します。
- * 期間の移動はグラフの上を左右に滑らす。右が過去、左が未来。canOlder / canNewer が false の方向には動きません。
+ * 期間の移動はグラフのスワイプとPC幅の左右ボタンで行います。右が過去、左が未来。
+ * canOlder / canNewer が false の方向には動きません。
  * kcal の刻みは日が100・それ以外500、散歩は日1km・年20km・それ以外5km。ここの数字が縦軸の粗さです。
  */
 export function TrendChart({
@@ -243,16 +244,28 @@ export function TrendChart({
           startX.current = null;
         }}
       >
-        <ChevronLeft
-          aria-hidden
-          className={`pointer-events-none absolute left-0 top-1/2 z-10 size-5 -translate-y-1/2 ${canOlder ? "text-fg/70" : "text-muted/30"}`}
-          strokeWidth={1.75}
-        />
-        <ChevronRight
-          aria-hidden
-          className={`pointer-events-none absolute right-0 top-1/2 z-10 size-5 -translate-y-1/2 ${canNewer ? "text-fg/70" : "text-muted/30"}`}
-          strokeWidth={1.75}
-        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="前の期間"
+          className={`absolute left-0 top-1/2 z-10 hidden -translate-y-1/2 lg:inline-flex ${canOlder ? "text-fg/70" : "text-muted/30"}`}
+          disabled={!canOlder}
+          onClick={() => onShift(-1)}
+        >
+          <ChevronLeft aria-hidden strokeWidth={1.75} />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="次の期間"
+          className={`absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 lg:inline-flex ${canNewer ? "text-fg/70" : "text-muted/30"}`}
+          disabled={!canNewer}
+          onClick={() => onShift(1)}
+        >
+          <ChevronRight aria-hidden strokeWidth={1.75} />
+        </Button>
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible" role="img" aria-label="摂取カロリーと体重とおさんぽ距離の推移">
         {/* 描画順: 散歩の棒 → 目安の点線 → kcal の線 → 体重の線と点。日付文字だけ onSelect。 */}
         {days.map((day, index) => {
