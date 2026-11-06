@@ -1,7 +1,7 @@
 /**
  * 今日タブの推移グラフ（SVG）です。TodayPanel がグラフを開いたときだけ出します。
  * 線は期間のカロリー合計、点線は目安（guideKcal）、赤点は期末の体重、茶色の棒は散歩です。
- * 色は primary / accent / #c23b32（体重）/ #6b5344（散歩）です。
+ * 色は #2563eb（カロリー合計）/ accent / #c23b32（体重）/ #6b5344（散歩）です。
  * 触りやすいところ: 幅320・高さ184、kcalの刻み（日は100、それ以外500）、
  * 散歩の上限刻み（日1km・年20km・それ以外5km）。
  * グラフの上を左右に滑らすと期間が移る。判定は48px。左右端の矢印は印で、押せない。
@@ -218,7 +218,7 @@ export function TrendChart({
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 rounded-full bg-primary" />
+          <span className="h-0.5 w-4 rounded-full bg-[#2563eb]" />
           期間のカロリー合計
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -296,7 +296,7 @@ export function TrendChart({
             {formatKcal(guideValue)}
           </text>
         ) : null}
-        <polyline fill="none" stroke="var(--color-primary)" strokeWidth="2" points={kcalLine} />
+        <polyline fill="none" stroke="#2563eb" strokeWidth="2" points={kcalLine} />
         {weightLine ? (
           <polyline fill="none" stroke="#c23b32" strokeWidth="2.25" points={weightLine} />
         ) : null}
@@ -315,7 +315,7 @@ export function TrendChart({
               cx={x(index)}
               cy={yKcal(day.kcal)}
               r={day.date === activeDate ? 3.5 : 2.2}
-              fill="var(--color-primary)"
+              fill="#2563eb"
             />
             {index % showEvery === 0 || index === days.length - 1 ? (
               <g
