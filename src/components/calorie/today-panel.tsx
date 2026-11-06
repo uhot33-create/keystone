@@ -81,12 +81,12 @@ function mergeTrends(current: DayTrend[], extra: DayTrend[]): DayTrend[] {
   return [...byStart.values()].sort((a, b) => a.start.localeCompare(b.start));
 }
 /**
- * グラフを1ページ送ります。日は14日、週は84日（12週）、月は12ヶ月、年は5年です。
+ * グラフを1ページ送ります。日は7日、週は84日（12週）、月は12ヶ月、年は5年です。
  * 今日より未来には進めません。幅を変えるときは CHART_WINDOW との差に注意してください。
  */
 function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, today: string): string {
   let next = viewEnd;
-  if (grain === "day") next = shiftIsoDate(viewEnd, direction * 14);
+  if (grain === "day") next = shiftIsoDate(viewEnd, direction * 7);
   else if (grain === "week") next = shiftIsoDate(viewEnd, direction * 84);
   else if (grain === "month") {
     const [year, month] = viewEnd.split("-").map(Number);

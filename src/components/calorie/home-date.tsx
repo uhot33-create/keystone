@@ -49,12 +49,12 @@ function mergeTrends(current: DayTrend[], extra: DayTrend[]): DayTrend[] {
 }
 
 /**
- * グラフを1ページ送ったあとの終端日。日は14日、週は84日、月は12ヶ月、年は5年。
+ * グラフを1ページ送ったあとの終端日。日は7日、週は84日、月は12ヶ月、年は5年。
  * 今日より未来には進めない。送り幅を変えるならこの関数。表示件数は CHART_WINDOW。
  */
 function shiftChartEnd(grain: TrendGrain, viewEnd: string, direction: -1 | 1, today: string): string {
   let next = viewEnd;
-  if (grain === "day") next = shiftIsoDate(viewEnd, direction * 14);
+  if (grain === "day") next = shiftIsoDate(viewEnd, direction * 7);
   else if (grain === "week") next = shiftIsoDate(viewEnd, direction * 84);
   else if (grain === "month") {
     const [year, month] = viewEnd.split("-").map(Number);
